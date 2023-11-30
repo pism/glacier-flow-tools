@@ -17,6 +17,9 @@ classifiers = [
         ]
 dynamic = ["dependencies"]
 
+[project.scripts]
+extract-profiles = "pypism:extract_profiles"
+
 [tool.setuptools.packages.find]
 include = ["pypism"]
 

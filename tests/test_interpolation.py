@@ -23,7 +23,7 @@ Tests for procesing module
 import numpy as np
 import pandas as pd
 import xarray as xr
-
+from numpy.testing import assert_array_almost_equal
 from trajectory.interpolation import InterpolationMatrix
 
 np.seterr(divide="ignore", invalid="ignore")
@@ -78,6 +78,32 @@ def test_masked_missing_interpolation():
     assert z_interpolated[1] == 1.0
 
 
+def test_flipped_y_interpolation():
+    """Test interpolation from a grid with decreasing y coordinates"""
+
+    x = [-2, -1, 0, 1]
+    y = [1, 0, -1]
+
+    # a linear function (perfectly recovered using bilinear
+    # interpolation)
+    def Z(x, y):
+        "A linear function for testing."
+        return 0.3 * x + 0.2 * y + 0.1
+
+    xx, yy = np.meshgrid(x, y)
+
+    z = Z(xx, yy)
+
+    px = np.array([-1.75, -0.5, 0.75])
+    py = np.array([-0.25, 0.0, 0.25])
+
+    A = InterpolationMatrix(x, y, px, py)
+
+    z_interpolated = A.apply(z)
+
+    assert_array_almost_equal(z_interpolated, Z(px, py), decimal=12)
+
+
 def test_interpolation():
     """Test interpolation by recovering values of a linear function."""
 
@@ -120,7 +146,7 @@ def test_interpolation():
     # interpolate
     z_interpolated = A.apply(z)
 
-    assert np.max(np.fabs(z_interpolated - Z(px, py))) < 1e-12
+    assert_array_almost_equal(z_interpolated, Z(px, py), decimal=12)
 
 
 def test_circular():

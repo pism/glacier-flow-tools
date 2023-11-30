@@ -41,6 +41,7 @@ repos:
     rev: v1.7.0
     hooks:
       - id: mypy
+        exclude: pypism/extract_profile.py
 
   - repo: local
     hooks:
@@ -54,6 +55,7 @@ repos:
             "-rn", # Only display messages
             "-sn", # Don't display the score
           ]
+        exclude: pypism/extract_profile.py
 
   # - repo: https://github.com/srstevenson/nb-clean
   #   rev: 3.1.0
