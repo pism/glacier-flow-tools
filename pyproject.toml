@@ -1,8 +1,8 @@
 [project]
-name = "trajectory"
+name = "pypism"
 version = "0.1.0"
 maintainers = [{name = "Andy Aschwanden", email = "andy.aschwanden@gmail.com"}]
-description = """Calculate trajectories for a static flow field"""
+description = """Tools for pre- and postprocessing of PISM results"""
 readme = "README.md"
 requires-python = ">3.8"
 license = {text = "GPL 3.0"}
@@ -18,7 +18,7 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [tool.setuptools.packages.find]
-include = ["trajectory"]
+include = ["pypism"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
@@ -28,12 +28,12 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["trajectory"]
+py-modules = ["pypism"]
 
 [tool.poetry]
 name = "trajectory"
 version = "0.1.0"
-description = """Calculate trajectories"""
+description = """Tools for pre- and postprocessing of PISM results"""
 authors = ["Andy Aschwanden <andy.aschwanden@gmail.com>"]
 readme = "README.md"
 
