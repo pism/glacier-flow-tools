@@ -23,6 +23,8 @@ from osgeo import gdal, ogr, osr
 
 from .interpolation import InterpolationMatrix
 
+gdal.UseExceptions()
+
 # from pyproj import Proj
 
 
@@ -234,11 +236,11 @@ def output_dimensions(input_dimensions, profile=True):
 
 def read_shapefile(filename):
     """
-    Reads lat / lon from a ESRI shape file.
+    Reads lat / lon from a vector file
 
     Paramters
     ----------
-    filename: filename of ESRI shape file.
+    filename: filename of shape file.
 
     Returns
     -------
@@ -255,15 +257,16 @@ def read_shapefile(filename):
         srs_geo = osr.SpatialReference()
         srs_geo.ImportFromProj4("+proj=latlon")
     profiles = []
+
     if layer_type == "Point":
         lon = []
         lat = []
         for pt, feature in enumerate(layer):
             feature = layer.GetFeature(pt)
 
-            try:
+            if hasattr(feature, "id"):
                 id = feature.id
-            except:
+            else:
                 id = str(pt)
             try:
                 try:
@@ -308,11 +311,9 @@ def read_shapefile(filename):
 
     elif layer_type in ("Line String", "Multi Line String"):
         for pt, feature in enumerate(layer):
-            try:
+            if hasattr(feature, "id"):
                 id = feature.id
-            except:
-                id = str(pt)
-            if id is None:
+            else:
                 id = str(pt)
             if feature.name is None:
                 name = "unnamed"

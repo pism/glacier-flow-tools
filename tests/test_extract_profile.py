@@ -28,6 +28,7 @@ import numpy as np
 import pyproj
 import pytest
 import xarray as xr
+from numpy.testing import assert_array_almost_equal
 
 from pypism.extract_profile import Profile, read_shapefile
 
@@ -179,6 +180,13 @@ def test_create_dummy_profile(dummy_input_dataset):
         projection,
     )
     assert p.name == "test profile"
+    assert p.flightline == flightline
+    assert p.glaciertype == glaciertype
+    assert p.flowtype == flowtype
+    assert_array_almost_equal(p.lon, lon)
+    assert_array_almost_equal(p.lat, lat)
+    assert_array_almost_equal(p.center_lon, clon)
+    assert_array_almost_equal(p.center_lat, clat)
 
 
 # def file_handling_test():
