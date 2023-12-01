@@ -16,17 +16,15 @@ gate or a any kind of profile.
 
 import time
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from typing import Union
 
 import numpy as np
-from netCDF4 import Dataset as NC
-from pyproj import Proj
-
-try:
-    import pypismtools.pypismtools as ppt
-except ImportError:  # pragma: nocover
-    import pypismtools as ppt
+from osgeo import gdal, ogr, osr
 
 from .interpolation import InterpolationMatrix
+
+# from pyproj import Proj
+
 
 profiledim = "profile"
 stationdim = "station"
@@ -67,7 +65,7 @@ def tangential(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
         return a
 
 
-class Profile(object):
+class Profile:
 
     """Collects information about a profile, that is a sequence of points
     along a flux gate or a flightline.
@@ -76,17 +74,17 @@ class Profile(object):
 
     def __init__(
         self,
-        id,
-        name,
-        lat,
-        lon,
-        center_lat,
-        center_lon,
-        flightline,
-        glaciertype,
-        flowtype,
+        id: int,
+        name: str,
+        lat: Union[float, np.ndarray],
+        lon: Union[float, np.ndarray],
+        center_lat: float,
+        center_lon: float,
+        flightline: int,
+        glaciertype: int,
+        flowtype: int,
         projection,
-        flip=False,
+        flip: bool = False,
     ):
         self.id = id
         self.name = name
@@ -96,15 +94,15 @@ class Profile(object):
         self.glaciertype = glaciertype
         self.flowtype = flowtype
 
-        try:
-            lon[0]
-        except:
+        if isinstance(lon, float):
             lon = [lon]
+        else:
+            lon[0]
 
-        try:
-            lat[0]
-        except:
+        if isinstance(lat, float):
             lat = [lat]
+        else:
+            lat[0]
 
         assert len(lon) == len(lat)
 
@@ -164,266 +162,6 @@ class Profile(object):
         result = np.zeros_like(self.x)
         result[1::] = np.sqrt(np.diff(self.x) ** 2 + np.diff(self.y) ** 2)
         return result.cumsum()
-
-
-def create_dummy_profile(input_filename):
-    "Create a dummy profile for testing."
-    # create a profile to extract
-    import netCDF4
-
-    nc = netCDF4.Dataset(input_filename, "r")
-    x = nc.variables["x"][:]
-    y = nc.variables["y"][:]
-    proj4 = nc.proj4
-    nc.close()
-    import pyproj
-
-    projection = pyproj.Proj(str(proj4))
-
-    n_points = 4
-    # move points slightly to make sure we can interpolate
-    epsilon = 0.1
-    x_profile = np.linspace(x[0] + epsilon, x[-1] - epsilon, n_points)
-    y_profile = np.linspace(y[0] + epsilon, y[-1] - epsilon, n_points)
-    x_center = 0.5 * (x_profile[0] + x_profile[-1])
-    y_center = 0.5 * (y_profile[0] + y_profile[-1])
-
-    lon, lat = projection(x_profile, y_profile, inverse=True)
-    clon, clat = projection(x_center, y_center, inverse=True)
-
-    flightline = 2
-    glaciertype = 4
-    flowtype = 2
-
-    return Profile(
-        0,
-        "test profile",
-        lat,
-        lon,
-        clat,
-        clon,
-        flightline,
-        glaciertype,
-        flowtype,
-        projection,
-    )
-
-
-def profile_extraction_test():
-    """Test extract_profile() by using an input file with fake data."""
-
-    def F(x, y, z):
-        """A function linear in x, y, and z. Used to test our interpolation
-        scheme."""
-        return 10.0 + 0.01 * x + 0.02 * y + 0.03 + 0.04 * z
-
-    # create a test file
-    import os
-    import tempfile
-
-    fd, filename = tempfile.mkstemp(suffix=".nc", prefix="extract_profile_test_")
-    os.close(fd)
-
-    create_dummy_input_file(filename, F)
-
-    import netCDF4
-
-    nc = netCDF4.Dataset(filename)
-
-    profile = create_dummy_profile(filename)
-    n_points = len(profile.x)
-    z = nc.variables["z"][:]
-
-    desired_result = F(profile.x, profile.y, 0.0)
-
-    desired_3d_result = np.zeros((n_points, len(z)))
-    for k, level in enumerate(z):
-        desired_3d_result[:, k] = F(profile.x, profile.y, level)
-
-    from itertools import permutations
-
-    def P(x):
-        return list(permutations(x))
-
-    try:
-        # 2D variables
-        for d in P(["x", "y"]) + P(["time", "x", "y"]):
-            print("Trying %s..." % str(d))
-            variable_name = "test_2D_" + "_".join(d)
-            variable = nc.variables[variable_name]
-
-            result, _ = extract_profile(variable, profile)
-
-            assert np.max(np.fabs(np.squeeze(result) - desired_result)) < 1e-9
-        # 3D variables
-        for d in P(["x", "y", "z"]) + P(["time", "x", "y", "z"]):
-            print("Trying %s..." % str(d))
-            variable_name = "test_3D_" + "_".join(d)
-            variable = nc.variables[variable_name]
-
-            result, _ = extract_profile(variable, profile)
-
-            assert np.max(np.fabs(np.squeeze(result) - desired_3d_result)) < 1e-9
-    finally:
-        os.remove(filename)
-        nc.close()
-
-
-def create_dummy_input_file(filename, F):
-    """Create an input file for testing. Does not use unlimited
-    dimensions, creates one time record only."""
-
-    import netCDF4
-
-    nc = netCDF4.Dataset(filename, "w")
-
-    Mx = 88
-    My = 152
-    Mz = 11
-    for name, length in [["x", Mx], ["y", My], ["z", Mz], ["time", 1]]:
-        nc.createDimension(name, length)
-        nc.createVariable(name, "f8", (name,))
-
-    # use X and Y ranges corresponding to a grid covering Greenland
-    x = np.linspace(-669650.0, 896350.0, Mx)
-    y = np.linspace(-3362600.0, -644600.0, My)
-    z = np.linspace(0, 4000.0, Mz)
-    # the single time record
-    time = [0.0]
-
-    for name, data in [["x", x], ["y", y], ["z", z], ["time", time]]:
-        nc.variables[name][:] = data
-
-    nc.proj4 = "epsg:3413"
-
-    xx, yy = np.meshgrid(x, y)
-
-    def write(prefix, dimensions):
-        "Write test data to the file using given storage order."
-        name = prefix + "_".join(dimensions)
-
-        slices = {"x": slice(0, Mx), "y": slice(0, My), "time": 0, "z": None}
-
-        if "z" in dimensions:
-            # set fill_value and coordinates in variables with the z
-            # dimensions and not others (just so that we can get
-            # better test coverage)
-            variable = nc.createVariable(name, "f8", dimensions, fill_value=-2e9)
-            variable.coordinates = "lon lat"
-        else:
-            variable = nc.createVariable(name, "f8", dimensions)
-
-        variable.long_name = name + " (let's make it long!)"
-
-        # set indexes for all dimensions (z index will be re-set below)
-        indexes = [Ellipsis] * len(dimensions)
-        for k, d in enumerate(dimensions):
-            indexes[k] = slices[d]
-
-        # transpose 2D array if needed
-        if dimensions.index("y") < dimensions.index("x"):
-
-            def T(x):
-                return x
-
-        else:
-            T = np.transpose
-
-        if "z" in dimensions:
-            for k in range(Mz):
-                indexes[dimensions.index("z")] = k
-                variable[indexes] = T(F(xx, yy, z[k]))
-        else:
-            variable[indexes] = T(F(xx, yy, 0))
-
-    from itertools import permutations
-
-    def P(x):
-        return list(permutations(x))
-
-    for d in sorted(P(["x", "y"]) + P(["time", "x", "y"])):
-        write("test_2D_", d)
-
-    for d in sorted(P(["x", "y", "z"]) + P(["time", "x", "y", "z"])):
-        write("test_3D_", d)
-
-    nc.close()
-
-
-def profile_test():
-    """Test Profile constructor."""
-    import pyproj
-
-    x = np.linspace(-1.0, 1.0, 101)
-    y = np.linspace(1.0, -1.0, 101)
-
-    projection = pyproj.Proj("+proj=latlon")
-
-    lon, lat = projection(x, y, inverse=True)
-
-    center_lat, center_lon = projection(0.0, 0.0, inverse=True)
-
-    flightline = None
-    glaciertype = None
-    flowtype = None
-
-    profile = Profile(
-        0,
-        "test_profile",
-        lat,
-        lon,
-        center_lat,
-        center_lon,
-        flightline,
-        glaciertype,
-        flowtype,
-        projection,
-    )
-
-    assert profile.nx[0] == -1.0 / np.sqrt(2.0)
-    assert profile.ny[0] == -1.0 / np.sqrt(2.0)
-
-    assert np.fabs(profile.distance_from_start[1] - 0.02 * np.sqrt(2.0)) < 1e-12
-
-    x = -1.0 * x
-    lon, lat = projection(x, y, inverse=True)
-
-    profile = Profile(
-        0,
-        "flipped_profile",
-        lat,
-        lon,
-        center_lat,
-        center_lon,
-        flightline,
-        glaciertype,
-        flowtype,
-        projection,
-        flip=True,
-    )
-
-    assert profile.nx[0] == -1.0 / np.sqrt(2.0)
-    assert profile.ny[0] == 1.0 / np.sqrt(2.0)
-
-    x = np.linspace(-1.0, 1.0, 101)
-    y = np.zeros_like(x)
-    lon, lat = projection(x, y, inverse=True)
-
-    profile = Profile(
-        0,
-        "test_profile",
-        lat,
-        lon,
-        center_lat,
-        center_lon,
-        flightline,
-        glaciertype,
-        flowtype,
-        projection,
-    )
-
-    assert profile.nx[0] == 0.0
-    assert profile.ny[0] == -1.0
 
 
 def load_profiles(filename, projection, flip):
@@ -507,16 +245,12 @@ def read_shapefile(filename):
     lat, lon: array_like coordinates
 
     """
-    from osgeo import gdal, ogr, osr
 
     ds = gdal.OpenEx(filename, 0)
     layer = ds.GetLayer(0)
     layer_type = ogr.GeometryTypeToName(layer.GetGeomType())
     srs = layer.GetSpatialRef()
     if not srs.IsGeographic():
-        print(
-            (r"""Spatial Reference System in {filename} is not latlon. Converting.""")
-        )
         # Create spatialReference (lonlat)
         srs_geo = osr.SpatialReference()
         srs_geo.ImportFromProj4("+proj=latlon")
@@ -617,17 +351,27 @@ def read_shapefile(filename):
             # Transform to latlon if needed
             if not srs.IsGeographic():
                 geometry.TransformTo(srs_geo)
-            lon = []
-            lat = []
+            lons: list = []
+            lats: list = []
             for i in range(0, geometry.GetPointCount()):
                 # GetPoint returns a tuple not a Geometry
-                pt = geometry.GetPoint(i)
-                lon.append(pt[0])
-                lat.append(pt[1])
+                m_pt = geometry.GetPoint(i)
+                lons.append(m_pt[0])
+                lats.append(m_pt[1])
             # skip features with less than 2 points:
-            if len(lat) > 1:
+            if len(lats) > 1:
                 profiles.append(
-                    [lat, lon, id, name, clat, clon, flightline, glaciertype, flowtype]
+                    [
+                        lats,
+                        lons,
+                        id,
+                        name,
+                        clat,
+                        clon,
+                        flightline,
+                        glaciertype,
+                        flowtype,
+                    ]
                 )
     else:
         raise NotImplementedError(
@@ -953,60 +697,6 @@ def copy_global_attributes(in_file, out_file):
     print("done.")
 
 
-def file_handling_test():
-    """Test functions that copy variable metadata, define variables, etc."""
-
-    in_filename = "metadata_test_file_1.nc"
-    out_filename = "metadata_test_file_2.nc"
-
-    global attributes_not_copied
-    attributes_not_copied = []
-
-    create_dummy_input_file(in_filename, lambda x, y, z: 0)
-
-    try:
-        import netCDF4
-
-        input_file = netCDF4.Dataset(in_filename, "r")
-        output_file = netCDF4.Dataset(out_filename, "w")
-
-        define_profile_variables(output_file, special_vars=True)
-
-        copy_global_attributes(input_file, output_file)
-
-        copy_dimensions(input_file, output_file, ["time"])
-        copy_dimensions(input_file, output_file, ["x", "y", "z"])
-
-        copy_time_dimension(input_file, output_file, "time")
-
-        create_variable_like(input_file, "test_2D_x_y", output_file)
-        create_variable_like(input_file, "test_2D_x_y_time", output_file)
-        create_variable_like(input_file, "test_3D_x_y_z", output_file)
-        create_variable_like(input_file, "test_3D_x_y_z_time", output_file)
-
-        create_variable_like(
-            input_file,
-            "test_2D_y_x",
-            output_file,
-            output_dimensions(input_file.variables["test_2D_y_x"].dimensions),
-        )
-
-        print(output_dimensions(("x", "y")))
-        print(output_dimensions(("x", "y", "time")))
-        print(output_dimensions(("x", "y", "z")))
-        print(output_dimensions(("x", "y", "z", "time")))
-
-        write_profile(output_file, 0, create_dummy_profile(in_filename))
-
-        input_file.close()
-        output_file.close()
-    finally:
-        import os
-
-        os.remove(in_filename)
-        os.remove(out_filename)
-
-
 def extract_profile(variable, profile):
     """Extract values of a variable along a profile."""
     xdim, ydim, zdim, tdim = get_dims_from_variable(variable.dimensions)
@@ -1117,6 +807,8 @@ def create_variable_like(in_file, var_name, out_file, dimensions=None, fill_valu
     var_out = out_file.createVariable(
         var_name, dtype, dimensions=dimensions, fill_value=fill_value
     )
+    # Fix
+    attributes_not_copied: list = []
     copy_attributes(var_in, var_out, attributes_not_copied=attributes_not_copied)
     return var_out
 
@@ -1193,6 +885,9 @@ def timing(f):
 @timing
 def extract_variable(nc_in, nc_out, profiles, var_name, stations):
     "Extract profiles from one variable."
+
+    # fix
+    vars_not_copied = []
     if var_name in vars_not_copied:
         return
 
@@ -1237,6 +932,8 @@ def extract_variable(nc_in, nc_out, profiles, var_name, stations):
         except IndexError:
             print("Failed to copy {}. Ignoring it...".format(var_name))
 
+    # Fix
+    attributes_not_copied: list = []
     copy_attributes(var_in, var_out, attributes_not_copied=attributes_not_copied)
     print(("  - done with %s" % var_name))
 
@@ -1296,150 +993,150 @@ if __name__ == "__main__":
     else:
         variables = None
 
-    print("-----------------------------------------------------------------")
-    print("Running script {} ...".format(__file__.split("/")[-1]))
-    print("-----------------------------------------------------------------")
-    print("Opening NetCDF file {} ...".format(options.INPUTFILE[0]))
-    try:
-        # open netCDF file in 'read' mode
-        nc_in = NC(options.INPUTFILE[0], "r")
-    except:
-        print(
-            "ERROR:  file '{}' not found or not NetCDF format ... ending ...".format(
-                options.INPUTFILE[0]
-            )
-        )
-        import sys
+    # print("-----------------------------------------------------------------")
+    # print("Running script {} ...".format(__file__.split("/")[-1]))
+    # print("-----------------------------------------------------------------")
+    # print("Opening NetCDF file {} ...".format(options.INPUTFILE[0]))
+    # try:
+    #     # open netCDF file in 'read' mode
+    #     nc_in = NC(options.INPUTFILE[0], "r")
+    # except:
+    #     print(
+    #         "ERROR:  file '{}' not found or not NetCDF format ... ending ...".format(
+    #             options.INPUTFILE[0]
+    #         )
+    #     )
+    #     import sys
 
-        sys.exit()
+    #     sys.exit()
 
-    # get the dimensions
-    xdim, ydim, zdim, tdim = ppt.get_dims(nc_in)
-    # read projection information
-    if srs is not None:
-        try:
-            projection = Proj("{}".format(srs))
-        except:
-            try:
-                projection = Proj(srs)
-            except:
-                print(("Could not process {}".format(srs)))
-    else:
-        projection = ppt.get_projection_from_file(nc_in)
+    # # get the dimensions
+    # xdim, ydim, zdim, tdim = ppt.get_dims(nc_in)
+    # # read projection information
+    # if srs is not None:
+    #     try:
+    #         projection = Proj("{}".format(srs))
+    #     except:
+    #         try:
+    #             projection = Proj(srs)
+    #         except:
+    #             print(("Could not process {}".format(srs)))
+    # else:
+    #     projection = ppt.get_projection_from_file(nc_in)
 
-    # Read in profile data
-    print("  reading profile from {}".format(options.SHAPEFILE[0]))
-    profiles = load_profiles(options.SHAPEFILE[0], projection, options.flip)
+    # # Read in profile data
+    # print("  reading profile from {}".format(options.SHAPEFILE[0]))
+    # profiles = load_profiles(options.SHAPEFILE[0], projection, options.flip)
 
-    # switch to writing "station" information if all profiles have
-    # length 1
-    stations = np.all(np.array([len(p.x) for p in profiles]) == 1)
+    # # switch to writing "station" information if all profiles have
+    # # length 1
+    # stations = np.all(np.array([len(p.x) for p in profiles]) == 1)
 
-    mapplane_dim_names = (xdim, ydim)
+    # mapplane_dim_names = (xdim, ydim)
 
-    print("Creating dimensions")
-    nc_out = NC(options.OUTPUTFILE[0], "w", format="NETCDF4")
-    copy_global_attributes(nc_in, nc_out)
+    # print("Creating dimensions")
+    # nc_out = NC(options.OUTPUTFILE[0], "w", format="NETCDF4")
+    # copy_global_attributes(nc_in, nc_out)
 
-    # define variables storing profile information
-    if stations:
-        define_station_variables(nc_out)
-        print("Writing stations...")
-        for k, profile in enumerate(profiles):
-            write_station(nc_out, k, profile)
-        print("done.")
-    else:
-        define_profile_variables(nc_out, special_vars=special_vars)
-        print("Writing profiles...")
-        for k, profile in enumerate(profiles):
-            write_profile(nc_out, k, profile, special_vars=special_vars)
-        print("done.")
+    # # define variables storing profile information
+    # if stations:
+    #     define_station_variables(nc_out)
+    #     print("Writing stations...")
+    #     for k, profile in enumerate(profiles):
+    #         write_station(nc_out, k, profile)
+    #     print("done.")
+    # else:
+    #     define_profile_variables(nc_out, special_vars=special_vars)
+    #     print("Writing profiles...")
+    #     for k, profile in enumerate(profiles):
+    #         write_profile(nc_out, k, profile, special_vars=special_vars)
+    #     print("done.")
 
-    # re-create dimensions from an input file in an output file, but
-    # skip x and y dimensions and dimensions that are already present
-    copy_dimensions(nc_in, nc_out, mapplane_dim_names)
+    # # re-create dimensions from an input file in an output file, but
+    # # skip x and y dimensions and dimensions that are already present
+    # copy_dimensions(nc_in, nc_out, mapplane_dim_names)
 
-    # figure out which variables do not need to be copied to the new file.
-    # mapplane coordinate variables
-    vars_not_copied = [
-        "lat",
-        "lat_bnds",
-        "lat_bounds",
-        "lon",
-        "lon_bnds",
-        "lon_bounds",
-        xdim,
-        ydim,
-        tdim,
-    ]
-    vars_not_copied = list(dict.fromkeys(vars_not_copied))
-    attributes_not_copied = []
-    for var_name in nc_in.variables:
-        var = nc_in.variables[var_name]
-        if hasattr(var, "grid_mapping"):
-            mapping_var_name = var.grid_mapping
-            vars_not_copied.append(mapping_var_name)
-            attributes_not_copied.append("grid_mapping")
-        if hasattr(var, "bounds"):
-            bounds_var_name = var.bounds
-            vars_not_copied.append(bounds_var_name)
-            attributes_not_copied.append("bounds")
-    try:
-        vars_not_copied.remove(None)
-    except:
-        pass
-    vars_not_copied.sort()
-    last = vars_not_copied[-1]
-    for i in range(len(vars_not_copied) - 2, -1, -1):
-        if last == vars_not_copied[i]:
-            del vars_not_copied[i]
-        else:
-            last = vars_not_copied[i]
+    # # figure out which variables do not need to be copied to the new file.
+    # # mapplane coordinate variables
+    # vars_not_copied = [
+    #     "lat",
+    #     "lat_bnds",
+    #     "lat_bounds",
+    #     "lon",
+    #     "lon_bnds",
+    #     "lon_bounds",
+    #     xdim,
+    #     ydim,
+    #     tdim,
+    # ]
+    # vars_not_copied = list(dict.fromkeys(vars_not_copied))
+    # attributes_not_copied = []
+    # for var_name in nc_in.variables:
+    #     var = nc_in.variables[var_name]
+    #     if hasattr(var, "grid_mapping"):
+    #         mapping_var_name = var.grid_mapping
+    #         vars_not_copied.append(mapping_var_name)
+    #         attributes_not_copied.append("grid_mapping")
+    #     if hasattr(var, "bounds"):
+    #         bounds_var_name = var.bounds
+    #         vars_not_copied.append(bounds_var_name)
+    #         attributes_not_copied.append("bounds")
+    # try:
+    #     vars_not_copied.remove(None)
+    # except:
+    #     pass
+    # vars_not_copied.sort()
+    # last = vars_not_copied[-1]
+    # for i in range(len(vars_not_copied) - 2, -1, -1):
+    #     if last == vars_not_copied[i]:
+    #         del vars_not_copied[i]
+    #     else:
+    #         last = vars_not_copied[i]
 
-    if tdim is not None:
-        copy_time_dimension(nc_in, nc_out, tdim)
+    # if tdim is not None:
+    #     copy_time_dimension(nc_in, nc_out, tdim)
 
-    print("Copying variables...")
-    if variables is not None:
-        vars_list = [x for x in variables if x in nc_in.variables]
-        vars_not_found = [x for x in variables if x not in nc_in.variables]
-    else:
-        vars_list = nc_in.variables
-        vars_not_found = ()
+    # print("Copying variables...")
+    # if variables is not None:
+    #     vars_list = [x for x in variables if x in nc_in.variables]
+    #     vars_not_found = [x for x in variables if x not in nc_in.variables]
+    # else:
+    #     vars_list = nc_in.variables
+    #     vars_not_found = ()
 
-    def extract(name):
-        extract_variable(nc_in, nc_out, profiles, name, stations)
+    # def extract(name):
+    #     extract_variable(nc_in, nc_out, profiles, name, stations)
 
-    for var_name in vars_list:
-        extract(var_name)
+    # for var_name in vars_list:
+    #     extract(var_name)
 
-    if len(vars_not_found) > 0:
-        print(
-            (
-                "The following variables could not be found in {}:".format(
-                    options.INPUTFILE[0]
-                )
-            )
-        )
-        print(vars_not_found)
+    # if len(vars_not_found) > 0:
+    #     print(
+    #         (
+    #             "The following variables could not be found in {}:".format(
+    #                 options.INPUTFILE[0]
+    #             )
+    #         )
+    #     )
+    #     print(vars_not_found)
 
-    # writing global attributes
-    import sys
+    # # writing global attributes
+    # import sys
 
-    script_command = " ".join(
-        [
-            time.ctime(),
-            ":",
-            __file__.split("/")[-1],
-            " ".join([str(s) for s in sys.argv[1:]]),
-        ]
-    )
-    if hasattr(nc_in, "history"):
-        history = nc_in.history
-        nc_out.history = script_command + "\n " + history
-    else:
-        nc_out.history = script_command
+    # script_command = " ".join(
+    #     [
+    #         time.ctime(),
+    #         ":",
+    #         __file__.split("/")[-1],
+    #         " ".join([str(s) for s in sys.argv[1:]]),
+    #     ]
+    # )
+    # if hasattr(nc_in, "history"):
+    #     history = nc_in.history
+    #     nc_out.history = script_command + "\n " + history
+    # else:
+    #     nc_out.history = script_command
 
-    nc_in.close()
-    nc_out.close()
-    print("Extracted profiles to file {}".format(options.OUTPUTFILE[0]))
+    # nc_in.close()
+    # nc_out.close()
+    # print("Extracted profiles to file {}".format(options.OUTPUTFILE[0]))
