@@ -30,7 +30,7 @@ import pytest
 import xarray as xr
 from numpy.testing import assert_array_almost_equal
 
-from pypism.extract_profile import Profile, read_shapefile
+from pypism.extract_profile import Profile, extract_profile, read_shapefile
 
 
 def linear_function(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> np.ndarray:
@@ -144,12 +144,16 @@ def fixture_create_dummy_input_dataset_xyz():
     return create_dummy_input_dataset(linear_function)
 
 
-def test_create_dummy_profile(dummy_input_dataset):
-    "Create a dummy profile for testing."
+@pytest.fixture(name="dummy_profile")
+def fixture_create_dummy_profile(dummy_input_dataset):
+    """
+    Return a dummy profile.
+
+    """
 
     x = dummy_input_dataset["x"]
     y = dummy_input_dataset["y"]
-    proj = dummy_input_dataset.proj
+    proj = dummy_input_dataset.attrs["proj"]
     projection = pyproj.Proj(str(proj))
 
     n_points = 4
@@ -167,7 +171,7 @@ def test_create_dummy_profile(dummy_input_dataset):
     glaciertype = 4
     flowtype = 2
 
-    p = Profile(
+    profile = Profile(
         0,
         "test profile",
         lat,
@@ -179,14 +183,45 @@ def test_create_dummy_profile(dummy_input_dataset):
         flowtype,
         projection,
     )
-    assert p.name == "test profile"
-    assert p.flightline == flightline
-    assert p.glaciertype == glaciertype
-    assert p.flowtype == flowtype
-    assert_array_almost_equal(p.lon, lon)
-    assert_array_almost_equal(p.lat, lat)
-    assert_array_almost_equal(p.center_lon, clon)
-    assert_array_almost_equal(p.center_lat, clat)
+
+    return profile
+
+
+def test_create_dummy_profile(dummy_profile):
+    "Test dummy profile creation."
+
+    Mx = 88
+    My = 152
+
+    # use X and Y ranges corresponding to a grid covering Greenland
+    x = np.linspace(-669650.0, 896350.0, Mx)
+    y = np.linspace(-3362600.0, -644600.0, My)
+
+    n_points = 4
+    # move points slightly to make sure we can interpolate
+    epsilon = 0.1
+    x_profile = np.linspace(x[0] + epsilon, x[-1] - epsilon, n_points)
+    y_profile = np.linspace(y[0] + epsilon, y[-1] - epsilon, n_points)
+    x_center = 0.5 * (x_profile[0] + x_profile[-1])
+    y_center = 0.5 * (y_profile[0] + y_profile[-1])
+
+    projection = pyproj.Proj(str("epsg:3413"))
+
+    lon, lat = projection(x_profile, y_profile, inverse=True)  # pylint: disable=E0633
+    clon, clat = projection(x_center, y_center, inverse=True)  # pylint: disable=E0633
+
+    flightline = 2
+    glaciertype = 4
+    flowtype = 2
+
+    assert dummy_profile.name == "test profile"
+    assert dummy_profile.flightline == flightline
+    assert dummy_profile.glaciertype == glaciertype
+    assert dummy_profile.flowtype == flowtype
+    assert_array_almost_equal(dummy_profile.lon, lon)
+    assert_array_almost_equal(dummy_profile.lat, lat)
+    assert_array_almost_equal(dummy_profile.center_lon, clon)
+    assert_array_almost_equal(dummy_profile.center_lat, clat)
 
 
 # def file_handling_test():
@@ -241,6 +276,44 @@ def test_create_dummy_profile(dummy_input_dataset):
 
 #         os.remove(in_filename)
 #         os.remove(out_filename)
+
+
+def test_profile_extraction(dummy_input_dataset, dummy_profile):
+    """
+    Test extract_profile by using an input file with fake data
+    """
+
+    n_points = len(dummy_profile.x)
+    z = dummy_input_dataset["z"]
+
+    desired_result = linear_function(dummy_profile.x, dummy_profile.y, 0.0)
+
+    desired_3d_result = np.zeros((n_points, len(z)))
+    for k, level in enumerate(z):
+        desired_3d_result[:, k] = linear_function(
+            dummy_profile.x, dummy_profile.y, level.to_numpy()
+        )
+
+    def P(x):
+        return list(permutations(x))
+
+    # 2D variables
+    for d in P(["x", "y"]) + P(["time", "x", "y"]):
+        variable_name = "test_2D_" + "_".join(d)
+        variable = dummy_input_dataset[variable_name]
+
+        result, _ = extract_profile(variable, dummy_profile)
+
+        assert_array_almost_equal(np.squeeze(result), desired_result)
+
+    # 3D variables
+    for d in P(["x", "y", "z"]) + P(["time", "x", "y", "z"]):
+        variable_name = "test_3D_" + "_".join(d)
+        variable = dummy_input_dataset[variable_name]
+
+        result, _ = extract_profile(variable, dummy_profile)
+
+        assert_array_almost_equal(np.squeeze(result), desired_3d_result)
 
 
 # def profile_extraction_test():

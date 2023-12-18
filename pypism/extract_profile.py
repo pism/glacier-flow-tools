@@ -669,48 +669,23 @@ def define_profile_variables(nc, special_vars=False):
     print("done.")
 
 
-def copy_attributes(var_in, var_out, attributes_not_copied=None):
-    """Copy attributes from var_in to var_out. Give special treatment to
-    _FillValue and coordinates.
-
-    """
-    _, _, _, tdim = get_dims_from_variable(var_in.dimensions)
-    for att in var_in.ncattrs():
-        if att not in attributes_not_copied:
-            if att == "_FillValue":
-                continue
-            elif att == "coordinates":
-                if tdim:
-                    coords = "{0} lat lon".format(tdim)
-                else:
-                    coords = "lat lon"
-                setattr(var_out, "coordinates", coords)
-
-            else:
-                setattr(var_out, att, getattr(var_in, att))
-
-
-def copy_global_attributes(in_file, out_file):
-    "Copy global attributes from in_file to out_file."
-    print("Copying global attributes...")
-    for attribute in in_file.ncattrs():
-        setattr(out_file, attribute, getattr(in_file, attribute))
-    print("done.")
-
-
-def extract_profile(variable, profile):
+def extract_profile(
+    variable,
+    profile,
+    xdim: str = "x",
+    ydim: str = "y",
+    zdim: str = "z",
+    tdim: str = "time",
+):
     """Extract values of a variable along a profile."""
-    xdim, ydim, zdim, tdim = get_dims_from_variable(variable.dimensions)
+    x = variable.coords[xdim].to_numpy()
+    y = variable.coords[ydim].to_numpy()
 
-    group = variable.group()
-    x = group.variables[xdim][:]
-    y = group.variables[ydim][:]
-
-    dim_length = dict(list(zip(variable.dimensions, variable.shape)))
+    dim_length = dict(list(zip(variable.dims, variable.shape)))
 
     def init_interpolation():
         """Initialize interpolation weights. Takes care of the transpose."""
-        if variable.dimensions.index(ydim) < variable.dimensions.index(xdim):
+        if variable.dims.index(ydim) < variable.dims.index(xdim):
             A = InterpolationMatrix(x, y, profile.x, profile.y)
             return A, slice(A.c_min, A.c_max + 1), slice(A.r_min, A.r_max + 1)
         else:
@@ -742,27 +717,27 @@ def extract_profile(variable, profile):
         """Assemble the indexing tuple and get a sbset from a variable."""
         index = []
         indexes = {xdim: x_slice, ydim: y_slice, zdim: z, tdim: t}
-        for dim in variable.dimensions:
+        for dim in variable.dims:
             try:
                 index.append(indexes[dim])
             except KeyError:
                 index.append(Ellipsis)
-        return variable[index]
+        return variable[*index]
 
     n_points = len(profile.x)
 
-    if tdim and zdim:
+    if tdim in variable.coords and zdim in variable.coords:
         dim_names = ["time", "profile", "z"]
         result = np.zeros((dim_length[tdim], n_points, dim_length[zdim]))
         for j in range(dim_length[tdim]):
             for k in range(dim_length[zdim]):
                 result[j, :, k] = A.apply_to_subset(read_subset(t=j, z=k))
-    elif tdim:
+    elif tdim in variable.coords:
         dim_names = ["time", "profile"]
         result = np.zeros((dim_length[tdim], n_points))
         for j in range(dim_length[tdim]):
             result[j, :] = A.apply_to_subset(read_subset(t=j))
-    elif zdim:
+    elif zdim in variable.coords:
         dim_names = ["profile", "z"]
         result = np.zeros((n_points, dim_length[zdim]))
         for k in range(dim_length[zdim]):
@@ -772,6 +747,35 @@ def extract_profile(variable, profile):
         result = A.apply_to_subset(read_subset())
 
     return result, dim_names
+
+
+def copy_attributes(var_in, var_out, attributes_not_copied=None):
+    """Copy attributes from var_in to var_out. Give special treatment to
+    _FillValue and coordinates.
+
+    """
+    _, _, _, tdim = get_dims_from_variable(var_in.dimensions)
+    for att in var_in.ncattrs():
+        if att not in attributes_not_copied:
+            if att == "_FillValue":
+                continue
+            elif att == "coordinates":
+                if tdim:
+                    coords = "{0} lat lon".format(tdim)
+                else:
+                    coords = "lat lon"
+                setattr(var_out, "coordinates", coords)
+
+            else:
+                setattr(var_out, att, getattr(var_in, att))
+
+
+def copy_global_attributes(in_file, out_file):
+    """Copy global attributes from in_file to out_file."""
+    print("Copying global attributes...")
+    for attribute in in_file.ncattrs():
+        setattr(out_file, attribute, getattr(in_file, attribute))
+    print("done.")
 
 
 def copy_dimensions(in_file, out_file, exclude_list):
