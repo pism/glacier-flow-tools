@@ -21,7 +21,6 @@ Test extract_profile
 """
 
 from itertools import permutations
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -457,8 +456,8 @@ def test_read_shapefile():
     Test reading a shapefile
     """
     filenames = [
-        Path("tests/data/greenland-flux-gates-29_500m.shp"),
-        Path("tests/data/greenland-flux-gates-29_500m.gpkg"),
+        "tests/data/greenland-flux-gates-29_500m.shp",
+        "tests/data/greenland-flux-gates-29_500m.gpkg",
     ]
 
     for filename in filenames:
