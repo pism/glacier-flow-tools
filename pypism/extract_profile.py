@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015, 2016, 2018, 2021 Constantine Khroulev and Andy Aschwanden
+# Copyright (C) 2015, 2016, 2018, 2021, 2023 Constantine Khroulev and Andy Aschwanden
 #
 
 # nosetests --with-coverage --cover-branches --cover-html
@@ -722,7 +722,7 @@ def extract_profile(
                 index.append(indexes[dim])
             except KeyError:
                 index.append(Ellipsis)
-        return variable[*index]
+        return variable[*index]  # noqa: E499
 
     n_points = len(profile.x)
 
