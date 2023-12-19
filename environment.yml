@@ -1,0 +1,11 @@
+name: pypism
+channels:
+  - conda-forge
+dependencies:
+  - gdal
+  - pytest
+  - flake8
+  - pylint
+  - pip
+  - pip:
+      - -r requirements.txt
