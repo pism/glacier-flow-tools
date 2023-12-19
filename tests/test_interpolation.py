@@ -21,10 +21,9 @@ Tests for procesing module
 """
 
 import numpy as np
-import pandas as pd
-import xarray as xr
 from numpy.testing import assert_array_almost_equal
-from trajectory.interpolation import InterpolationMatrix
+
+from pypism.interpolation import InterpolationMatrix
 
 np.seterr(divide="ignore", invalid="ignore")
 
@@ -147,112 +146,3 @@ def test_interpolation():
     z_interpolated = A.apply(z)
 
     assert_array_almost_equal(z_interpolated, Z(px, py), decimal=12)
-
-
-def test_circular():
-    """
-    Test circular velocity field
-    """
-    time = pd.date_range("2000-01-01", periods=1)
-
-    nx = 201
-    ny = 401
-    x = np.linspace(-100e3, 100e3, nx)
-    y = np.linspace(-200e3, 200e3, ny)
-    X, Y = np.meshgrid(x, y)
-
-    # Directional vectors
-    vx = -Y / np.sqrt(X**2 + Y**2) * 250
-    vy = X / np.sqrt(X**2 + Y**2) * 250
-    v = np.sqrt(vx**2 + vy**2)
-
-    vx = vx.reshape(1, ny, nx)
-    vy = vy.reshape(1, ny, nx)
-    v = v.reshape(1, ny, nx)
-
-    v_err = v / 10
-    vx_err = np.abs(vx / 20)
-    vy_err = np.abs(vy / 20)
-
-    coords = {
-        "x": (
-            ["x"],
-            x,
-            {
-                "units": "m",
-                "axis": "X",
-                "standard_name": "projection_x_coordinate",
-                "long_name": "x-coordinate in projected coordinate system",
-            },
-        ),
-        "y": (
-            ["y"],
-            y,
-            {
-                "units": "m",
-                "axis": "Y",
-                "standard_name": "projection_y_coordinate",
-                "long_name": "y-coordinate in projected coordinate system",
-            },
-        ),
-        "time": (["time"], time, {}),
-    }
-
-    ds = xr.Dataset(
-        {
-            "vx": xr.DataArray(
-                data=vx,
-                dims=["time", "y", "x"],
-                coords=coords,
-                attrs={"standard_name": "velocity in x-direction", "units": "m/yr"},
-            ),
-            "vy": xr.DataArray(
-                data=vy,
-                dims=["time", "y", "x"],
-                coords=coords,
-                attrs={"standard_name": "velocity in y-direction", "units": "m/yr"},
-            ),
-            "v": xr.DataArray(
-                data=v,
-                dims=["time", "y", "x"],
-                coords=coords,
-                attrs={
-                    "standard_name": "magnitude",
-                    "units": "m/yr",
-                    "grid_mapping": "polar_stereographic",
-                },
-            ),
-            "vx_err": xr.DataArray(
-                data=vx_err,
-                dims=["time", "y", "x"],
-                coords=coords,
-                attrs={"standard_name": "velocity in x-direction", "units": "m/yr"},
-            ),
-            "vy_err": xr.DataArray(
-                data=vy_err,
-                dims=["time", "y", "x"],
-                coords=coords,
-                attrs={"standard_name": "velocity in y-direction", "units": "m/yr"},
-            ),
-            "v_err": xr.DataArray(
-                data=v_err,
-                dims=["time", "y", "x"],
-                coords=coords,
-                attrs={
-                    "standard_name": "magnitude",
-                    "units": "m/yr",
-                    "grid_mapping": "polar_stereographic",
-                },
-            ),
-        },
-        attrs={"Conventions": "CF-1.7"},
-    )
-    ds["Polar_Stereographic"] = int()
-    ds.Polar_Stereographic.attrs["grid_mapping_name"] = "polar_stereographic"
-    ds.Polar_Stereographic.attrs["false_easting"] = 0.0
-    ds.Polar_Stereographic.attrs["false_northing"] = 0.0
-    ds.Polar_Stereographic.attrs["latitude_of_projection_origin"] = 90.0
-    ds.Polar_Stereographic.attrs["scale_factor_at_projection_origin"] = 1.0
-    ds.Polar_Stereographic.attrs["standard_parallel"] = 70.0
-    ds.Polar_Stereographic.attrs["straight_vertical_longitude_from_pole"] = -45
-    ds.Polar_Stereographic.attrs["proj_params"] = "epsg:3413"
