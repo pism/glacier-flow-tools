@@ -26,7 +26,7 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v3
       with:
         activate-environment: pypism
-        environment-file: example-environment.yml
+        environment-file: environment.yml
         python-version:  ${{ matrix.python-version }}
         channels: conda-forge
         allow-softlinks: true
