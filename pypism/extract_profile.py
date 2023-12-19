@@ -722,7 +722,7 @@ def extract_profile(
                 index.append(indexes[dim])
             except KeyError:
                 index.append(Ellipsis)
-        return variable[*index]  # noqa: E499
+        return variable[*index]  # noqa: E999
 
     n_points = len(profile.x)
 

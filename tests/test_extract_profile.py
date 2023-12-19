@@ -85,7 +85,7 @@ def create_dummy_input_dataset(F) -> xr.Dataset:
         if "z" in dimensions:
             for k in range(Mz):
                 indexes[dimensions.index("z")] = k
-                variable[*indexes] = T(F(xx, yy, z[k]))  # noqa: E499
+                variable[*indexes] = T(F(xx, yy, z[k]))  # noqa: E999
         else:
             variable[*indexes] = T(F(xx, yy, 0))
 
