@@ -21,6 +21,7 @@ Test extract_profile
 """
 
 from itertools import permutations
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -84,7 +85,7 @@ def create_dummy_input_dataset(F) -> xr.Dataset:
         if "z" in dimensions:
             for k in range(Mz):
                 indexes[dimensions.index("z")] = k
-                variable[*indexes] = T(F(xx, yy, z[k]))
+                variable[*indexes] = T(F(xx, yy, z[k]))  # noqa: E499
         else:
             variable[*indexes] = T(F(xx, yy, 0))
 
@@ -456,8 +457,8 @@ def test_read_shapefile():
     Test reading a shapefile
     """
     filenames = [
-        "tests/data/greenland-flux-gates-29_500m.shp",
-        "tests/data/greenland-flux-gates-29_500m.gpkg",
+        Path("tests/data/greenland-flux-gates-29_500m.shp"),
+        Path("tests/data/greenland-flux-gates-29_500m.gpkg"),
     ]
 
     for filename in filenames:
