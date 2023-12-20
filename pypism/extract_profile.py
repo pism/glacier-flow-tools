@@ -713,8 +713,11 @@ def extract_profile(
         profile.y_slice = y_slice
         profile.grid_shape = variable.shape
 
+    def return_indexes(indexes):
+        return (*indexes,)
+
     def read_subset(t=0, z=0):
-        """Assemble the indexing tuple and get a sbset from a variable."""
+        """Assemble the indexing tuple and get a subset from a variable."""
         index = []
         indexes = {xdim: x_slice, ydim: y_slice, zdim: z, tdim: t}
         for dim in variable.dims:
@@ -722,7 +725,8 @@ def extract_profile(
                 index.append(indexes[dim])
             except KeyError:
                 index.append(Ellipsis)
-        return variable[*index]  # noqa: E999
+            starred_index = return_indexes(index)
+        return variable[starred_index]
 
     n_points = len(profile.x)
 

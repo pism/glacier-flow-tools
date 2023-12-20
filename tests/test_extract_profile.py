@@ -55,6 +55,9 @@ def create_dummy_input_dataset(F) -> xr.Dataset:
 
     xx, yy = np.meshgrid(x, y)
 
+    def return_indexes(indexes):
+        return (*indexes,)
+
     def write(dimensions: list):
         "Write test data to the file using given storage order."
 
@@ -85,9 +88,11 @@ def create_dummy_input_dataset(F) -> xr.Dataset:
         if "z" in dimensions:
             for k in range(Mz):
                 indexes[dimensions.index("z")] = k
-                variable[*indexes] = T(F(xx, yy, z[k]))  # noqa: E999
+                starred_indexes = return_indexes(indexes)
+                variable[starred_indexes] = T(F(xx, yy, z[k]))
         else:
-            variable[*indexes] = T(F(xx, yy, 0))
+            starred_indexes = return_indexes(indexes)
+            variable[starred_indexes] = T(F(xx, yy, 0))
 
         return (dimensions, variable, {"long_name": name + " (make it long!)"})
 
