@@ -76,10 +76,10 @@ class Profile:
 
     def __init__(
         self,
-        id: int,
+        profile_id: int,
         name: str,
-        lat: Union[float, np.ndarray],
-        lon: Union[float, np.ndarray],
+        lat: Union[float, np.ndarray, list],
+        lon: Union[float, np.ndarray, list],
         center_lat: float,
         center_lon: float,
         flightline: int,
@@ -88,7 +88,7 @@ class Profile:
         projection,
         flip: bool = False,
     ):
-        self.id = id
+        self.profile_id = profile_id
         self.name = name
         self.center_lat = center_lat
         self.center_lon = center_lon
@@ -188,7 +188,7 @@ def load_profiles(filename, projection, flip):
     for (
         lat,
         lon,
-        id,
+        profile_id,
         name,
         clat,
         clon,
@@ -197,7 +197,7 @@ def load_profiles(filename, projection, flip):
         flowtype,
     ) in read_shapefile(filename):
         p = Profile(
-            id,
+            profile_id,
             name,
             lat,
             lon,
@@ -265,9 +265,9 @@ def read_shapefile(filename):
             feature = layer.GetFeature(pt)
 
             if hasattr(feature, "id"):
-                id = feature.id
+                profile_id = feature.id
             else:
-                id = str(pt)
+                profile_id = str(pt)
             try:
                 try:
                     name = feature.name
@@ -306,15 +306,25 @@ def read_shapefile(filename):
                 clat = point[1]
 
             profiles.append(
-                [lat, lon, id, name, clat, clon, flightline, glaciertype, flowtype]
+                [
+                    lat,
+                    lon,
+                    profile_id,
+                    name,
+                    clat,
+                    clon,
+                    flightline,
+                    glaciertype,
+                    flowtype,
+                ]
             )
 
     elif layer_type in ("Line String", "Multi Line String"):
         for pt, feature in enumerate(layer):
             if hasattr(feature, "id"):
-                id = feature.id
+                profile_id = feature.id
             else:
-                id = str(pt)
+                profile_id = str(pt)
             if feature.name is None:
                 name = "unnamed"
             else:
@@ -365,7 +375,7 @@ def read_shapefile(filename):
                     [
                         lats,
                         lons,
-                        id,
+                        profile_id,
                         name,
                         clat,
                         clon,
