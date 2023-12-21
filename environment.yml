@@ -2,7 +2,7 @@ name: pypism
 channels:
   - conda-forge
 dependencies:
-  - gdal=3.7.2
+  - gdal
   - pytest
   - flake8
   - pylint

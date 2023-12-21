@@ -38,11 +38,11 @@ class InterpolationMatrix:
 
     def __init__(
         self,
-        x: np.ndarray,
-        y: np.ndarray,
-        px: np.ndarray,
-        py: np.ndarray,
-        bilinear=True,
+        x: Union[list, np.ndarray],
+        y: Union[list, np.ndarray],
+        px: Union[list, np.ndarray],
+        py: Union[list, np.ndarray],
+        bilinear: bool = True,
     ):
         """Interpolate values of z to points (px,py) assuming that z is on a
         regular grid defined by x and y."""
@@ -213,10 +213,10 @@ class InterpolationMatrix:
 
 
 def interpolate_rkf(
-    Vx: np.ndarray,
-    Vy: np.ndarray,
-    x: np.ndarray,
-    y: np.ndarray,
+    Vx: Union[ndarray, DataArray],
+    Vy: Union[ndarray, DataArray],
+    x: Union[ndarray, DataArray],
+    y: Union[ndarray, DataArray],
     start_pt: Point,
     delta_time: float = 0.1,
 ) -> Tuple[Optional[Point], Optional[float]]:

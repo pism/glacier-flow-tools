@@ -291,7 +291,12 @@ def compute_perturbation(
 
 
 def get_perturbed_velocities(
-    VX, VY, VX_e, VY_e, sample, sigma: float = 1.0
+    VX: Union[ndarray, DataArray],
+    VY: Union[ndarray, DataArray],
+    VX_e: Union[ndarray, DataArray],
+    VY_e: Union[ndarray, DataArray],
+    sample,
+    sigma: float = 1.0,
 ) -> Tuple[Union[ndarray, DataArray], Union[ndarray, DataArray]]:
     """
     Return perturbed velocity field
@@ -307,13 +312,14 @@ def get_perturbed_velocities(
 
 def trajectories_to_geopandas(
     trajs: list,
-    Vx: np.ndarray,
-    Vy: np.ndarray,
-    x: np.ndarray,
-    y: np.ndarray,
+    Vx: Union[ndarray, DataArray],
+    Vy: Union[ndarray, DataArray],
+    x: Union[ndarray, DataArray],
+    y: Union[ndarray, DataArray],
     attrs: dict = {},
 ) -> gp.GeoDataFrame:
     """Convert trajectory to GeoDataFrame"""
+
     dfs = []
     for traj_id, traj in enumerate(trajs):
         vx, vy = velocity_at_point(Vx, Vy, x, y, traj)

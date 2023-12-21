@@ -1,5 +1,5 @@
 [flake8]
-ignore = 
+ignore =
     E203,
     E501,
     W503,
@@ -13,7 +13,7 @@ ignore =
 # Max width of Github code review is 119 characters
 max-line-length = 119
 max-complexity = 18
-exclude = 
+exclude =
     ".tox",
     ".git",
     "*/migrations/*",
@@ -21,4 +21,3 @@ exclude =
     ".pytest_cache",
     "*__init__.py",
     "venv"
-    
