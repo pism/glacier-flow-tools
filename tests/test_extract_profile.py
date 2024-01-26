@@ -21,8 +21,7 @@ Test extract_profile
 """
 
 from itertools import permutations
-from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 import numpy as np
 import pyproj
@@ -33,7 +32,11 @@ from numpy.testing import assert_array_almost_equal
 from pypism.extract_profile import Profile, extract_profile, read_shapefile
 
 
-def linear_function(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> np.ndarray:
+def linear_function(
+    x: Union[float, np.ndarray],
+    y: Union[float, np.ndarray],
+    z: Union[float, np.ndarray],
+) -> Union[float, np.ndarray]:
     """A function linear in x, y, and z. Used to test our interpolation
     scheme."""
     return 10.0 + 0.01 * x + 0.02 * y + 0.03 + 0.04 * z
@@ -54,6 +57,9 @@ def create_dummy_input_dataset(F) -> xr.Dataset:
     z = np.linspace(0, 4000.0, Mz)
 
     xx, yy = np.meshgrid(x, y)
+
+    def return_indexes(indexes):
+        return (*indexes,)
 
     def write(dimensions: list):
         "Write test data to the file using given storage order."
@@ -85,9 +91,11 @@ def create_dummy_input_dataset(F) -> xr.Dataset:
         if "z" in dimensions:
             for k in range(Mz):
                 indexes[dimensions.index("z")] = k
-                variable[*indexes] = T(F(xx, yy, z[k]))  # noqa: E999
+                starred_indexes = return_indexes(indexes)
+                variable[starred_indexes] = T(F(xx, yy, z[k]))
         else:
-            variable[*indexes] = T(F(xx, yy, 0))
+            starred_indexes = return_indexes(indexes)
+            variable[starred_indexes] = T(F(xx, yy, 0))
 
         return (dimensions, variable, {"long_name": name + " (make it long!)"})
 
@@ -457,8 +465,8 @@ def test_read_shapefile():
     Test reading a shapefile
     """
     filenames = [
-        Path("tests/data/greenland-flux-gates-29_500m.shp"),
-        Path("tests/data/greenland-flux-gates-29_500m.gpkg"),
+        "tests/data/greenland-flux-gates-29_500m.shp",
+        "tests/data/greenland-flux-gates-29_500m.gpkg",
     ]
 
     for filename in filenames:
