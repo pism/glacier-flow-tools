@@ -30,7 +30,6 @@ from xarray import DataArray
 
 
 class InterpolationMatrix:
-
     """Stores bilinear and nearest neighbor interpolation weights used to
     extract profiles.
 

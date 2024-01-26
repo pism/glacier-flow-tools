@@ -68,7 +68,6 @@ def tangential(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
 
 
 class Profile:
-
     """Collects information about a profile, that is a sequence of points
     along a flux gate or a flightline.
 
