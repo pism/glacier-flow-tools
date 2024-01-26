@@ -35,7 +35,7 @@ def qgis2cmap(filename: Union[Path, str], N: int = 256, name: str = "my colormap
     Parameters
     ----------
     filename : str or Path
-    The path to the QGIS colormap.
+      The path to the QGIS colormap.
     N : int
         The number of RGB quantization levels.
 
