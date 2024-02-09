@@ -27,7 +27,9 @@ import numpy as np
 from matplotlib import colors
 
 
-def qgis2cmap(filename: Union[Path, str], N: int = 256, name: str = "my colormap"):
+def qgis2cmap(
+    filename: Union[Path, str], N: int = 256, name: str = "my colormap"
+) -> colors.LinearSegmentedColormap:
     """
     Reads a colormaps exported from QGIS rasters layers and
     returns a matplotlib.colors.LinearSegmentedColormap
@@ -38,6 +40,8 @@ def qgis2cmap(filename: Union[Path, str], N: int = 256, name: str = "my colormap
       The path to the QGIS colormap.
     N : int
         The number of RGB quantization levels.
+    name : str
+        Name of the colormap.
 
     Returns
     ----------

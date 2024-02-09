@@ -4,7 +4,6 @@ channels:
 dependencies:
   - gdal
   - pytest
-  - flake8
   - mypy
   - pylint
   - pip
