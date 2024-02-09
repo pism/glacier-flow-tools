@@ -34,7 +34,7 @@ build-backend = "setuptools.build_meta"
 py-modules = ["pypism"]
 
 [tool.poetry]
-name = "trajectory"
+name = "pypism"
 version = "0.1.0"
 description = """Tools for pre- and postprocessing of PISM results"""
 authors = ["Andy Aschwanden <andy.aschwanden@gmail.com>"]
@@ -55,35 +55,9 @@ tqdm = "^4.66.1"
 
 [tool.poetry.urls]
 
-"homepage" = "https://github.com/pism/trajectory"
-"repository" = "https://github.com/pism/trajectory"
-"bug tracker" = "https://github.com/pism/trajectory/issues"
-
-[tool.flake8]
-# https://pep8.readthedocs.io/en/latest/intro.html#error-codes
-ignore = """
-    E203,
-    E501,
-    W503,
-    W605,
-    C901,
-    F841,
-    E722,
-    E402,
-    F722,
-    """
-# Max width of Github code review is 119 characters
-max-line-length = 119
-max-complexity = 18
-exclude = [
-    ".tox",
-    ".git",
-    "*/migrations/*",
-    ".mypy_cache",
-    ".pytest_cache",
-    "*__init__.py",
-    "venv"
-    ]
+"homepage" = "https://github.com/pism/pypism"
+"repository" = "https://github.com/pism/pypism"
+"bug tracker" = "https://github.com/pism/pypism/issues"
 
 [tool.isort]
 multi_line_output = 3
