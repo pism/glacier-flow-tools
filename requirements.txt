@@ -13,3 +13,4 @@ pyogrio>=0.7.1
 matplotlib>=3.8.1
 notebook
 geocube
+cartopy
