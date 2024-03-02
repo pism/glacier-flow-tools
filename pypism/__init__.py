@@ -2,10 +2,6 @@
 Main init
 """
 
-name = "trajectory"
+name = "pypism"
 
-__all__ = [
-    "interpolation",
-    "utils",
-    "trajectory",
-]
+__all__ = ["interpolation", "utils", "trajectory", "profiles"]

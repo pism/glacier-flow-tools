@@ -18,7 +18,7 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [project.scripts]
-extract-profiles = "pypism:extract_profiles"
+profile-analysis = "pypism:profile_analysis"
 
 [tool.setuptools.packages.find]
 include = ["pypism"]
@@ -85,6 +85,7 @@ ignore_missing_imports = "True"
 warn_unused_ignores = "True"
 warn_redundant_casts = "True"
 warn_unused_configs = "True"
+exclude = ["pypism/profile_analysis.py"]
 
 [tool.black]
 line-length = 88
