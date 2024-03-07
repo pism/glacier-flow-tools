@@ -20,6 +20,7 @@
 Module provides utility functions that do not fit anywhere else.
 """
 
+import re
 from pathlib import Path
 from typing import Union
 
@@ -57,3 +58,19 @@ def qgis2cmap(
     cmap = colors.LinearSegmentedColormap.from_list(name, m_colors, N=N)
 
     return cmap
+
+
+def preprocess_nc(ds, regexp: str = "id_(.+?)_", dim: str = "exp_id"):
+    """
+    Add experiment 'exp_id'
+    """
+    m_id_re = re.search(regexp, ds.encoding["source"])
+    ds.expand_dims(dim)
+    assert m_id_re is not None
+    m_id: Union[str, int]
+    try:
+        m_id = int(m_id_re.group(1))
+    except:
+        m_id = str(m_id_re.group(1))
+    ds[dim] = m_id
+    return ds

@@ -1,53 +1,41 @@
-#!/usr/bin/env python
 # Copyright (C) 2015, 2016, 2018, 2021, 2023 Constantine Khroulev and Andy Aschwanden
 #
-
-# nosetests --with-coverage --cover-branches --cover-html
-# --cover-package=extract_profiles scripts/extract_profiles.py
-
-# pylint -d C0301,C0103,C0325,W0621
-# --msg-template="{path}:{line}:[{msg_id}({symbol}), {obj}] {msg}"
-# extract_profiles.py > lint.txt
-
-"""This script containts tools for extracting 'profiles', that is
-sampling 2D and 3D fields on a regular grid at points along a flux
-gate or a any kind of profile.
+# This file is part of pypism.
+#
+# PYPISM is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 3 of the License, or (at your option) any later
+# version.
+#
+# PYPISM is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PISM; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
-
-import time
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
-from typing import Union
+Module provides profile functions
+"""
+from typing import List, Union
 
 import numpy as np
-from osgeo import gdal, ogr, osr
-
-from .interpolation import InterpolationMatrix
-
-gdal.UseExceptions()
-
-# from pyproj import Proj
-
-
-profiledim = "profile"
-stationdim = "station"
+import xarray as xr
 
 
 def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
     """Compute the unit normal vector orthogonal to (point1-point0),
     pointing 'to the right' of (point1-point0).
-
     """
 
     a = point0 - point1
-    if a[1] != 0.0:
-        n = np.array([1.0, -a[0] / a[1]])
-        n = n / np.linalg.norm(n)  # normalize
-    else:
-        n = np.array([0, 1])
+    n = np.array([-a[1], a[0]])  # compute the normal vector
+    n = n / np.linalg.norm(n)  # normalize
 
     # flip direction if needed:
-    if np.cross(a, n) < 0:
-        n = -1.0 * n
+    if np.dot(a, n) < 0:
+        n = -n
 
     return n
 
@@ -55,16 +43,13 @@ def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
 def tangential(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
     """Compute the unit tangential vector to (point1-point0),
     pointing 'to the right' of (point1-point0).
-
     """
 
     a = point1 - point0
     norm = np.linalg.norm(a)
+
     # protect from division by zero
-    if norm > 0.0:
-        return a / norm
-    else:
-        return a
+    return a if norm == 0 else a / norm
 
 
 def compute_normals(px: Union[np.ndarray, list], py: Union[np.ndarray, list]):
@@ -115,91 +100,80 @@ def distance_from_start(px, py):
     return result.cumsum()
 
 
-def add_function(f, geometry):
-    px, py = geometry.xy
-    return f(px, py)
+# def extract_profile(ds: xr.Dataset, x: Union[list, np.ndarray], y: Union[list, np.ndarray]) -> xr.Dataset:
+#     """
+#     Extract a profile from a dataset given x and y coordinates.
+#     """
+#     profile_axis = np.sqrt((x - x[0]) ** 2 + (y - y[0]) ** 2)
+
+#     x = xr.DataArray(x, dims="profile_axis", coords={"profile_axis": profile_axis})
+#     y = xr.DataArray(y, dims="profile_axis", coords={"profile_axis": profile_axis})
+
+#     aux_vars = ["nx", "ny"]
+#     nx, ny = compute_normals(x, y)
+#     n ={"nx": nx, "ny": ny}
+#     das = [xr.DataArray(n[aux_var], dims="profile_axis", coords={"profile_axis": profile_axis}, name=aux_var) for aux_var in aux_vars]
+#     for m_var in ds.data_vars:
+#         da = ds[m_var]
+#         try:
+#             das.append(da.interp(x=x, y=y, kwargs={"fill_value": np.nan}))
+#         except:
+#             pass
+#     return xr.merge(das)
 
 
 def extract_profile(
-    variable,
-    profile,
-    xdim: str = "x",
-    ydim: str = "y",
-    zdim: str = "z",
-    tdim: str = "time",
-):
-    """Extract values of a variable along a profile."""
-    x = variable.coords[xdim].to_numpy()
-    y = variable.coords[ydim].to_numpy()
+    ds: xr.Dataset, x: Union[List[float], np.ndarray], y: Union[List[float], np.ndarray]
+) -> xr.Dataset:
+    """
+    Extract a profile from a dataset given x and y coordinates.
+    """
+    profile_axis = np.sqrt((x - x[0]) ** 2 + (y - y[0]) ** 2)
 
-    px, py = profile["geometry"].xy
-    dim_length = dict(list(zip(variable.dims, variable.shape)))
+    x = xr.DataArray(x, dims="profile_axis", coords={"profile_axis": profile_axis})
+    y = xr.DataArray(y, dims="profile_axis", coords={"profile_axis": profile_axis})
 
-    def init_interpolation():
-        """Initialize interpolation weights. Takes care of the transpose."""
-        if variable.dims.index(ydim) < variable.dims.index(xdim):
-            A = InterpolationMatrix(x, y, px, py)
-            return A, slice(A.c_min, A.c_max + 1), slice(A.r_min, A.r_max + 1)
-        else:
-            A = InterpolationMatrix(y, x, py, px)
-            return A, slice(A.r_min, A.r_max + 1), slice(A.c_min, A.c_max + 1)
+    nx, ny = compute_normals(x, y)
+    normals = {"nx": nx, "ny": ny}
 
-    # try to get the matrix we (possibly) pre-computed earlier:
-    try:
-        # Check if we are extracting from the grid of the same shape
-        # as before. This will make sure that we re-compute weights if
-        # one variable is stored as (x,y) and a different as (y,x),
-        # but will not catch grids that are of the same shape, but
-        # with different extents and spacings. We'll worry about this
-        # case later -- if we have to.
-        if profile.grid_shape == variable.shape:
-            A = profile.A
-            x_slice = profile.x_slice
-            y_slice = profile.y_slice
-        else:
-            A, x_slice, y_slice = init_interpolation()
-    except AttributeError:
-        A, x_slice, y_slice = init_interpolation()
-        profile.A = A
-        profile.x_slice = x_slice
-        profile.y_slice = y_slice
-        profile.grid_shape = variable.shape
+    das = [
+        xr.DataArray(
+            normals[aux_var],
+            dims="profile_axis",
+            coords={"profile_axis": profile_axis},
+            name=aux_var,
+        )
+        for aux_var in ["nx", "ny"]
+    ]
 
-    def return_indexes(indexes):
-        return (*indexes,)
+    for m_var in ds.data_vars:
+        da = ds[m_var]
+        try:
+            das.append(da.interp(x=x, y=y, kwargs={"fill_value": np.nan}))
+        except:
+            pass
 
-    def read_subset(t=0, z=0):
-        """Assemble the indexing tuple and get a subset from a variable."""
-        index = []
-        indexes = {xdim: x_slice, ydim: y_slice, zdim: z, tdim: t}
-        for dim in variable.dims:
-            try:
-                index.append(indexes[dim])
-            except KeyError:
-                index.append(Ellipsis)
-            starred_index = return_indexes(index)
-        return variable[starred_index]
+    return xr.merge(das)
 
-    n_points = len(px)
 
-    if tdim in variable.coords and zdim in variable.coords:
-        dim_names = ["time", "profile", "z"]
-        result = np.zeros((dim_length[tdim], n_points, dim_length[zdim]))
-        for j in range(dim_length[tdim]):
-            for k in range(dim_length[zdim]):
-                result[j, :, k] = A.apply_to_subset(read_subset(t=j, z=k))
-    elif tdim in variable.coords:
-        dim_names = ["time", "profile"]
-        result = np.zeros((dim_length[tdim], n_points))
-        for j in range(dim_length[tdim]):
-            result[j, :] = A.apply_to_subset(read_subset(t=j))
-    elif zdim in variable.coords:
-        dim_names = ["profile", "z"]
-        result = np.zeros((n_points, dim_length[zdim]))
-        for k in range(dim_length[zdim]):
-            result[:, k] = A.apply_to_subset(read_subset(z=k))
-    else:
-        dim_names = ["profile"]
-        result = A.apply_to_subset(read_subset())
+@xr.register_dataset_accessor("profiles")
+class CustomDatasetMethods:
+    def __init__(self, xarray_obj):
+        self._obj = xarray_obj
 
-    return result, dim_names
+    def add_normal_component(
+        self,
+        x_component: str = "vx",
+        y_component: str = "vy",
+        normal_name: str = "v_normal",
+    ) -> xr.Dataset:
+        assert (x_component and y_component) in self._obj.data_vars
+        func = lambda x, x_n, y, y_n: x * x_n + y * y_n
+        self._obj[normal_name] = xr.apply_ufunc(
+            func,
+            self._obj[x_component],
+            self._obj["nx"],
+            self._obj[y_component],
+            self._obj["ny"],
+        )
+        return self._obj
