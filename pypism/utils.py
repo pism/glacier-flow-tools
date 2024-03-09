@@ -22,7 +22,7 @@ Module provides utility functions that do not fit anywhere else.
 
 import re
 from pathlib import Path
-from typing import Union
+from typing import List, Union
 
 import numpy as np
 from matplotlib import colors
@@ -60,7 +60,13 @@ def qgis2cmap(
     return cmap
 
 
-def preprocess_nc(ds, regexp: str = "id_(.+?)_", dim: str = "exp_id"):
+def preprocess_nc(
+    ds,
+    regexp: str = "id_(.+?)_",
+    dim: str = "exp_id",
+    drop_vars: List[str] = None,
+    drop_dims: List[str] = ["nv4"],
+):
     """
     Add experiment 'exp_id'
     """
@@ -73,4 +79,6 @@ def preprocess_nc(ds, regexp: str = "id_(.+?)_", dim: str = "exp_id"):
     except:
         m_id = str(m_id_re.group(1))
     ds[dim] = m_id
-    return ds
+    return ds.drop_vars(drop_vars, errors="ignore").drop_dims(
+        drop_dims, errors="ignore"
+    )
