@@ -64,7 +64,7 @@ def preprocess_nc(
     ds,
     regexp: str = "id_(.+?)_",
     dim: str = "exp_id",
-    drop_vars: List[str] = None,
+    drop_vars: Union[List[str], None] = None,
     drop_dims: List[str] = ["nv4"],
 ):
     """
