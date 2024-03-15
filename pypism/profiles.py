@@ -114,7 +114,14 @@ def calculate_stats(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
 
 
 def process_profile(
-    profile, p: int, obs_ds: xr.Dataset, sim_ds: xr.Dataset, crs: str = "epsg:3413"
+    profile,
+    p: int,
+    obs_ds: xr.Dataset,
+    sim_ds: xr.Dataset,
+    obs_var: str = "v",
+    obs_error_var: str = "v_err",
+    sim_var: str = "velsurf_mag",
+    crs: str = "epsg:3413",
 ) -> Tuple[xr.Dataset, xr.Dataset, pd.DataFrame]:
     """
     Process a profile from observed and simulated datasets.
@@ -124,7 +131,12 @@ def process_profile(
     profile_id = profile["profile_id"]
 
     def extract_and_prepare(
-        ds: xr.Dataset, profile_name: str = profile_name, profile_id: int = profile_id
+        ds: xr.Dataset,
+        profile_name: str = profile_name,
+        profile_id: int = profile_id,
+        obs_var: str = "v",
+        obs_error_var: str = "v_err",
+        sim_var: str = "velsurf_mag",
     ) -> xr.Dataset:
         ds_profile = ds.profiles.extract_profile(
             x, y, profile_name=profile_name, profile_id=profile_id
@@ -144,7 +156,7 @@ def process_profile(
 
     profile_gp = gp.GeoDataFrame([profile], geometry=[profile.geometry], crs=crs)
     stats = obs_sims_df.groupby(by=["exp_id", "profile_id"]).apply(
-        calculate_stats, col1="velsurf_mag", col2="v", include_groups=False
+        calculate_stats, col1=sim_var, col2=obs_var, include_groups=False
     )
     stats_profile = merge_on_intersection(
         profile_gp, stats.reset_index().assign(**profile_gp.iloc[0])
