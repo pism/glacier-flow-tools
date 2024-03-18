@@ -108,8 +108,14 @@ def calculate_stats(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
     """
     Calculate Pearson correlation and root mean square difference between two DataFrame columns.
     """
-    pearson_r = df[col2].corr(df[col1])
-    rmsd = np.sqrt(np.nanmean((df[col1] - df[col2]) ** 2))
+
+    diff = df[col1] - df[col2]
+    if np.isnan(diff).all():
+        rmsd = np.nan
+        pearson_r = np.nan
+    else:
+        pearson_r = df[col2].corr(df[col1])
+        rmsd = np.sqrt(np.nanmean(diff**2))
     return pd.DataFrame(data=[[pearson_r, rmsd]], columns=["pearson_r", "rmsd"])
 
 
@@ -138,6 +144,9 @@ def process_profile(
         obs_error_var: str = "v_err",
         sim_var: str = "velsurf_mag",
     ) -> xr.Dataset:
+        """
+        Extract from xr.Dataset along (x,y) profile.
+        """
         ds_profile = ds.profiles.extract_profile(
             x, y, profile_name=profile_name, profile_id=profile_id
         )
