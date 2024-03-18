@@ -30,12 +30,11 @@ import pandas as pd
 import xarray as xr
 from geopandas import GeoDataFrame
 from numpy import ndarray
-from osgeo import ogr, osr
 from shapely import Point
 from tqdm.auto import tqdm
 from xarray import DataArray
 
-from .interpolation import interpolate_rkf, velocity_at_point
+from pypism.interpolation import interpolate_rkf, velocity_at_point
 
 # Need to figure out how to make hooks so we can detect and propagate how we use TQDM
 # https://github.com/benbovy/xarray-simlab/blob/master/xsimlab/monitoring.py
@@ -147,6 +146,7 @@ def compute_perturbation(
     total_time: float = 10_000,
     dt: float = 1,
     reverse: bool = False,
+    crs: str = "EPSG:3413",
 ) -> GeoDataFrame:
     """
     Compute a perturbed trajectory.
@@ -258,23 +258,15 @@ def compute_perturbation(
     y = ds["y"].to_numpy()
 
     Vx, Vy = get_perturbed_velocities(VX, VY, VX_e, VY_e, sample=sample, sigma=sigma)
-    ogr.UseExceptions()
-    if isinstance(ogr_url, Path):
-        ogr_url = str(ogr_url.absolute())
-    in_ds = ogr.Open(ogr_url)
 
-    layer = in_ds.GetLayer(0)
-    srs_geo = osr.SpatialReference()
-    srs_geo.ImportFromEPSG(3413)
+    pts_gp = gp.read_file(ogr_url).to_crs(crs).reset_index(drop=True)
 
     all_glaciers = []
-    with tqdm(enumerate(layer), total=len(layer), leave=False) as pbar:
-        for _, feature in pbar:
-            geometry = feature.GetGeometryRef()
-            geometry.TransformTo(srs_geo)
-            points = geometry.GetPoints()
-            points = [Point(p) for p in points]
-            attrs = feature.items()
+    with tqdm(enumerate(pts_gp), total=len(pts_gp), leave=False) as pbar:
+        for index, _ in pbar:
+            pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
+            points = [Point(p) for p in pts.geometry[0].coords]
+            attrs = pts.to_dict()
             attrs["perturbation"] = perturbation
             glacier_name = attrs["name"]
             pbar.set_description(f"""Processing {glacier_name}""")

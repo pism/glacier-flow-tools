@@ -2,6 +2,7 @@ name: pypism
 channels:
   - conda-forge
 dependencies:
+  - pre-commit
   - gdal
   - pytest
   - mypy

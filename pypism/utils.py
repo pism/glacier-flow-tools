@@ -20,12 +20,56 @@
 Module provides utility functions that do not fit anywhere else.
 """
 
+import contextlib
 import re
 from pathlib import Path
 from typing import List, Union
 
+import joblib
 import numpy as np
 from matplotlib import colors
+
+
+@contextlib.contextmanager
+def tqdm_joblib(tqdm_object):
+    """Context manager to patch joblib to report into tqdm progress bar given as argument"""
+
+    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+        """TQDM Callback"""
+
+        def __call__(self, *args, **kwargs):
+            tqdm_object.update(n=self.batch_size)
+            return super().__call__(*args, **kwargs)
+
+    old_batch_callback = joblib.parallel.BatchCompletionCallBack
+    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+    try:
+        yield tqdm_object
+    finally:
+        joblib.parallel.BatchCompletionCallBack = old_batch_callback
+        tqdm_object.close()
+
+
+def blend_multiply(rgb: np.ndarray, intensity: np.ndarray) -> np.ndarray:
+    """
+    Combine an RGB image with an intensity map using "overlay" blending.
+
+    Parameters
+    ----------
+    rgb : `~numpy.ndarray`
+        An (M, N, 3) RGB array of floats ranging from 0 to 1 (color image).
+        intensity : `~numpy.ndarray`
+        An (M, N, 1) array of floats ranging from 0 to 1 (grayscale image).
+
+    Returns
+    -------
+    ndarray
+        An (M, N, 3) RGB array representing the combined images.
+    """
+
+    alpha = rgb[..., -1, np.newaxis]
+    img_scaled = np.clip(rgb[..., :3] * intensity, 0.0, 1.0)
+    return img_scaled * alpha + intensity * (1.0 - alpha)
 
 
 def qgis2cmap(
