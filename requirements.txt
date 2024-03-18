@@ -14,5 +14,4 @@ matplotlib>=3.8.1
 notebook
 geocube
 cartopy
-dask
-dask-geopandas
+seaborn
