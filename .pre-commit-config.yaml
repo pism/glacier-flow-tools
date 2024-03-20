@@ -13,7 +13,7 @@ repos:
 
   # Can run individually with `pre-commit run black --all-files`
   - repo: https://github.com/psf/black
-    rev: 24.1.0
+    rev: 24.3.0
     hooks:
       - id: black
 
@@ -39,7 +39,7 @@ repos:
 
   # Can run individually with `pre-commit run mypy --all-files`
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.9.0
     hooks:
       - id: mypy
         language: system
@@ -58,9 +58,8 @@ repos:
             "-rn", # Only display messages
             "-sn", # Don't display the score
           ]
-        exclude: pypism/extract_profile.py
 
   - repo: https://github.com/srstevenson/nb-clean
-    rev: 3.1.0
+    rev: 3.2.0
     hooks:
      - id: nb-clean
