@@ -56,7 +56,9 @@ def tangential(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
     return a if norm == 0 else a / norm
 
 
-def compute_normals(px: Union[np.ndarray, list], py: Union[np.ndarray, list]):
+def compute_normals(
+    px: Union[np.ndarray, xr.DataArray, list], py: Union[np.ndarray, xr.DataArray, list]
+):
     """
     Compute normals to a profile described by 'p'. Normals point 'to
     the right' of the path.
@@ -121,11 +123,9 @@ def calculate_stats(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
 
 def process_profile(
     profile,
-    p: int,
     obs_ds: xr.Dataset,
     sim_ds: xr.Dataset,
     obs_var: str = "v",
-    obs_error_var: str = "v_err",
     sim_var: str = "velsurf_mag",
     crs: str = "epsg:3413",
 ) -> Tuple[xr.Dataset, xr.Dataset, pd.DataFrame]:
@@ -140,20 +140,26 @@ def process_profile(
         ds: xr.Dataset,
         profile_name: str = profile_name,
         profile_id: int = profile_id,
-        obs_var: str = "v",
-        obs_error_var: str = "v_err",
-        sim_var: str = "velsurf_mag",
     ) -> xr.Dataset:
         """
         Extract from xr.Dataset along (x,y) profile.
         """
         ds_profile = ds.profiles.extract_profile(
-            x, y, profile_name=profile_name, profile_id=profile_id
+            x,
+            y,
+            profile_name=profile_name,
+            profile_id=profile_id,
         )
         return ds_profile
 
-    obs_profile = extract_and_prepare(obs_ds, profile_name=profile_name)
-    sims_profile = extract_and_prepare(sim_ds, profile_name=profile_name)
+    obs_profile = extract_and_prepare(
+        obs_ds,
+        profile_name=profile_name,
+    )
+    sims_profile = extract_and_prepare(
+        sim_ds,
+        profile_name=profile_name,
+    )
 
     def merge_on_intersection(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
         intersection_keys = list(set(df1.columns) & set(df2.columns))
@@ -184,7 +190,14 @@ def process_profile(
 
 @xr.register_dataset_accessor("profiles")
 class CustomDatasetMethods:
+    """
+    Custom Dataset Methods
+    """
+
     def __init__(self, xarray_obj):
+        """
+        Init
+        """
         self._obj = xarray_obj
 
     def add_normal_component(
@@ -193,8 +206,14 @@ class CustomDatasetMethods:
         y_component: str = "vy",
         normal_name: str = "v_normal",
     ) -> xr.Dataset:
+        """
+        Add normal component
+        """
         assert (x_component and y_component) in self._obj.data_vars
-        func = lambda x, x_n, y, y_n: x * x_n + y * y_n
+
+        def func(x, x_n, y, y_n):
+            return x * x_n + y * y_n
+
         self._obj[normal_name] = xr.apply_ufunc(
             func,
             self._obj[x_component],
@@ -206,11 +225,10 @@ class CustomDatasetMethods:
 
     def extract_profile(
         self,
-        x: np.ndarray,
-        y: np.ndarray,
+        xs: np.ndarray,
+        ys: np.ndarray,
         profile_name: str = "Glacier X",
-        profile_id: int = 0,
-        data_vars: List[str] = None,
+        data_vars: Union[None, List[str]] = None,
     ) -> xr.Dataset:
         """
         Extract a profile from a dataset given x and y coordinates.
@@ -225,37 +243,36 @@ class CustomDatasetMethods:
         Returns:
         A new xarray Dataset containing the extracted profile.
         """
-        profile_axis = np.sqrt((x - x[0]) ** 2 + (y - y[0]) ** 2)
+        profile_axis = np.sqrt((xs - xs[0]) ** 2 + (ys - ys[0]) ** 2)
 
         x: xr.DataArray
         y: xr.DataArray
         x = xr.DataArray(
-            x,
+            xs,
             dims="profile_axis",
             coords={"profile_axis": profile_axis},
             attrs=self._obj["x"].attrs,
             name="x",
         )
         y = xr.DataArray(
-            y,
+            ys,
             dims="profile_axis",
             coords={"profile_axis": profile_axis},
             attrs=self._obj["y"].attrs,
             name="y",
         )
-        pid = xr.DataArray([profile_id], dims="profile_id", name="profile_id")
 
         nx, ny = compute_normals(x, y)
         normals = {"nx": nx, "ny": ny}
 
         das = [
             xr.DataArray(
-                normals[var],
+                val,
                 dims="profile_axis",
                 coords={"profile_axis": profile_axis},
-                name=var,
+                name=key,
             )
-            for var in normals.keys()
+            for key, val in normals.items()
         ]
 
         name = xr.DataArray(
@@ -290,15 +307,11 @@ class CustomDatasetMethods:
         obs_error_kwargs: dict = {"color": "0.75"},
         sim_kwargs: dict = {"lw": 1, "marker": "o", "ms": 2},
     ) -> plt.Figure:
-
+        """
+        Plot observations and simulations along profile.
+        """
         n_exps = len(self._obj["exp_id"])
 
-        label = [
-            f"{exp}: rmsd={rmsd:.0f}"
-            for exp, rmsd in zip(
-                self._obj["exp_id"].to_numpy(), self._obj["rmsd"].to_numpy()
-            )
-        ]
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.fill_between(

@@ -18,7 +18,7 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [project.scripts]
-profile-analysis = "pypism:profile_analysis"
+compute_pathlines = "pypism:compute_pathlines"
 
 [tool.setuptools.packages.find]
 include = ["pypism"]
@@ -80,6 +80,7 @@ exclude = [
 
 [tool.mypy]
 python_version = 3.11
+plugins = "numpy.typing.mypy_plugin"
 check_untyped_defs = "True"
 ignore_missing_imports = "True"
 warn_unused_ignores = "True"

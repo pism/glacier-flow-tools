@@ -27,32 +27,32 @@ repos:
           - black
 
   # Can run individually with `pre-commit run mypy --all-files`
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #     - id: mypy
-  #       language: system
-  #       pass_filenames: false
-  #       args: ['.']
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        language: system
+        pass_filenames: false
+        args: ['.']
 
-  # - repo: local
-  #   hooks:
-  #     - id: pylint
-  #       name: pylint
-  #       entry: pylint
-  #       language: system
-  #       types: [python]
-  #       args:
-  #         [
-  #           "-rn", # Only display messages
-  #           "-sn", # Don't display the score
-  #         ]
-  #       exclude: pypism/extract_profile.py
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        types: [python]
+        args:
+          [
+            "-rn", # Only display messages
+            "-sn", # Don't display the score
+          ]
+        exclude: pypism/extract_profile.py
 
-  # - repo: https://github.com/srstevenson/nb-clean
-  #   rev: 3.1.0
-  #  hooks:
-  #    - id: nb-clean
+  - repo: https://github.com/srstevenson/nb-clean
+    rev: 3.1.0
+    hooks:
+     - id: nb-clean
 
   - repo: local
     hooks:

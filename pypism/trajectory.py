@@ -17,24 +17,26 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Module provides functions for calculating trajectories
+Module provides functions for calculating pathlines (trajectories)
 """
 
 
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Any, Callable, Dict, Tuple, Union
 
 import geopandas as gp
 import numpy as np
 import pandas as pd
 import xarray as xr
 from geopandas import GeoDataFrame
+from joblib import Parallel, delayed
 from numpy import ndarray
 from shapely import Point
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from xarray import DataArray
 
 from pypism.interpolation import interpolate_rkf, velocity_at_point
+from pypism.utils import tqdm_joblib
 
 # Need to figure out how to make hooks so we can detect and propagate how we use TQDM
 # https://github.com/benbovy/xarray-simlab/blob/master/xsimlab/monitoring.py
@@ -122,26 +124,91 @@ def compute_trajectory(
     pts = [point]
     pts_error_estim = [0.0]
     time = 0.0
-    with tqdm(desc="Integration trajectory", total=total_time) as pbar:
-        while abs(time) <= (total_time):
-            point, point_error_estim = interpolate_rkf(
-                Vx, Vy, x, y, point, delta_time=dt
-            )
-            if (point is None) or (point_error_estim is None):
-                break
-            pts.append(point)
-            pts_error_estim.append(point_error_estim)
-            time += dt
-            pbar.update(dt)
-    pbar.refresh()
+    while abs(time) <= (total_time):
+        point, point_error_estim = interpolate_rkf(Vx, Vy, x, y, point, delta_time=dt)
+        if (point is None) or (point_error_estim is None):
+            break
+        pts.append(point)
+        pts_error_estim.append(point_error_estim)
+        time += dt
     return pts, pts_error_estim
+
+
+def compute_pathlines(
+    data_url: Union[str, Path],
+    ogr_url: Union[str, Path],
+    perturbation: int = 0,
+    total_time: float = 10_000,
+    x_var: str = "vx",
+    y_var: str = "vy",
+    dt: float = 1,
+    reverse: bool = False,
+    n_jobs: int = 4,
+    crs: str = "EPSG:3413",
+) -> GeoDataFrame:
+    """
+    Compute a pathline (trajectory).
+
+    """
+
+    ds = xr.open_dataset(data_url, decode_times=False)
+
+    Vx = np.squeeze(ds[x_var].to_numpy())
+    Vy = np.squeeze(ds[y_var].to_numpy())
+    x = ds["x"].to_numpy()
+    y = ds["y"].to_numpy()
+
+    pts_gp = gp.read_file(ogr_url).to_crs(crs).reset_index(drop=True)
+    n_pts = len(pts_gp)
+
+    def compute_pathline(
+        index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse
+    ) -> gp.GeoDataFrame:
+        pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
+        if len(pts.geometry) > 0:
+            points = [Point(p) for p in pts.geometry[0].coords]
+            attrs = pts.to_dict()
+            attrs = {
+                key: value[0] for key, value in attrs.items() if isinstance(value, dict)
+            }
+            attrs["perturbation"] = perturbation
+            trajs = []
+            for p in points:
+                traj, _ = compute_trajectory(
+                    p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse
+                )
+                trajs.append(traj)
+            df = trajectories_to_geopandas(trajs, Vx, Vy, x, y, attrs=attrs)
+        else:
+            df = gp.GeoDataFrame()
+        return df
+
+    with tqdm_joblib(
+        tqdm(desc="Processing Pathlines", total=n_pts, leave=True, position=0)
+    ) as progress_bar:  # pylint: disable=unused-variable
+        result = Parallel(n_jobs=n_jobs)(
+            delayed(compute_pathline)(
+                index,
+                pts_gp,
+                Vx,
+                Vy,
+                x,
+                y,
+                dt=dt,
+                total_time=total_time,
+                reverse=reverse,
+            )
+            for index in range(n_pts)
+        )
+        results = pd.concat(result).reset_index(drop=True)
+        return results
 
 
 def compute_perturbation(
     data_url: Union[str, Path],
     ogr_url: Union[str, Path],
     perturbation: int = 0,
-    sample: Union[list, ndarray] = [0.5, 0.5],
+    pl_exp: float = 1.0,
     sigma: float = 1,
     total_time: float = 10_000,
     dt: float = 1,
@@ -157,107 +224,28 @@ def compute_perturbation(
     ----------
     url : string or pathlib.Path
         Path to an ogr data set
-    VX_min : numpy.ndarray or xarray.DataArray
-        Minimum
-    VX_min : dict-like, optional
-        Another mapping in similar form as the `data_vars` argument,
-        except the each item is saved on the dataset as a "coordinate".
-        These variables have an associated meaning: they describe
-        constant/fixed/independent quantities, unlike the
-        varying/measured/dependent quantities that belong in
-        `variables`. Coordinates values may be given by 1-dimensional
-        arrays or scalars, in which case `dims` do not need to be
-        supplied: 1D arrays will be assumed to give index values along
-        the dimension with the same name.
-
-        The following notations are accepted:
-
-        - mapping {coord name: DataArray}
-        - mapping {coord name: Variable}
-        - mapping {coord name: (dimension name, array-like)}
-        - mapping {coord name: (tuple of dimension names, array-like)}
-        - mapping {dimension name: array-like}
-          (the dimension name is implicitly set to be the same as the
-          coord name)
-
-        The last notation implies that the coord name is the same as
-        the dimension name.
-
-    attrs : dict-like, optional
-        Global attributes to save on this dataset.
 
     Examples
     --------
-    Create data:
 
-    >>> np.random.seed(0)
-    >>> temperature = 15 + 8 * np.random.randn(2, 2, 3)
-    >>> precipitation = 10 * np.random.rand(2, 2, 3)
-    >>> lon = [[-99.83, -99.32], [-99.79, -99.23]]
-    >>> lat = [[42.25, 42.21], [42.63, 42.59]]
-    >>> time = pd.date_range("2014-09-06", periods=3)
-    >>> reference_time = pd.Timestamp("2014-09-05")
-
-    Initialize a dataset with multiple dimensions:
-
-    >>> ds = xr.Dataset(
-    ...     data_vars=dict(
-    ...         temperature=(["x", "y", "time"], temperature),
-    ...         precipitation=(["x", "y", "time"], precipitation),
-    ...     ),
-    ...     coords=dict(
-    ...         lon=(["x", "y"], lon),
-    ...         lat=(["x", "y"], lat),
-    ...         time=time,
-    ...         reference_time=reference_time,
-    ...     ),
-    ...     attrs=dict(description="Weather related data."),
-    ... )
-    >>> ds
-    <xarray.Dataset>
-    Dimensions:         (x: 2, y: 2, time: 3)
-    Coordinates:
-        lon             (x, y) float64 -99.83 -99.32 -99.79 -99.23
-        lat             (x, y) float64 42.25 42.21 42.63 42.59
-      * time            (time) datetime64[ns] 2014-09-06 2014-09-07 2014-09-08
-        reference_time  datetime64[ns] 2014-09-05
-    Dimensions without coordinates: x, y
-    Data variables:
-        temperature     (x, y, time) float64 29.11 18.2 22.83 ... 18.28 16.15 26.63
-        precipitation   (x, y, time) float64 5.68 9.256 0.7104 ... 7.992 4.615 7.805
-    Attributes:
-        description:  Weather related data.
-
-    Find out where the coldest temperature was and what values the
-    other variables had:
-
-    >>> ds.isel(ds.temperature.argmin(...))
-    <xarray.Dataset>
-    Dimensions:         ()
-    Coordinates:
-        lon             float64 -99.32
-        lat             float64 42.21
-        time            datetime64[ns] 2014-09-08
-        reference_time  datetime64[ns] 2014-09-05
-    Data variables:
-        temperature     float64 7.182
-        precipitation   float64 8.326
-    Attributes:
-        description:  Weather related data.
 
 
     """
 
-    ds = xr.open_dataset(data_url)
+    ds = xr.open_dataset(data_url, decode_times=False)
 
     VX = np.squeeze(ds["vx"].to_numpy())
     VY = np.squeeze(ds["vy"].to_numpy())
-    VX_e = np.squeeze(ds["vx_err"].to_numpy())
-    VY_e = np.squeeze(ds["vy_err"].to_numpy())
+    VX_e = np.squeeze(ds["vx_err"].fillna(0).to_numpy())
+    VY_e = np.squeeze(ds["vy_err"].fillna(0).to_numpy())
+    VX_e = np.where(VX_e < 0, 0, VX_e)
+    VY_e = np.where(VY_e < 0, 0, VY_e)
     x = ds["x"].to_numpy()
     y = ds["y"].to_numpy()
 
-    Vx, Vy = get_perturbed_velocities(VX, VY, VX_e, VY_e, sample=sample, sigma=sigma)
+    Vx, Vy = get_grf_perturbed_velocities(
+        VX, VY, VX_e, VY_e, pl_exp, perturbation, sigma=sigma
+    )
 
     pts_gp = gp.read_file(ogr_url).to_crs(crs).reset_index(drop=True)
 
@@ -265,20 +253,26 @@ def compute_perturbation(
     with tqdm(enumerate(pts_gp), total=len(pts_gp), leave=False) as pbar:
         for index, _ in pbar:
             pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
-            points = [Point(p) for p in pts.geometry[0].coords]
-            attrs = pts.to_dict()
-            attrs["perturbation"] = perturbation
-            glacier_name = attrs["name"]
-            pbar.set_description(f"""Processing {glacier_name}""")
-            trajs = []
-            for p in points:
-                traj, _ = compute_trajectory(
-                    p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse
-                )
-                trajs.append(traj)
-            df = trajectories_to_geopandas(trajs, Vx, Vy, x, y, attrs=attrs)
-            all_glaciers.append(df)
-            pbar.refresh()
+            if len(pts.geometry) > 0:
+                points = [Point(p) for p in pts.geometry[0].coords]
+                attrs = pts.to_dict()
+                attrs = {
+                    key: value[0]
+                    for key, value in attrs.items()
+                    if isinstance(value, dict)
+                }
+                attrs["perturbation"] = perturbation
+                glacier_name = attrs["name"]
+                pbar.set_description(f"""Processing {glacier_name}""")
+                trajs = []
+                for p in points:
+                    traj, _ = compute_trajectory(
+                        p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse
+                    )
+                    trajs.append(traj)
+                df = trajectories_to_geopandas(trajs, Vx, Vy, x, y, attrs=attrs)
+                all_glaciers.append(df)
+                pbar.refresh()
     return pd.concat(all_glaciers)
 
 
@@ -300,6 +294,91 @@ def get_perturbed_velocities(
     Vy = VY_min + sample[1] * (VY_max - VY_min)
 
     return Vx, Vy
+
+
+def get_grf_perturbed_velocities(
+    VX: Union[ndarray, DataArray],
+    VY: Union[ndarray, DataArray],
+    VX_e: Union[ndarray, DataArray],
+    VY_e: Union[ndarray, DataArray],
+    pl_exp: float,
+    perturbation: int,
+    sigma: float = 1.0,
+) -> Tuple[Union[ndarray, DataArray], Union[ndarray, DataArray]]:
+    """
+    Return perturbed velocity field
+    """
+
+    # Generates power-law power spectrum - structures of all sizes and fractal sub-structures
+    def plPk(n):
+        def Pk(k):
+            return np.power(k, -n)
+
+        return Pk
+
+    d_x, d_y = distrib_normal(VX_e, sigma=sigma, seed=perturbation), distrib_normal(
+        VY_e, sigma=sigma, seed=perturbation
+    )
+
+    Vx_grf = generate_field(d_x, plPk(pl_exp))
+    Vy_grf = generate_field(d_y, plPk(pl_exp))
+
+    Vx = VX + Vx_grf
+    Vy = VY + Vy_grf
+
+    return Vx, Vy
+
+
+def distrib_normal(
+    da: Union[xr.DataArray, np.ndarray], sigma: float = 1.0, seed: int = 0, n: float = 1
+):
+    """
+    Generates a complex normal distribution
+    """
+    rng = np.random.default_rng(seed=seed)
+    a = rng.normal(
+        loc=0,
+        scale=(sigma * da) ** n,
+    )
+    b = rng.normal(
+        loc=0,
+        scale=(sigma * da) ** n,
+    )
+    return a + 1j * b
+
+
+def generate_field(
+    fftfield: np.ndarray,
+    power_spectrum: Callable[[np.ndarray], np.ndarray],
+    unit_length: float = 1,
+    fft: Any = np.fft,
+    fft_args: Dict[str, Any] = {},
+) -> np.ndarray:
+    """
+    Generates a field given a statistic and a power_spectrum.
+    """
+
+    try:
+        fftfreq = fft.fftfreq
+    except AttributeError:
+        # Fallback on numpy for the frequencies
+        fftfreq = np.fft.fftfreq
+    else:
+        fftfreq = fft.fftfreq
+
+    # Compute the k grid
+    shape = fftfield.shape
+    all_k = [fftfreq(s, d=unit_length) for s in shape]
+
+    kgrid = np.meshgrid(*all_k, indexing="ij")
+    knorm = np.hypot(*kgrid)
+
+    power_k = np.zeros_like(knorm)
+    mask = knorm > 0
+    power_k[mask] = np.sqrt(power_spectrum(knorm[mask]))
+    fftfield *= power_k
+
+    return np.real(fft.ifftn(fftfield, **fft_args))
 
 
 def trajectories_to_geopandas(
