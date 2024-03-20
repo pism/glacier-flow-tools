@@ -26,6 +26,17 @@ repos:
           - --profile
           - black
 
+  - repo: local
+    hooks:
+     - id: pytest # pytest is a pre-commit hook
+       name: pytest
+       entry: pytest tests
+       language: system
+       types: [python]
+       exclude: ^venv/ ^.git/ ^.vscode/ ^.DS_Store ^uq/ ^hindcasts/
+       always_run: true
+       pass_filenames: false
+
   # Can run individually with `pre-commit run mypy --all-files`
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.8.0
@@ -53,14 +64,3 @@ repos:
     rev: 3.1.0
     hooks:
      - id: nb-clean
-
-  - repo: local
-    hooks:
-     - id: pytest # pytest is a pre-commit hook
-       name: pytest
-       entry: pytest tests
-       language: system
-       types: [python]
-       exclude: ^venv/ ^.git/ ^.vscode/ ^.DS_Store ^uq/ ^hindcasts/
-       always_run: true
-       pass_filenames: false
