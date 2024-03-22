@@ -29,18 +29,10 @@ if __name__ == "__main__":
     # set up the option parser
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.description = "Compute pathlines (forward/backward) given a velocity field (xr.Dataset) and starting points (geopandas.GeoDataFrame)."
-    parser.add_argument(
-        "--raster_url", help="""Path to raster dataset.""", default=None
-    )
-    parser.add_argument(
-        "--vector_url", help="""Path to vector dataset.""", default=None
-    )
-    parser.add_argument(
-        "--n_jobs", help="""Number of parallel jobs.""", type=int, default=4
-    )
-    parser.add_argument(
-        "--dt", help="""Time step. Default=1.0""", type=float, default=1.0
-    )
+    parser.add_argument("--raster_url", help="""Path to raster dataset.""", default=None)
+    parser.add_argument("--vector_url", help="""Path to vector dataset.""", default=None)
+    parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
+    parser.add_argument("--dt", help="""Time step. Default=1.0""", type=float, default=1.0)
     parser.add_argument(
         "--total_time",
         help="""Total time. Default=1_000""",
@@ -53,9 +45,7 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
     )
-    parser.add_argument(
-        "outfile", nargs=1, help="Geopandas output file", default="pathlines.gpkg"
-    )
+    parser.add_argument("outfile", nargs=1, help="Geopandas output file", default="pathlines.gpkg")
 
     options = parser.parse_args()
 

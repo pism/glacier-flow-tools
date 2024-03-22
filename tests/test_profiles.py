@@ -42,9 +42,7 @@ def test_normal():
     point0 = np.array([1, 1])
     point1 = np.array([2, 2])
     expected_output = np.array([0.70710678, -0.70710678])
-    np.testing.assert_array_almost_equal(
-        normal(point0, point1), expected_output, decimal=8
-    )
+    np.testing.assert_array_almost_equal(normal(point0, point1), expected_output, decimal=8)
 
 
 def test_tangential():
@@ -64,9 +62,7 @@ def test_tangential():
     point0 = np.array([1, 1])
     point1 = np.array([2, 2])
     expected_output = np.array([0.70710678, 0.70710678])
-    np.testing.assert_array_almost_equal(
-        tangential(point0, point1), expected_output, decimal=8
-    )
+    np.testing.assert_array_almost_equal(tangential(point0, point1), expected_output, decimal=8)
 
     point0 = np.array([0, 0])
     point1 = np.array([0, 0])

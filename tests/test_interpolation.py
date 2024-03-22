@@ -123,9 +123,7 @@ def test_interpolation():
 
     try:
         A = InterpolationMatrix(x, y, px, py, bilinear=False)
-        raise RuntimeError(
-            "Update this test if you implemented nearest neighbor interpolation."
-        )  # pragma: nocover
+        raise RuntimeError("Update this test if you implemented nearest neighbor interpolation.")  # pragma: nocover
     except NotImplementedError:
         pass
 

@@ -56,9 +56,7 @@ def tangential(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
     return a if norm == 0 else a / norm
 
 
-def compute_normals(
-    px: Union[np.ndarray, xr.DataArray, list], py: Union[np.ndarray, xr.DataArray, list]
-):
+def compute_normals(px: Union[np.ndarray, xr.DataArray, list], py: Union[np.ndarray, xr.DataArray, list]):
     """
     Compute normals to a profile described by 'p'. Normals point 'to
     the right' of the path.
@@ -111,13 +109,15 @@ def calculate_stats(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
     Calculate Pearson correlation and root mean square difference between two DataFrame columns.
     """
 
-    diff = df[col1] - df[col2]
-    if np.isnan(diff).all():
-        rmsd = np.nan
-        pearson_r = np.nan
-    else:
-        pearson_r = df[col2].corr(df[col1])
-        rmsd = np.sqrt(np.nanmean(diff**2))
+    with np.errstate(invalid="ignore"):
+
+        diff = df[col1] - df[col2]
+        if np.isnan(diff).all() or (len(diff) <= 2):
+            rmsd = np.nan
+            pearson_r = np.nan
+        else:
+            pearson_r = df[col2].corr(df[col1])
+            rmsd = np.sqrt(np.nanmean(diff**2))
     return pd.DataFrame(data=[[pearson_r, rmsd]], columns=["pearson_r", "rmsd"])
 
 
@@ -134,12 +134,10 @@ def process_profile(
     """
     x, y = map(np.asarray, profile["geometry"].xy)
     profile_name = profile["name"]
-    profile_id = profile["profile_id"]
 
     def extract_and_prepare(
         ds: xr.Dataset,
         profile_name: str = profile_name,
-        profile_id: int = profile_id,
     ) -> xr.Dataset:
         """
         Extract from xr.Dataset along (x,y) profile.
@@ -148,7 +146,6 @@ def process_profile(
             x,
             y,
             profile_name=profile_name,
-            profile_id=profile_id,
         )
         return ds_profile
 
@@ -173,18 +170,12 @@ def process_profile(
     stats = obs_sims_df.groupby(by=["exp_id", "profile_id"]).apply(
         calculate_stats, col1=sim_var, col2=obs_var, include_groups=False
     )
-    stats_profile = merge_on_intersection(
-        profile_gp, stats.reset_index().assign(**profile_gp.iloc[0])
-    )
+    stats_profile = merge_on_intersection(profile_gp, stats.reset_index().assign(**profile_gp.iloc[0]))
     for s in ["rmsd", "pearson_r"]:
-        d = xr.DataArray(
-            stats.groupby(by="exp_id")[s].agg(lambda x: x).values, dims="exp_id", name=s
-        )
+        d = xr.DataArray(stats.groupby(by="exp_id")[s].agg(lambda x: x).values, dims="exp_id", name=s)
         sims_profile[s] = d
 
-    stats_profile = gp.GeoDataFrame(
-        stats_profile, geometry=stats_profile["geometry"], crs=crs
-    )
+    stats_profile = gp.GeoDataFrame(stats_profile, geometry=stats_profile["geometry"], crs=crs)
     return obs_profile, sims_profile, stats_profile
 
 
@@ -199,6 +190,13 @@ class CustomDatasetMethods:
         Init
         """
         self._obj = xarray_obj
+
+    def init(self):
+        """
+        Do-nothing method
+
+        Needed to work with joblib Parallel
+        """
 
     def add_normal_component(
         self,
@@ -243,7 +241,9 @@ class CustomDatasetMethods:
         Returns:
         A new xarray Dataset containing the extracted profile.
         """
-        profile_axis = np.sqrt((xs - xs[0]) ** 2 + (ys - ys[0]) ** 2)
+
+        with np.errstate(invalid="ignore"):
+            profile_axis = np.sqrt((xs - xs[0]) ** 2 + (ys - ys[0]) ** 2)
 
         x: xr.DataArray
         y: xr.DataArray

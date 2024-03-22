@@ -126,7 +126,7 @@ def compute_trajectory(
     time = 0.0
     while abs(time) <= (total_time):
         point, point_error_estim = interpolate_rkf(Vx, Vy, x, y, point, delta_time=dt)
-        if (point is None) or (point_error_estim is None):
+        if (point is None) or (point_error_estim is None) or (point.is_empty):
             break
         pts.append(point)
         pts_error_estim.append(point_error_estim)
@@ -161,22 +161,16 @@ def compute_pathlines(
     pts_gp = gp.read_file(ogr_url).to_crs(crs).reset_index(drop=True)
     n_pts = len(pts_gp)
 
-    def compute_pathline(
-        index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse
-    ) -> gp.GeoDataFrame:
+    def compute_pathline(index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse) -> gp.GeoDataFrame:
         pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
         if len(pts.geometry) > 0:
             points = [Point(p) for p in pts.geometry[0].coords]
             attrs = pts.to_dict()
-            attrs = {
-                key: value[0] for key, value in attrs.items() if isinstance(value, dict)
-            }
+            attrs = {key: value[0] for key, value in attrs.items() if isinstance(value, dict)}
             attrs["perturbation"] = perturbation
             trajs = []
             for p in points:
-                traj, _ = compute_trajectory(
-                    p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse
-                )
+                traj, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
                 trajs.append(traj)
             df = trajectories_to_geopandas(trajs, Vx, Vy, x, y, attrs=attrs)
         else:
@@ -243,9 +237,7 @@ def compute_perturbation(
     x = ds["x"].to_numpy()
     y = ds["y"].to_numpy()
 
-    Vx, Vy = get_grf_perturbed_velocities(
-        VX, VY, VX_e, VY_e, pl_exp, perturbation, sigma=sigma
-    )
+    Vx, Vy = get_grf_perturbed_velocities(VX, VY, VX_e, VY_e, pl_exp, perturbation, sigma=sigma)
 
     pts_gp = gp.read_file(ogr_url).to_crs(crs).reset_index(drop=True)
 
@@ -256,19 +248,13 @@ def compute_perturbation(
             if len(pts.geometry) > 0:
                 points = [Point(p) for p in pts.geometry[0].coords]
                 attrs = pts.to_dict()
-                attrs = {
-                    key: value[0]
-                    for key, value in attrs.items()
-                    if isinstance(value, dict)
-                }
+                attrs = {key: value[0] for key, value in attrs.items() if isinstance(value, dict)}
                 attrs["perturbation"] = perturbation
                 glacier_name = attrs["name"]
                 pbar.set_description(f"""Processing {glacier_name}""")
                 trajs = []
                 for p in points:
-                    traj, _ = compute_trajectory(
-                        p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse
-                    )
+                    traj, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
                     trajs.append(traj)
                 df = trajectories_to_geopandas(trajs, Vx, Vy, x, y, attrs=attrs)
                 all_glaciers.append(df)
@@ -329,9 +315,7 @@ def get_grf_perturbed_velocities(
     return Vx, Vy
 
 
-def distrib_normal(
-    da: Union[xr.DataArray, np.ndarray], sigma: float = 1.0, seed: int = 0, n: float = 1
-):
+def distrib_normal(da: Union[xr.DataArray, np.ndarray], sigma: float = 1.0, seed: int = 0, n: float = 1):
     """
     Generates a complex normal distribution
     """

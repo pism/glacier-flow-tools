@@ -234,6 +234,9 @@ def interpolate_rkf(
     Examples:
     """
 
+    if start_pt.is_empty:
+        return None, None
+
     k1_vx, k1_vy = velocity_at_point(Vx, Vy, x, y, start_pt)
 
     if k1_vx is None or k1_vy is None:
@@ -244,19 +247,21 @@ def interpolate_rkf(
         start_pt.y + (0.25) * delta_time * k1_vy,
     )
 
+    if k2_pt.is_empty:
+        return None, None
+
     k2_vx, k2_vy = velocity_at_point(Vx, Vy, x, y, k2_pt)
 
     if k2_vx is None or k2_vy is None:
         return None, None
 
     k3_pt = Point(
-        start_pt.x
-        + (3.0 / 32.0) * delta_time * k1_vx
-        + (9.0 / 32.0) * delta_time * k2_vx,
-        start_pt.y
-        + (3.0 / 32.0) * delta_time * k1_vy
-        + (9.0 / 32.0) * delta_time * k2_vy,
+        start_pt.x + (3.0 / 32.0) * delta_time * k1_vx + (9.0 / 32.0) * delta_time * k2_vx,
+        start_pt.y + (3.0 / 32.0) * delta_time * k1_vy + (9.0 / 32.0) * delta_time * k2_vy,
     )
+
+    if k3_pt.is_empty:
+        return None, None
 
     k3_vx, k3_vy = velocity_at_point(Vx, Vy, x, y, k3_pt)
 
@@ -273,6 +278,9 @@ def interpolate_rkf(
         - (7200.0 / 2197.0) * delta_time * k2_vy
         + (7296.0 / 2197.0) * delta_time * k3_vy,
     )
+
+    if k4_pt.is_empty:
+        return None, None
 
     k4_vx, k4_vy = velocity_at_point(Vx, Vy, x, y, k4_pt)
 
@@ -291,6 +299,9 @@ def interpolate_rkf(
         + (3680.0 / 513.0) * delta_time * k3_vy
         - (845.0 / 4104.0) * delta_time * k4_vy,
     )
+
+    if k5_pt.is_empty:
+        return None, None
 
     k5_vx, k5_vy = velocity_at_point(Vx, Vy, x, y, k5_pt)
 
@@ -312,22 +323,19 @@ def interpolate_rkf(
         - (11.0 / 40.0) * delta_time * k5_vy,
     )
 
+    if k6_pt.is_empty:
+        return None, None
+
     k6_vx, k6_vy = velocity_at_point(Vx, Vy, x, y, k6_pt)
 
     if k6_vx is None or k6_vy is None:
         return None, None
 
     rkf_4o_x = start_pt.x + delta_time * (
-        (25.0 / 216.0) * k1_vx
-        + (1408.0 / 2565.0) * k3_vx
-        + (2197.0 / 4104.0) * k4_vx
-        - (1.0 / 5.0) * k5_vx
+        (25.0 / 216.0) * k1_vx + (1408.0 / 2565.0) * k3_vx + (2197.0 / 4104.0) * k4_vx - (1.0 / 5.0) * k5_vx
     )
     rkf_4o_y = start_pt.y + delta_time * (
-        (25.0 / 216.0) * k1_vy
-        + (1408.0 / 2565.0) * k3_vy
-        + (2197.0 / 4104.0) * k4_vy
-        - (1.0 / 5.0) * k5_vy
+        (25.0 / 216.0) * k1_vy + (1408.0 / 2565.0) * k3_vy + (2197.0 / 4104.0) * k4_vy - (1.0 / 5.0) * k5_vy
     )
     temp_pt = Point(rkf_4o_x, rkf_4o_y)
 

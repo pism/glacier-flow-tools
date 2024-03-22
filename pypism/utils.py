@@ -72,9 +72,7 @@ def blend_multiply(rgb: np.ndarray, intensity: np.ndarray) -> np.ndarray:
     return img_scaled * alpha + intensity * (1.0 - alpha)
 
 
-def qgis2cmap(
-    filename: Union[Path, str], N: int = 256, name: str = "my colormap"
-) -> colors.LinearSegmentedColormap:
+def qgis2cmap(filename: Union[Path, str], N: int = 256, name: str = "my colormap") -> colors.LinearSegmentedColormap:
     """
     Reads a colormaps exported from QGIS rasters layers and
     returns a matplotlib.colors.LinearSegmentedColormap
@@ -94,9 +92,7 @@ def qgis2cmap(
         Matplotlib colormap
     """
     m_data = np.loadtxt(filename, skiprows=2, delimiter=",")[:, :-1]
-    values_scaled = (m_data[:, 0] - np.min(m_data[:, 0])) / (
-        np.max(m_data[:, 0]) - np.min(m_data[:, 0])
-    )
+    values_scaled = (m_data[:, 0] - np.min(m_data[:, 0])) / (np.max(m_data[:, 0]) - np.min(m_data[:, 0]))
     colors_scaled = m_data[:, 1::] / 255.0
     m_colors = [(values_scaled[k], colors_scaled[k]) for k in range(len(values_scaled))]
     cmap = colors.LinearSegmentedColormap.from_list(name, m_colors, N=N)
@@ -123,6 +119,4 @@ def preprocess_nc(
     except:
         m_id = str(m_id_re.group(1))
     ds[dim] = m_id
-    return ds.drop_vars(drop_vars, errors="ignore").drop_dims(
-        drop_dims, errors="ignore"
-    )
+    return ds.drop_vars(drop_vars, errors="ignore").drop_dims(drop_dims, errors="ignore")
