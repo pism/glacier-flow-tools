@@ -109,7 +109,7 @@ def calculate_stats(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
     Calculate Pearson correlation and root mean square difference between two DataFrame columns.
     """
 
-    with np.errstate(invalid="ignore"):
+    with np.errstate(divide="ignore", invalid="ignore"):
 
         diff = df[col1] - df[col2]
         if np.isnan(diff).all() or (len(diff) <= 2):
@@ -242,8 +242,7 @@ class CustomDatasetMethods:
         A new xarray Dataset containing the extracted profile.
         """
 
-        with np.errstate(invalid="ignore"):
-            profile_axis = np.sqrt((xs - xs[0]) ** 2 + (ys - ys[0]) ** 2)
+        profile_axis = np.sqrt((xs - xs[0]) ** 2 + (ys - ys[0]) ** 2)
 
         x: xr.DataArray
         y: xr.DataArray
