@@ -28,6 +28,14 @@ import seaborn as sns
 import xarray as xr
 
 
+def merge_on_intersection(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge two pd.DataFrame on interection keys
+    """
+    intersection_keys = list(set(df1.columns) & set(df2.columns))
+    return pd.merge(df1, df2, on=intersection_keys)
+
+
 def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
     """Compute the unit normal vector orthogonal to (point1-point0),
     pointing 'to the right' of (point1-point0).
@@ -121,23 +129,22 @@ def calculate_stats(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
     return pd.DataFrame(data=[[pearson_r, rmsd]], columns=["pearson_r", "rmsd"])
 
 
-def process_profile(
+def process_profile_xr(
     profile,
     obs_ds: xr.Dataset,
     sim_ds: xr.Dataset,
-    obs_var: str = "v",
-    sim_var: str = "velsurf_mag",
-    crs: str = "epsg:3413",
-) -> Tuple[xr.Dataset, xr.Dataset, pd.DataFrame]:
+) -> xr.Dataset:
     """
     Process a profile from observed and simulated datasets.
     """
     x, y = map(np.asarray, profile["geometry"].xy)
-    profile_name = profile["name"]
+    profile_name = profile["profile_name"]
+    profile_id = profile["profile_id"]
 
     def extract_and_prepare(
         ds: xr.Dataset,
         profile_name: str = profile_name,
+        profile_id: int = profile_id,
     ) -> xr.Dataset:
         """
         Extract from xr.Dataset along (x,y) profile.
@@ -146,24 +153,74 @@ def process_profile(
             x,
             y,
             profile_name=profile_name,
+            profile_id=profile_id,
         )
         return ds_profile
 
     obs_profile = extract_and_prepare(
         obs_ds,
         profile_name=profile_name,
+        profile_id=profile_id,
     )
     sims_profile = extract_and_prepare(
         sim_ds,
         profile_name=profile_name,
+        profile_id=profile_id,
     )
 
-    def merge_on_intersection(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-        intersection_keys = list(set(df1.columns) & set(df2.columns))
-        return pd.merge(df1, df2, on=intersection_keys)
+    merged_profile = xr.merge([obs_profile, sims_profile])
+    merged_profile.profiles.calculate_stats()
+
+    return merged_profile
+
+
+def process_profile(
+    profile,
+    obs_ds: xr.Dataset,
+    sim_ds: xr.Dataset,
+    obs_var: str = "v",
+    sim_var: str = "velsurf_mag",
+    crs: str = "epsg:3413",
+) -> Tuple[xr.Dataset, pd.DataFrame]:
+    """
+    Process a profile from observed and simulated datasets.
+    """
+    x, y = map(np.asarray, profile["geometry"].xy)
+    profile_name = profile["profile_name"]
+    profile_id = profile["profile_id"]
+
+    def extract_and_prepare(
+        ds: xr.Dataset,
+        profile_name: str = profile_name,
+        profile_id: int = profile_id,
+    ) -> xr.Dataset:
+        """
+        Extract from xr.Dataset along (x,y) profile.
+        """
+        ds_profile = ds.profiles.extract_profile(
+            x,
+            y,
+            profile_name=profile_name,
+            profile_id=profile_id,
+        )
+        return ds_profile
+
+    obs_profile = extract_and_prepare(
+        obs_ds,
+        profile_name=profile_name,
+        profile_id=profile_id,
+    )
+    sims_profile = extract_and_prepare(
+        sim_ds,
+        profile_name=profile_name,
+        profile_id=profile_id,
+    )
+
+    merged_profile = xr.merge([obs_profile, sims_profile])
 
     obs_df = obs_profile.to_dataframe().reset_index()
     sims_df = sims_profile.to_dataframe().reset_index()
+
     obs_sims_df = merge_on_intersection(obs_df, sims_df)
 
     profile_gp = gp.GeoDataFrame([profile], geometry=[profile.geometry], crs=crs)
@@ -175,8 +232,8 @@ def process_profile(
         d = xr.DataArray(stats.groupby(by="exp_id")[s].agg(lambda x: x).values, dims="exp_id", name=s)
         sims_profile[s] = d
 
-    stats_profile = gp.GeoDataFrame(stats_profile, geometry=stats_profile["geometry"], crs=crs)
-    return obs_profile, sims_profile, stats_profile
+        stats_profile = gp.GeoDataFrame(stats_profile, geometry=stats_profile["geometry"], crs=crs)
+    return merged_profile, stats_profile
 
 
 @xr.register_dataset_accessor("profiles")
@@ -221,11 +278,38 @@ class CustomDatasetMethods:
         )
         return self._obj
 
+    def calculate_stats(
+        self, obs_var: str = "v", sim_var: str = "velsurf_mag", dim: str = "profile_axis", stats: List[str] = ["rmsd"]
+    ) -> xr.Dataset:
+        """
+        Add rmsd
+        """
+        assert (obs_var and sim_var) in self._obj.data_vars
+
+        def rmsd(sim, obs):
+            diff = sim - obs
+
+            return np.sqrt(np.nanmean(diff**2, axis=-1))
+
+        func = {"rmsd": rmsd}
+
+        for stat in stats:
+            self._obj[stat] = xr.apply_ufunc(
+                func[stat],
+                self._obj[obs_var],
+                self._obj[sim_var],
+                dask="allowed",
+                input_core_dims=[[dim], [dim]],
+                output_core_dims=[[]],
+            )
+        return self._obj
+
     def extract_profile(
         self,
         xs: np.ndarray,
         ys: np.ndarray,
         profile_name: str = "Glacier X",
+        profile_id: int = 0,
         data_vars: Union[None, List[str]] = None,
     ) -> xr.Dataset:
         """
@@ -292,11 +376,14 @@ class CustomDatasetMethods:
             except:
                 pass
 
-        return xr.merge(das)
+        ds = xr.merge(das)
+        ds["profile_id"] = [profile_id]
+        return ds
 
     def plot(
         self,
         sigma: float = 1,
+        alpha: float = 0.0,
         title: Union[str, None] = None,
         obs_var: str = "v",
         obs_error_var: str = "v_err",
@@ -309,14 +396,16 @@ class CustomDatasetMethods:
         """
         Plot observations and simulations along profile.
         """
-        n_exps = len(self._obj["exp_id"])
+        n_exps = self._obj["exp_id"].size
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.fill_between(
             self._obj["profile_axis"],
-            self._obj[obs_var] - sigma * self._obj[obs_error_var],
-            self._obj[obs_var] + sigma * self._obj[obs_error_var],
+            self._obj[obs_var]
+            - self._obj[obs_var] * np.sqrt((sigma * self._obj[obs_error_var] / self._obj[obs_var]) ** 2 + alpha**2),
+            self._obj[obs_var]
+            + self._obj[obs_var] * np.sqrt((sigma * self._obj[obs_error_var] / self._obj[obs_var]) ** 2 + alpha**2),
             **obs_error_kwargs,
         )
         ax.plot(
@@ -327,12 +416,22 @@ class CustomDatasetMethods:
         )
         palette = sns.color_palette(palette, n_colors=n_exps)
         # Loop over the data and plot each line with a different color
-        for i in range(n_exps):
-            exp_label = f"""{self._obj["exp_id"][i].to_numpy()} rmsd={self._obj["rmsd"][i].to_numpy():.0f}m/yr"""
+        if n_exps > 1:
+            for i in range(n_exps):
+                exp_label = f"""{self._obj["exp_id"].values[i]} rmsd={self._obj["rmsd"].values[i][0]:.0f}m/yr"""
+                ax.plot(
+                    self._obj["profile_axis"],
+                    self._obj[sim_var].isel(exp_id=i).T,
+                    color=palette[i],
+                    label=exp_label,
+                    **sim_kwargs,
+                )
+        else:
+            exp_label = f"""{self._obj["exp_id"].values} rmsd={self._obj["rmsd"].values:.0f}m/yr"""
             ax.plot(
                 self._obj["profile_axis"],
-                self._obj[sim_var].isel(exp_id=i).T,
-                color=palette[i],
+                self._obj[sim_var].T,
+                color=palette[0],
                 label=exp_label,
                 **sim_kwargs,
             )
