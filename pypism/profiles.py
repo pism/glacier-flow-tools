@@ -133,6 +133,7 @@ def process_profile_xr(
     profile,
     obs_ds: xr.Dataset,
     sim_ds: xr.Dataset,
+    stats: List[str] = ["rmsd", "pearson_r"],
 ) -> xr.Dataset:
     """
     Process a profile from observed and simulated datasets.
@@ -169,7 +170,7 @@ def process_profile_xr(
     )
 
     merged_profile = xr.merge([obs_profile, sims_profile])
-    merged_profile.profiles.calculate_stats()
+    merged_profile.profiles.calculate_stats(stats=stats)
 
     return merged_profile
 
@@ -181,6 +182,7 @@ def process_profile(
     obs_var: str = "v",
     sim_var: str = "velsurf_mag",
     crs: str = "epsg:3413",
+    stats: List[str] = ["rmsd", "pearson_r"],
 ) -> Tuple[xr.Dataset, pd.DataFrame]:
     """
     Process a profile from observed and simulated datasets.
@@ -224,12 +226,12 @@ def process_profile(
     obs_sims_df = merge_on_intersection(obs_df, sims_df)
 
     profile_gp = gp.GeoDataFrame([profile], geometry=[profile.geometry], crs=crs)
-    stats = obs_sims_df.groupby(by=["exp_id", "profile_id"]).apply(
+    stats_df = obs_sims_df.groupby(by=["exp_id", "profile_id"]).apply(
         calculate_stats, col1=sim_var, col2=obs_var, include_groups=False
     )
-    stats_profile = merge_on_intersection(profile_gp, stats.reset_index().assign(**profile_gp.iloc[0]))
-    for s in ["rmsd", "pearson_r"]:
-        d = xr.DataArray(stats.groupby(by="exp_id")[s].agg(lambda x: x).values, dims="exp_id", name=s)
+    stats_profile = merge_on_intersection(profile_gp, stats_df.reset_index().assign(**profile_gp.iloc[0]))
+    for s in stats:
+        d = xr.DataArray(stats_df.groupby(by="exp_id")[s].agg(lambda x: x).values, dims="exp_id", name=s)
         sims_profile[s] = d
 
         stats_profile = gp.GeoDataFrame(stats_profile, geometry=stats_profile["geometry"], crs=crs)
@@ -279,7 +281,11 @@ class CustomDatasetMethods:
         return self._obj
 
     def calculate_stats(
-        self, obs_var: str = "v", sim_var: str = "velsurf_mag", dim: str = "profile_axis", stats: List[str] = ["rmsd"]
+        self,
+        obs_var: str = "v",
+        sim_var: str = "velsurf_mag",
+        dim: str = "profile_axis",
+        stats: List[str] = ["rmsd", "pearson_r"],
     ) -> xr.Dataset:
         """
         Add rmsd
@@ -291,17 +297,24 @@ class CustomDatasetMethods:
 
             return np.sqrt(np.nanmean(diff**2, axis=-1))
 
-        func = {"rmsd": rmsd}
+        def pearson_r(sim, obs):
+
+            return xr.corr(sim, obs, dim="profile_axis")
+
+        func = {"rmsd": {"func": rmsd, "ufunc": True}, "pearson_r": {"func": pearson_r, "ufunc": False}}
 
         for stat in stats:
-            self._obj[stat] = xr.apply_ufunc(
-                func[stat],
-                self._obj[obs_var],
-                self._obj[sim_var],
-                dask="allowed",
-                input_core_dims=[[dim], [dim]],
-                output_core_dims=[[]],
-            )
+            if func[stat]["ufunc"]:
+                self._obj[stat] = xr.apply_ufunc(
+                    func[stat]["func"],  # type: ignore[arg-type]
+                    self._obj[obs_var],
+                    self._obj[sim_var],
+                    dask="allowed",
+                    input_core_dims=[[dim], [dim]],
+                    output_core_dims=[[]],
+                )
+            else:
+                self._obj[stat] = pearson_r(self._obj[obs_var], self._obj[sim_var])
         return self._obj
 
     def extract_profile(

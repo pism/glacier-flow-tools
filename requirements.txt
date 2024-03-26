@@ -14,3 +14,4 @@ notebook
 geocube
 cartopy
 seaborn
+dask_geopandas
