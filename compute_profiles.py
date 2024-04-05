@@ -118,18 +118,95 @@ def plot_glacier(
         v,
         vmin=0,
         vmax=1,
-        cmap="RdYlGn_r",
+        cmap="RdYlGn",
     )
     corr.remove()
     ax.imshow(rgb, extent=extent, origin="upper", transform=crs)
     profile.plot(ax=ax, color="k", lw=1)
     profile_centroid.plot(
-        column="pearson_r", vmin=0, vmax=1, cmap="RdYlGn_r", markersize=50, legend=False, missing_kwds={}, ax=ax
+        column="pearson_r", vmin=0, vmax=1, cmap="RdYlGn", markersize=50, legend=False, missing_kwds={}, ax=ax
     )
     ax.annotate(glacier_name, (x_c, y_c), (10, 10), xycoords="data", textcoords="offset points")
     ax.coastlines(linewidth=0.25, resolution="10m")
     ax.gridlines(
-        draw_labels={"top": "x", "right": "y"},
+        draw_labels={"top": "x", "left": "y"},
+        dms=True,
+        xlocs=np.arange(-50, 0, 1),
+        ylocs=np.arange(50, 88, 1),
+        x_inline=False,
+        y_inline=False,
+        rotate_labels=20,
+        ls="dotted",
+        color="k",
+    )
+
+    ax.set_extent(extent, crs=crs)
+    fig.colorbar(im, ax=ax, shrink=0.5, pad=0.025, label=overlay.units, extend="max", ticks=ticks)
+    fig.colorbar(
+        corr, ax=ax, shrink=0.5, pad=0.025, label="Pearson $r$ (1)", orientation="horizontal", location="bottom"
+    )
+    fig.savefig(result_dir / Path(f"{glacier_name}_{exp_id}_speed.pdf"))
+    plt.close()
+    del fig
+
+
+def plot_glacier_xr(
+    profile: gp.GeoDataFrame,
+    surface: xr.DataArray,
+    overlay: xr.DataArray,
+    result_dir: Union[str, Path],
+    cmap="viridis",
+    vmin: float = 10,
+    vmax: float = 1500,
+    ticks: Union[List[float], np.ndarray] = [10, 100, 250, 500, 750, 1500],
+):
+
+    from pypism.profiles import CustomDatasetMethods
+
+    def get_extent(ds: xr.DataArray):
+        return [ds["x"].values[0], ds["x"].values[-1], ds["y"].values[-1], ds["y"].values[0]]
+
+    profile_centroid = gp.GeoDataFrame(profile, geometry=profile.geometry.centroid)
+    glacier_name = profile.iloc[0]["profile_name"]
+    exp_id = profile.iloc[0]["exp_id"]
+    x_c = round(profile_centroid.geometry.x.values[0])
+    y_c = round(profile_centroid.geometry.y.values[0])
+    extent_slice = figure_extent(x_c, y_c)
+    crs = ccrs.NorthPolarStereo(central_longitude=-45, true_scale_latitude=70, globe=None)
+    # Shade from the northwest, with the sun 45 degrees from horizontal
+    light_source = LightSource(azdeg=315, altdeg=45)
+
+    overlay = overlay.sel(**extent_slice)
+    surface = surface.sel(**extent_slice)
+
+    extent = get_extent(overlay)
+    norm = colors.Normalize(vmin=vmin, vmax=vmax)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+
+    v = mapper.to_rgba(overlay.to_numpy())
+    z = surface.to_numpy()
+    fig = plt.figure(figsize=(6.2, 6.2))
+    ax = fig.add_subplot(111, projection=crs)
+    rgb = light_source.shade_rgb(v, elevation=z, vert_exag=0.01, blend_mode=blend_multiply)
+    # Use a proxy artist for the colorbar...
+    im = ax.imshow(v, cmap=cmap, vmin=vmin, vmax=vmax)
+    im.remove()
+    corr = ax.imshow(
+        v,
+        vmin=0,
+        vmax=1,
+        cmap="RdYlGn",
+    )
+    corr.remove()
+    ax.imshow(rgb, extent=extent, origin="upper", transform=crs)
+    profile.plot(ax=ax, color="k", lw=1)
+    profile_centroid.plot(
+        column="pearson_r", vmin=0, vmax=1, cmap="RdYlGn", markersize=50, legend=False, missing_kwds={}, ax=ax
+    )
+    ax.annotate(glacier_name, (x_c, y_c), (10, 10), xycoords="data", textcoords="offset points")
+    ax.coastlines(linewidth=0.25, resolution="10m")
+    ax.gridlines(
+        draw_labels={"top": "x", "left": "y"},
         dms=True,
         xlocs=np.arange(-50, 0, 1),
         ylocs=np.arange(50, 88, 1),
@@ -242,10 +319,22 @@ if __name__ == "__main__":
 
     gris_ds = xr.open_dataset(Path("/Users/andy/Google Drive/My Drive/data/MCdataset/BedMachineGreenland-v5.nc"))
 
-    # all_profiles = [xr.merge([obs_profile.squeeze(), sims_profile.squeeze()]) for obs_profile, sims_profile in zip(obs_profiles, sims_profiles)]
+    # start = time.process_time()
+    # #    stats_profiles_computed = stats_profiles.compute()
+    # with tqdm_joblib(tqdm(desc="Plotting glaciers", total=len(stats_profiles))) as progress_bar:
+    #     Parallel(n_jobs=options.n_jobs)(
+    #         delayed(plot_glacier_xr)(
+    #             gp.GeoDataFrame(pd.DataFrame(glacier).T, crs=crs),
+    #             glacier_surface,
+    #             glacier_overlay,
+    #             result_dir,
+    #             cmap=cmap,
+    #         )
+    #         for _, glacier in stats_profiles.iterrows()
+    #     )
+    # time_elapsed = time.process_time() - start
+    # print(f"Time elapsed {time_elapsed:.0f}s")
 
-    start = time.process_time()
-    #    stats_profiles_computed = stats_profiles.compute()
     with tqdm_joblib(tqdm(desc="Plotting glaciers", total=len(stats_profiles))) as progress_bar:
         Parallel(n_jobs=options.n_jobs)(
             delayed(plot_glacier)(
@@ -260,8 +349,7 @@ if __name__ == "__main__":
     time_elapsed = time.process_time() - start
     print(f"Time elapsed {time_elapsed:.0f}s")
 
-    # with tqdm_joblib(tqdm(desc="Plotting profiles", total=len(profiles_gp))) as progress_bar:
-    #     Parallel(n_jobs=options.n_jobs)(
-    #         delayed(plot_profile)(ds, result_dir, alpha=alpha, sigma=sigma)
-    #         for ds in obs_sims_profiles
-    #         )
+    with tqdm_joblib(tqdm(desc="Plotting profiles", total=len(profiles_gp))) as progress_bar:
+        Parallel(n_jobs=options.n_jobs)(
+            delayed(plot_profile)(ds, result_dir, alpha=alpha, sigma=sigma) for ds in obs_sims_profiles
+        )

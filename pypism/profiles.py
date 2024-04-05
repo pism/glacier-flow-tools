@@ -431,19 +431,19 @@ class CustomDatasetMethods:
         # Loop over the data and plot each line with a different color
         if n_exps > 1:
             for i in range(n_exps):
-                exp_label = f"""{self._obj["exp_id"].values[i]} rmsd={self._obj["rmsd"].values[i][0]:.0f}m/yr"""
+                exp_label = f"""{self._obj["exp_id"].values[i].item()} rmsd={self._obj["rmsd"].values[i][0]:.0f}m/yr"""
                 ax.plot(
                     self._obj["profile_axis"],
-                    self._obj[sim_var].isel(exp_id=i).T,
+                    np.squeeze(self._obj[sim_var].isel(exp_id=i).T),
                     color=palette[i],
                     label=exp_label,
                     **sim_kwargs,
                 )
         else:
-            exp_label = f"""{self._obj["exp_id"].values} rmsd={self._obj["rmsd"].values:.0f}m/yr"""
+            exp_label = f"""{self._obj["exp_id"].values.item()} rmsd={self._obj["rmsd"].values.item():.0f}m/yr"""
             ax.plot(
                 self._obj["profile_axis"],
-                self._obj[sim_var].T,
+                np.squeeze(self._obj[sim_var].T),
                 color=palette[0],
                 label=exp_label,
                 **sim_kwargs,
@@ -455,6 +455,6 @@ class CustomDatasetMethods:
         legend.get_frame().set_alpha(0.0)
 
         if title is None:
-            title = self._obj["profile_name"].to_numpy()
+            title = self._obj["profile_name"].values.item()
         plt.title(title)
         return fig
