@@ -8,7 +8,7 @@ A set of random tools
 
 ## Installation
 
-Get pism-ragis source from GitHub:
+Get pypism source from GitHub:
 
     $ git clone git@github.com:pism/pypism.git
     $ cd pypism
