@@ -7,7 +7,7 @@
 # Foundation; either version 3 of the License, or (at your option) any later
 # version.
 #
-# PISM-RAGIS is distributed in the hope that it will be useful, but WITHOUT ANY
+# PYPISM is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details.
@@ -23,7 +23,7 @@ Calculate pathlines (trajectories)
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
 
-from pypism.trajectory import compute_pathlines
+from pypism.pathlines import compute_pathlines
 
 if __name__ == "__main__":
     # set up the option parser

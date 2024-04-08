@@ -138,16 +138,17 @@ def compute_pathlines(
     data_url: Union[str, Path],
     ogr_url: Union[str, Path],
     perturbation: int = 0,
+    dt: float = 1,
     total_time: float = 10_000,
     x_var: str = "vx",
     y_var: str = "vy",
-    dt: float = 1,
     reverse: bool = False,
     n_jobs: int = 4,
+    tolerance: float = 0.1,
     crs: str = "EPSG:3413",
 ) -> GeoDataFrame:
     """
-    Compute a pathline (trajectory).
+    Compute a pathline (pathlines).
 
     """
 
@@ -159,6 +160,9 @@ def compute_pathlines(
     y = ds["y"].to_numpy()
 
     pts_gp = gp.read_file(ogr_url).to_crs(crs).reset_index(drop=True)
+    geom = pts_gp.simplify(tolerance)
+    pts_gp = gp.GeoDataFrame(pts_gp, geometry=geom)
+
     n_pts = len(pts_gp)
 
     def compute_pathline(index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse) -> gp.GeoDataFrame:
@@ -168,11 +172,11 @@ def compute_pathlines(
             attrs = pts.to_dict()
             attrs = {key: value[0] for key, value in attrs.items() if isinstance(value, dict)}
             attrs["perturbation"] = perturbation
-            trajs = []
+            pathlines = []
             for p in points:
-                traj, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
-                trajs.append(traj)
-            df = trajectories_to_geopandas(trajs, Vx, Vy, x, y, attrs=attrs)
+                pathline, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
+                pathlines.append(pathline)
+            df = pathlines_to_geopandas(pathlines, Vx, Vy, x, y, attrs=attrs)
         else:
             df = gp.GeoDataFrame()
         return df
@@ -210,9 +214,8 @@ def compute_perturbation(
     crs: str = "EPSG:3413",
 ) -> GeoDataFrame:
     """
-    Compute a perturbed trajectory.
+    Compute a perturbed pathlines.
 
-    It appears OGR objects cannot be pickled by joblib hence we load it here.
 
     Parameters
     ----------
@@ -252,11 +255,11 @@ def compute_perturbation(
                 attrs["perturbation"] = perturbation
                 glacier_name = attrs["name"]
                 pbar.set_description(f"""Processing {glacier_name}""")
-                trajs = []
+                pathlines = []
                 for p in points:
-                    traj, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
-                    trajs.append(traj)
-                df = trajectories_to_geopandas(trajs, Vx, Vy, x, y, attrs=attrs)
+                    pathline, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
+                    pathlines.append(pathline)
+                df = pathlines_to_geopandas(pathlines, Vx, Vy, x, y, attrs=attrs)
                 all_glaciers.append(df)
                 pbar.refresh()
     return pd.concat(all_glaciers)
@@ -365,32 +368,32 @@ def generate_field(
     return np.real(fft.ifftn(fftfield, **fft_args))
 
 
-def trajectories_to_geopandas(
-    trajs: list,
+def pathlines_to_geopandas(
+    pathlines: list,
     Vx: Union[ndarray, DataArray],
     Vy: Union[ndarray, DataArray],
     x: Union[ndarray, DataArray],
     y: Union[ndarray, DataArray],
     attrs: dict = {},
 ) -> gp.GeoDataFrame:
-    """Convert trajectory to GeoDataFrame"""
+    """Convert pathlines to GeoDataFrame"""
 
     dfs = []
-    for traj_id, traj in enumerate(trajs):
-        vx, vy = velocity_at_point(Vx, Vy, x, y, traj)
+    for pathline_id, pathline in enumerate(pathlines):
+        vx, vy = velocity_at_point(Vx, Vy, x, y, pathline)
         v = np.sqrt(vx**2 + vy**2)
-        d = [0] + [traj[k].distance(traj[k - 1]) for k in range(1, len(traj))]
-        traj_data = {
+        d = [0] + [pathline[k].distance(pathline[k - 1]) for k in range(1, len(pathline))]
+        pathline_data = {
             "vx": vx,
             "vy": vy,
             "v": v,
-            "trai_id": traj_id,
-            "traj_pt": range(len(traj)),
+            "pathline_id": pathline_id,
+            "pathline_pt": range(len(pathline)),
             "distance": d,
             "distance_from_origin": np.cumsum(d),
         }
         for k, v in attrs.items():
-            traj_data[k] = v
-        df = gp.GeoDataFrame.from_dict(traj_data, geometry=traj, crs="EPSG:3413")
+            pathline_data[k] = v
+        df = gp.GeoDataFrame.from_dict(pathline_data, geometry=pathline, crs="EPSG:3413")
         dfs.append(df)
     return pd.concat(dfs).reset_index(drop=True)

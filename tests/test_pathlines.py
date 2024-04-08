@@ -27,7 +27,7 @@ import xarray as xr
 from numpy.testing import assert_array_almost_equal
 from shapely import Point
 
-from pypism.trajectory import compute_trajectory
+from pypism.pathlines import compute_trajectory
 
 np.seterr(divide="ignore", invalid="ignore")
 

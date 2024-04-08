@@ -129,11 +129,18 @@ def calculate_stats(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
     return pd.DataFrame(data=[[pearson_r, rmsd]], columns=["pearson_r", "rmsd"])
 
 
-def process_profile_xr(
+def process_profile(
     profile,
     obs_ds: xr.Dataset,
     sim_ds: xr.Dataset,
     stats: List[str] = ["rmsd", "pearson_r"],
+    obs_normal_var: str = "v_normal",
+    obs_normal_error_var: str = "v_err_normal",
+    obs_normal_component_vars: dict = {"x": "vx", "y": "vy"},
+    obs_normal_component_error_vars: dict = {"x": "vx_err", "y": "vy_err"},
+    sim_normal_var: str = "velsurf_normal",
+    sim_normal_component_vars: dict = {"x": "uvelsurf", "y": "vvelsurf"},
+    compute_profile_normal: bool = False,
 ) -> xr.Dataset:
     """
     Process a profile from observed and simulated datasets.
@@ -173,69 +180,6 @@ def process_profile_xr(
     merged_profile.profiles.calculate_stats(stats=stats)
 
     return merged_profile
-
-
-def process_profile(
-    profile,
-    obs_ds: xr.Dataset,
-    sim_ds: xr.Dataset,
-    obs_var: str = "v",
-    sim_var: str = "velsurf_mag",
-    crs: str = "epsg:3413",
-    stats: List[str] = ["rmsd", "pearson_r"],
-) -> Tuple[xr.Dataset, pd.DataFrame]:
-    """
-    Process a profile from observed and simulated datasets.
-    """
-    x, y = map(np.asarray, profile["geometry"].xy)
-    profile_name = profile["profile_name"]
-    profile_id = profile["profile_id"]
-
-    def extract_and_prepare(
-        ds: xr.Dataset,
-        profile_name: str = profile_name,
-        profile_id: int = profile_id,
-    ) -> xr.Dataset:
-        """
-        Extract from xr.Dataset along (x,y) profile.
-        """
-        ds_profile = ds.profiles.extract_profile(
-            x,
-            y,
-            profile_name=profile_name,
-            profile_id=profile_id,
-        )
-        return ds_profile
-
-    obs_profile = extract_and_prepare(
-        obs_ds,
-        profile_name=profile_name,
-        profile_id=profile_id,
-    )
-    sims_profile = extract_and_prepare(
-        sim_ds,
-        profile_name=profile_name,
-        profile_id=profile_id,
-    )
-
-    merged_profile = xr.merge([obs_profile, sims_profile])
-
-    obs_df = obs_profile.to_dataframe().reset_index()
-    sims_df = sims_profile.to_dataframe().reset_index()
-
-    obs_sims_df = merge_on_intersection(obs_df, sims_df)
-
-    profile_gp = gp.GeoDataFrame([profile], geometry=[profile.geometry], crs=crs)
-    stats_df = obs_sims_df.groupby(by=["exp_id", "profile_id"]).apply(
-        calculate_stats, col1=sim_var, col2=obs_var, include_groups=False
-    )
-    stats_profile = merge_on_intersection(profile_gp, stats_df.reset_index().assign(**profile_gp.iloc[0]))
-    for s in stats:
-        d = xr.DataArray(stats_df.groupby(by="exp_id")[s].agg(lambda x: x).values, dims="exp_id", name=s)
-        sims_profile[s] = d
-
-        stats_profile = gp.GeoDataFrame(stats_profile, geometry=stats_profile["geometry"], crs=crs)
-    return merged_profile, stats_profile
 
 
 @xr.register_dataset_accessor("profiles")
@@ -324,6 +268,11 @@ class CustomDatasetMethods:
         profile_name: str = "Glacier X",
         profile_id: int = 0,
         data_vars: Union[None, List[str]] = None,
+        normal_var: str = "v_normal",
+        normal_error_var: str = "v_err_normal",
+        normal_component_vars: dict = {"x": "vx", "y": "vy"},
+        normal_component_error_vars: dict = {"x": "vx_err", "y": "vy_err"},
+        compute_profile_normal: bool = False,
     ) -> xr.Dataset:
         """
         Extract a profile from a dataset given x and y coordinates.
@@ -391,6 +340,24 @@ class CustomDatasetMethods:
 
         ds = xr.merge(das)
         ds["profile_id"] = [profile_id]
+
+        if compute_profile_normal:
+
+            a = [(v in v.data_vars) for v in normal_component_vars.values()]
+            # assert np.alltrue(a)
+            a = [(v in v.data_vars) for v in normal_component_error_vars.values()]
+            # assert np.alltrue(a)
+
+            ds.profiles.add_normal_component(
+                x_component=normal_component_vars["x"],
+                y_component=normal_component_vars["y"],
+                normal_name=normal_var,
+            )
+            ds.profiles.add_normal_component(
+                x_component=normal_component_error_vars["x"],
+                y_component=normal_component_error_vars["y"],
+                normal_name=normal_error_var,
+            )
         return ds
 
     def plot(
@@ -431,7 +398,7 @@ class CustomDatasetMethods:
         # Loop over the data and plot each line with a different color
         if n_exps > 1:
             for i in range(n_exps):
-                exp_label = f"""{self._obj["exp_id"].values[i].item()} rmsd={self._obj["rmsd"].values[i][0]:.0f}m/yr"""
+                exp_label = f"""{self._obj["exp_id"].values[i].item()} $r$={self._obj["pearson_r"].values[i][0]:.2f} rmsd={self._obj["rmsd"].values[i][0]:.0f}m/yr"""
                 ax.plot(
                     self._obj["profile_axis"],
                     np.squeeze(self._obj[sim_var].isel(exp_id=i).T),
@@ -440,7 +407,7 @@ class CustomDatasetMethods:
                     **sim_kwargs,
                 )
         else:
-            exp_label = f"""{self._obj["exp_id"].values.item()} rmsd={self._obj["rmsd"].values.item():.0f}m/yr"""
+            exp_label = f"""{self._obj["exp_id"].values.item()} $r$={self._obj["pearson_r"].values.item():.2f} rmsd={self._obj["rmsd"].values.item():.0f}m/yr"""
             ax.plot(
                 self._obj["profile_axis"],
                 np.squeeze(self._obj[sim_var].T),
