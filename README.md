@@ -21,3 +21,6 @@ Optionally create Conda environment named *pypism*:
 Install pypism:
 
     $ pip install -e .
+
+
+![Pathlines starting from the Jakobshaven Isbræ flux gate.](https://github.com/pism/pypism/blob/main/images/jak_obs_speed.png)
