@@ -25,6 +25,8 @@ import pandas as pd
 import pytest
 import xarray as xr
 from numpy.testing import assert_array_almost_equal
+
+# from pypism.geom import Point
 from shapely import Point
 
 from pypism.pathlines import compute_trajectory

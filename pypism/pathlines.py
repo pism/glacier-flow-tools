@@ -35,6 +35,7 @@ from shapely import Point
 from tqdm import tqdm
 from xarray import DataArray
 
+# from pypism.geom import Point
 from pypism.interpolation import interpolate_rkf, velocity_at_point
 from pypism.utils import tqdm_joblib
 
@@ -91,7 +92,7 @@ def compute_trajectory(
     Create data:
 
     >>>    import numpy as np
-    >>>    from shapely import Point
+    >>>    from pypism.geom import Point
 
     >>>    nx = 201
     >>>    ny = 401

@@ -20,11 +20,15 @@
 Module provides functions for interpolation
 """
 
+import numbers
 from typing import Optional, Tuple, Union
 
 import numpy as np
 import scipy
+from jax import jit
 from numpy import ndarray
+
+# from pypism.geom import Point
 from shapely import Point
 from xarray import DataArray
 
@@ -37,17 +41,27 @@ class InterpolationMatrix:
 
     def __init__(
         self,
-        x: Union[list, np.ndarray],
-        y: Union[list, np.ndarray],
-        px: Union[list, np.ndarray],
-        py: Union[list, np.ndarray],
+        x: ndarray,
+        y: ndarray,
+        px: Union[float, list, ndarray],
+        py: Union[float, list, ndarray],
         bilinear: bool = True,
     ):
         """Interpolate values of z to points (px,py) assuming that z is on a
         regular grid defined by x and y."""
         super().__init__()
 
-        assert len(px) == len(py)
+        def to_array(data):
+            if isinstance(data, numbers.Number):
+                data = np.array([data])
+            elif isinstance(data, list):
+                data = np.array(data)
+            return data
+
+        px = to_array(px)
+        py = to_array(py)
+
+        assert px.size == py.size
 
         # The grid has to be equally spaced.
         assert np.fabs(np.diff(x).max() - np.diff(x).min()) < 1e-9
@@ -360,25 +374,167 @@ def interpolate_rkf(
     return interp_pt, interp_pt_error_estim
 
 
+# def interpolate_rkf_np(
+#     Vx: ndarray,
+#     Vy: ndarray,
+#     x: ndarray,
+#     y: ndarray,
+#     start_pt: Union[list, ndarray],
+#     delta_time: float = 0.1,
+# ) -> Tuple[Optional[Point], Optional[float]]:
+#     """
+#     Interpolate point-like object position according to the Runge-Kutta-Fehlberg method.
+
+#     :param geoarray: the flow field expressed as a GeoArray.
+#     :type geoarray: GeoArray.
+#     :param delta_time: the flow field expressed as a GeoArray.
+#     :type delta_time: GeoArray.
+#     :param start_pt: the initial point.
+#     :type start_pt: Point.
+#     :return: the estimated point-like object position at the incremented time, with the estimation error.
+#     :rtype: tuple of optional point and optional float.
+
+#     Examples:
+#     """
+
+#     if (start_x is np.nan) or (start_y is np.nan):
+#         return None, None
+
+#     k1_v = interpolate_at_point(Vx, Vy, x, y, start_x, start_y)
+
+#     if k1_vx is None or k1_vy is None:
+#         return None, None
+
+#     def k2(p, k1_v):
+#         return p + (0.25) * delta_time * k1_v
+
+#     k2_pt = k2_v(start_p, k1_v)
+
+#     k2_vx, k2_vy = interpolate_at_point(Vx, Vy, x, y, k2_x, k2_y)
+
+#     if k2_vx is None or k2_vy is None:
+#         return None, None
+
+#     def k3_v(p, k1_v, k2_v):
+#         return p + (3.0 / 32.0) * delta_time * k1_v + (9.0 / 32.0) * delta_time * k2_v
+
+#     k3_x = k3_v(k2_x, k1_vx, k2_vx)
+#     k3_y = k3_v(k2_y, k1_vy, k2_vy)
+#     k3_pt = Point(
+#         start_pt.x + (3.0 / 32.0) * delta_time * k1_vx + (9.0 / 32.0) * delta_time * k2_vx,
+#         start_pt.y + (3.0 / 32.0) * delta_time * k1_vy + (9.0 / 32.0) * delta_time * k2_vy,
+#     )
+
+#     if k3_pt.is_empty:
+#         return None, None
+
+#     k3_vx, k3_vy = interpolate_at_point(Vx, Vy, x, y, k3_pt)
+
+#     if k3_vx is None or k3_vy is None:
+#         return None, None
+
+#     k4_pt = Point(
+#         start_pt.x
+#         + (1932.0 / 2197.0) * delta_time * k1_vx
+#         - (7200.0 / 2197.0) * delta_time * k2_vx
+#         + (7296.0 / 2197.0) * delta_time * k3_vx,
+#         start_pt.y
+#         + (1932.0 / 2197.0) * delta_time * k1_vy
+#         - (7200.0 / 2197.0) * delta_time * k2_vy
+#         + (7296.0 / 2197.0) * delta_time * k3_vy,
+#     )
+
+#     if k4_pt.is_empty:
+#         return None, None
+
+#     k4_vx, k4_vy = interpolate_at_point(Vx, Vy, x, y, k4_pt)
+
+#     if k4_vx is None or k4_vy is None:
+#         return None, None
+
+#     k5_pt = Point(
+#         start_pt.x
+#         + (439.0 / 216.0) * delta_time * k1_vx
+#         - (8.0) * delta_time * k2_vx
+#         + (3680.0 / 513.0) * delta_time * k3_vx
+#         - (845.0 / 4104.0) * delta_time * k4_vx,
+#         start_pt.y
+#         + (439.0 / 216.0) * delta_time * k1_vy
+#         - (8.0) * delta_time * k2_vy
+#         + (3680.0 / 513.0) * delta_time * k3_vy
+#         - (845.0 / 4104.0) * delta_time * k4_vy,
+#     )
+
+#     if k5_pt.is_empty:
+#         return None, None
+
+#     k5_vx, k5_vy = interpolate_at_point(Vx, Vy, x, y, k5_pt)
+
+#     if k5_vx is None or k5_vy is None:
+#         return None, None
+
+#     k6_pt = Point(
+#         start_pt.x
+#         - (8.0 / 27.0) * delta_time * k1_vx
+#         + (2.0) * delta_time * k2_vx
+#         - (3544.0 / 2565.0) * delta_time * k3_vx
+#         + (1859.0 / 4104.0) * delta_time * k4_vx
+#         - (11.0 / 40.0) * delta_time * k5_vx,
+#         start_pt.y
+#         - (8.0 / 27.0) * delta_time * k1_vy
+#         + (2.0) * delta_time * k2_vy
+#         - (3544.0 / 2565.0) * delta_time * k3_vy
+#         + (1859.0 / 4104.0) * delta_time * k4_vy
+#         - (11.0 / 40.0) * delta_time * k5_vy,
+#     )
+
+#     if k6_pt.is_empty:
+#         return None, None
+
+#     k6_vx, k6_vy = interpolate_at_point(Vx, Vy, x, y, k6_pt)
+
+#     if k6_vx is None or k6_vy is None:
+#         return None, None
+
+#     rkf_4o_x = start_pt.x + delta_time * (
+#         (25.0 / 216.0) * k1_vx + (1408.0 / 2565.0) * k3_vx + (2197.0 / 4104.0) * k4_vx - (1.0 / 5.0) * k5_vx
+#     )
+#     rkf_4o_y = start_pt.y + delta_time * (
+#         (25.0 / 216.0) * k1_vy + (1408.0 / 2565.0) * k3_vy + (2197.0 / 4104.0) * k4_vy - (1.0 / 5.0) * k5_vy
+#     )
+#     temp_pt = Point(rkf_4o_x, rkf_4o_y)
+
+#     interp_x = start_pt.x + delta_time * (
+#         (16.0 / 135.0) * k1_vx
+#         + (6656.0 / 12825.0) * k3_vx
+#         + (28561.0 / 56430.0) * k4_vx
+#         - (9.0 / 50.0) * k5_vx
+#         + (2.0 / 55.0) * k6_vx
+#     )
+#     interp_y = start_pt.y + delta_time * (
+#         (16.0 / 135.0) * k1_vy
+#         + (6656.0 / 12825.0) * k3_vy
+#         + (28561.0 / 56430.0) * k4_vy
+#         - (9.0 / 50.0) * k5_vy
+#         + (2.0 / 55.0) * k6_vy
+#     )
+#     interp_pt = Point(interp_x, interp_y)
+
+#     interp_pt_error_estim = interp_pt.distance(temp_pt)
+
+#     return interp_pt, interp_pt_error_estim
+
+
 def velocity_at_point(
-    Vx: Union[ndarray, DataArray],
-    Vy: Union[ndarray, DataArray],
-    x: Union[ndarray, DataArray],
-    y: Union[ndarray, DataArray],
-    p: Union[list[Point], Point],
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
+    p: Union[list[Point], Point, ndarray],
 ) -> Tuple:
     """
     Return velocity at Point p using bilinear interpolation
     """
-
-    if isinstance(Vx, DataArray):
-        Vx = Vx.to_numpy()
-    if isinstance(Vy, DataArray):
-        Vy = Vy.to_numpy()
-    if isinstance(x, DataArray):
-        x = x.to_numpy()
-    if isinstance(y, DataArray):
-        y = y.to_numpy()
 
     if isinstance(p, Point):
         if p.is_empty:
@@ -394,4 +550,22 @@ def velocity_at_point(
     if isinstance(p, Point):
         vx = vx[0]
         vy = vy[0]
+    return vx, vy
+
+
+def interpolate_at_point(
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
+    px: ndarray,
+    py: ndarray,
+) -> Tuple:
+    """
+    Return velocity at Point px,py using bilinear interpolation
+    """
+
+    A = InterpolationMatrix(x, y, px, py)
+    vx = A.apply(Vx)
+    vy = A.apply(Vy)
     return vx, vy
