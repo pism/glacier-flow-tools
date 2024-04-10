@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Calculate profiles
+Calculate proifles and compute statistics along profiles
 """
 
 import time
@@ -29,13 +29,11 @@ import cartopy.crs as ccrs
 import dask_geopandas
 import fsspec
 import geopandas as gp
-import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 import pylab as plt
 import xarray as xr
 from dask import dataframe as dd
-from dask.diagnostics import ProgressBar
 from dask.distributed import Client, LocalCluster, progress
 from joblib import Parallel, delayed
 from matplotlib import cm, colors
@@ -56,17 +54,18 @@ def merge_on_intersection(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     return dd.merge(df1, df2, on=intersection_keys)
 
 
-def round(x: float, mult: int = 1000):
-    return np.round(x / mult) * mult
-
-
 def figure_extent(x_c: float, y_c: float, x_e: float = 50_000, y_e: float = 50_000):
-
+    """
+    Calculate bounding box (figure extent) given center coorinates
+    and x,y half-width/height.
+    """
     return {"x": slice(x_c - x_e / 2, x_c + x_e / 2), "y": slice(y_c + y_e / 2, y_c - y_e / 2)}
 
 
 def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: float = 1.0):
-
+    """
+    Plot a profile dataset created with ds.profiles.extract_profile
+    """
     from pypism.profiles import CustomDatasetMethods
 
     fig = ds.profiles.plot(palette="Greens", sigma=sigma, alpha=alpha)
@@ -86,7 +85,9 @@ def plot_glacier(
     vmax: float = 1500,
     ticks: Union[List[float], np.ndarray] = [10, 100, 250, 500, 750, 1500],
 ):
-
+    """
+    Plot a surface over a hillshade, add profile and correlation coeffient.
+    """
     from pypism.profiles import CustomDatasetMethods
 
     def get_extent(ds: xr.DataArray):
@@ -128,7 +129,6 @@ def plot_glacier(
     profile_centroid.plot(
         column="pearson_r", vmin=0, vmax=1, cmap="RdYlGn", markersize=50, legend=False, missing_kwds={}, ax=ax
     )
-    pearson_r = profile_centroid["pearson_r"].item()
     ax.annotate(f"{glacier_name}", (x_c, y_c), (10, 10), xycoords="data", textcoords="offset points")
     ax.gridlines(
         draw_labels={"top": "x", "left": "y"},

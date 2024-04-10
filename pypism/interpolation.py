@@ -26,10 +26,7 @@ from typing import Optional, Tuple, Union
 import numpy as np
 import scipy
 from numpy import ndarray
-
-# from pypism.geom import Point
 from shapely import Point
-from xarray import DataArray
 
 
 class InterpolationMatrix:
@@ -408,19 +405,18 @@ def interpolate_rkf_np(
         +(7296.0 / 2197.0) * delta_time * k3_v
 
     def k5(p, k1_v, k2_v, k3_v, k4_v):
-        return p
-        +(439.0 / 216.0) * delta_time * k1_v
-        -(8.0) * delta_time * k2_v
-        +(3680.0 / 513.0) * delta_time * k3_v
-        -(845.0 / 4104.0) * delta_time * k4_v
+        return p + (439.0 / 216.0) * delta_time * k1_v - (8.0) * delta_time * k2_v
+        +(3680.0 / 513.0) * delta_time * k3_v - (845.0 / 4104.0) * delta_time * k4_v
 
     def k6(p, k1_v, k2_v, k3_v, k4_v, k5_v):
-        return p
-        -(8.0 / 27.0) * delta_time * k1_v
-        +(2.0) * delta_time * k2_v
-        -(3544.0 / 2565.0) * delta_time * k3_v
-        +(1859.0 / 4104.0) * delta_time * k4_v
-        -(11.0 / 40.0) * delta_time * k5_v
+        return (
+            p
+            - (8.0 / 27.0) * delta_time * k1_v
+            + (2.0) * delta_time * k2_v
+            - (3544.0 / 2565.0) * delta_time * k3_v
+            + (1859.0 / 4104.0) * delta_time * k4_v
+            - (11.0 / 40.0) * delta_time * k5_v
+        )
 
     def rkf_4o(p, k1_v, k3_v, k4_v, k5_v):
         return p + delta_time * (
@@ -452,7 +448,7 @@ def interpolate_rkf_np(
     k2_v = interpolate_at_point(Vx, Vy, x, y, *k2_pt)
 
     if np.any(np.isnan(k2_v)):
-        return k2_v
+        return k2_v, np.nan
 
     k3_pt = k3(start_pt, k1_v, k2_v)
 
@@ -462,7 +458,7 @@ def interpolate_rkf_np(
     k3_v = interpolate_at_point(Vx, Vy, x, y, *k3_pt)
 
     if np.any(np.isnan(k3_v)):
-        return k3_v
+        return k3_v, np.nan
 
     k4_pt = k4(start_pt, k1_v, k2_v, k3_v)
 
@@ -472,7 +468,7 @@ def interpolate_rkf_np(
     k4_v = interpolate_at_point(Vx, Vy, x, y, *k4_pt)
 
     if np.any(np.isnan(k4_v)):
-        return k4_v
+        return k4_v, np.nan
 
     k5_pt = k5(start_pt, k1_v, k2_v, k3_v, k4_v)
 
@@ -482,7 +478,7 @@ def interpolate_rkf_np(
     k5_v = interpolate_at_point(Vx, Vy, x, y, *k5_pt)
 
     if np.any(np.isnan(k5_v)):
-        return k5_v
+        return k5_v, np.nan
 
     k6_pt = k6(start_pt, k1_v, k2_v, k3_v, k4_v, k5_v)
 
@@ -492,7 +488,7 @@ def interpolate_rkf_np(
     k6_v = interpolate_at_point(Vx, Vy, x, y, *k6_pt)
 
     if np.any(np.isnan(k6_v)):
-        return k6_v
+        return k6_v, np.nan
 
     rkf_4o_pt = rkf_4o(start_pt, k1_v, k3_v, k4_v, k5_v)
 

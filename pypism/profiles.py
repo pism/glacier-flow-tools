@@ -150,18 +150,13 @@ def process_profile(
     profile_id = profile["profile_id"]
 
     def extract_and_prepare(
-        ds: xr.Dataset,
-        profile_name: str = profile_name,
-        profile_id: int = profile_id,
+        ds: xr.Dataset, profile_name: str = profile_name, profile_id: int = profile_id, **kwargs
     ) -> xr.Dataset:
         """
         Extract from xr.Dataset along (x,y) profile.
         """
         ds_profile = ds.profiles.extract_profile(
-            x,
-            y,
-            profile_name=profile_name,
-            profile_id=profile_id,
+            x, y, profile_name=profile_name, profile_id=profile_id, normal_var=obs_normal_var, **kwargs
         )
         return ds_profile
 
@@ -169,11 +164,16 @@ def process_profile(
         obs_ds,
         profile_name=profile_name,
         profile_id=profile_id,
+        normal_error_var=obs_normal_error_var,
+        normal_component_vars=obs_normal_component_vars,
+        normal_component_error_vars=obs_normal_component_error_vars,
+        compute_profile_normal=compute_profile_normal,
     )
     sims_profile = extract_and_prepare(
         sim_ds,
         profile_name=profile_name,
         profile_id=profile_id,
+        compute_profile_normal=compute_profile_normal,
     )
 
     merged_profile = xr.merge([obs_profile, sims_profile])
@@ -344,9 +344,9 @@ class CustomDatasetMethods:
         if compute_profile_normal:
 
             a = [(v in v.data_vars) for v in normal_component_vars.values()]
-            # assert np.alltrue(a)
+            assert np.alltrue(a)
             a = [(v in v.data_vars) for v in normal_component_error_vars.values()]
-            # assert np.alltrue(a)
+            assert np.alltrue(a)
 
             ds.profiles.add_normal_component(
                 x_component=normal_component_vars["x"],

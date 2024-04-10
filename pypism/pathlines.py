@@ -36,16 +36,8 @@ from tqdm import tqdm
 from xarray import DataArray
 
 # from pypism.geom import Point
-from pypism.interpolation import (
-    interpolate_at_point,
-    interpolate_rkf,
-    interpolate_rkf_np,
-    velocity_at_point,
-)
+from pypism.interpolation import interpolate_rkf, interpolate_rkf_np, velocity_at_point
 from pypism.utils import tqdm_joblib
-
-# Need to figure out how to make hooks so we can detect and propagate how we use TQDM
-# https://github.com/benbovy/xarray-simlab/blob/master/xsimlab/monitoring.py
 
 
 def compute_trajectory(
@@ -149,7 +141,7 @@ def compute_pathline(
     dt: float = 0.1,
     total_time: float = 1000,
     reverse: bool = False,
-) -> np.ndarray:
+) -> Tuple[ndarray, ndarray]:
     """
     Compute trajectory
 
@@ -270,7 +262,9 @@ def compute_pathlines(
 
     n_pts = len(pts_gp)
 
-    def compute_pathline(index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse) -> gp.GeoDataFrame:
+    def compute_pathline_gp(
+        index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse
+    ) -> gp.GeoDataFrame:
         pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
         if len(pts.geometry) > 0:
             points = [Point(p) for p in pts.geometry[0].coords]
@@ -290,7 +284,7 @@ def compute_pathlines(
         tqdm(desc="Processing Pathlines", total=n_pts, leave=True, position=0)
     ) as progress_bar:  # pylint: disable=unused-variable
         result = Parallel(n_jobs=n_jobs)(
-            delayed(compute_pathline)(
+            delayed(compute_pathline_gp)(
                 index,
                 pts_gp,
                 Vx,
