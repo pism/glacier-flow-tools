@@ -25,7 +25,6 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 import scipy
-from jax import jit
 from numpy import ndarray
 
 # from pypism.geom import Point
@@ -41,8 +40,8 @@ class InterpolationMatrix:
 
     def __init__(
         self,
-        x: ndarray,
-        y: ndarray,
+        x: Union[list, ndarray],
+        y: Union[list, ndarray],
         px: Union[float, list, ndarray],
         py: Union[float, list, ndarray],
         bilinear: bool = True,
@@ -58,10 +57,10 @@ class InterpolationMatrix:
                 data = np.array(data)
             return data
 
-        px = to_array(px)
-        py = to_array(py)
+        px_arr: ndarray = to_array(px)
+        py_arr: ndarray = to_array(py)
 
-        assert px.size == py.size
+        assert px_arr.size == py_arr.size
 
         # The grid has to be equally spaced.
         assert np.fabs(np.diff(x).max() - np.diff(x).min()) < 1e-9
@@ -73,8 +72,8 @@ class InterpolationMatrix:
         assert dx != 0
         assert dy != 0
 
-        cs = [self.grid_column(x, dx, p_x) for p_x in px]
-        rs = [self.grid_column(y, dy, p_y) for p_y in py]
+        cs = [self.grid_column(x, dx, p_x) for p_x in px_arr]
+        rs = [self.grid_column(y, dy, p_y) for p_y in py_arr]
 
         self.c_min = np.min(cs)
         self.c_max = min(np.max(cs) + 1, len(x) - 1)
@@ -86,11 +85,11 @@ class InterpolationMatrix:
         self.n_rows = self.r_max - self.r_min + 1
         self.n_cols = self.c_max - self.c_min + 1
 
-        n_points = len(px)
+        n_points = len(px_arr)
         self.A = scipy.sparse.lil_matrix((n_points, self.n_rows * self.n_cols))
 
         if bilinear:
-            self._compute_bilinear_matrix(x, y, dx, dy, px, py)
+            self._compute_bilinear_matrix(x, y, dx, dy, px_arr, py_arr)
         else:
             raise NotImplementedError
 
@@ -226,10 +225,10 @@ class InterpolationMatrix:
 
 
 def interpolate_rkf(
-    Vx: Union[ndarray, DataArray],
-    Vy: Union[ndarray, DataArray],
-    x: Union[ndarray, DataArray],
-    y: Union[ndarray, DataArray],
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
     start_pt: Point,
     delta_time: float = 0.1,
 ) -> Tuple[Optional[Point], Optional[float]]:
@@ -374,155 +373,141 @@ def interpolate_rkf(
     return interp_pt, interp_pt_error_estim
 
 
-# def interpolate_rkf_np(
-#     Vx: ndarray,
-#     Vy: ndarray,
-#     x: ndarray,
-#     y: ndarray,
-#     start_pt: Union[list, ndarray],
-#     delta_time: float = 0.1,
-# ) -> Tuple[Optional[Point], Optional[float]]:
-#     """
-#     Interpolate point-like object position according to the Runge-Kutta-Fehlberg method.
+def interpolate_rkf_np(
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
+    start_pt: Union[list, ndarray],
+    delta_time: float = 0.1,
+) -> Tuple[Union[list, ndarray], float]:
+    """
+    Interpolate point-like object position according to the Runge-Kutta-Fehlberg method.
 
-#     :param geoarray: the flow field expressed as a GeoArray.
-#     :type geoarray: GeoArray.
-#     :param delta_time: the flow field expressed as a GeoArray.
-#     :type delta_time: GeoArray.
-#     :param start_pt: the initial point.
-#     :type start_pt: Point.
-#     :return: the estimated point-like object position at the incremented time, with the estimation error.
-#     :rtype: tuple of optional point and optional float.
+    :param geoarray: the flow field expressed as a GeoArray.
+    :type geoarray: GeoArray.
+    :param delta_time: the flow field expressed as a GeoArray.
+    :type delta_time: GeoArray.
+    :param start_pt: the initial point.
+    :type start_pt: Point.
+    :return: the estimated point-like object position at the incremented time, with the estimation error.
+    :rtype: tuple of optional point and optional float.
 
-#     Examples:
-#     """
+    Examples:
+    """
 
-#     if (start_x is np.nan) or (start_y is np.nan):
-#         return None, None
+    def k2(p, k1_v):
+        return p + (0.25) * delta_time * k1_v
 
-#     k1_v = interpolate_at_point(Vx, Vy, x, y, start_x, start_y)
+    def k3(p, k1_v, k2_v):
+        return p + (3.0 / 32.0) * delta_time * k1_v + (9.0 / 32.0) * delta_time * k2_v
 
-#     if k1_vx is None or k1_vy is None:
-#         return None, None
+    def k4(p, k1_v, k2_v, k3_v):
+        return p + (1932.0 / 2197.0) * delta_time * k1_v
+        -(7200.0 / 2197.0) * delta_time * k2_v
+        +(7296.0 / 2197.0) * delta_time * k3_v
 
-#     def k2(p, k1_v):
-#         return p + (0.25) * delta_time * k1_v
+    def k5(p, k1_v, k2_v, k3_v, k4_v):
+        return p
+        +(439.0 / 216.0) * delta_time * k1_v
+        -(8.0) * delta_time * k2_v
+        +(3680.0 / 513.0) * delta_time * k3_v
+        -(845.0 / 4104.0) * delta_time * k4_v
 
-#     k2_pt = k2_v(start_p, k1_v)
+    def k6(p, k1_v, k2_v, k3_v, k4_v, k5_v):
+        return p
+        -(8.0 / 27.0) * delta_time * k1_v
+        +(2.0) * delta_time * k2_v
+        -(3544.0 / 2565.0) * delta_time * k3_v
+        +(1859.0 / 4104.0) * delta_time * k4_v
+        -(11.0 / 40.0) * delta_time * k5_v
 
-#     k2_vx, k2_vy = interpolate_at_point(Vx, Vy, x, y, k2_x, k2_y)
+    def rkf_4o(p, k1_v, k3_v, k4_v, k5_v):
+        return p + delta_time * (
+            (25.0 / 216.0) * k1_v + (1408.0 / 2565.0) * k3_v + (2197.0 / 4104.0) * k4_v - (1.0 / 5.0) * k5_v
+        )
 
-#     if k2_vx is None or k2_vy is None:
-#         return None, None
+    def interp(p, k1_v, k3_v, k4_v, k5_v, k6_v):
+        return p + delta_time * (
+            (16.0 / 135.0) * k1_v
+            + (6656.0 / 12825.0) * k3_v
+            + (28561.0 / 56430.0) * k4_v
+            - (9.0 / 50.0) * k5_v
+            + (2.0 / 55.0) * k6_v
+        )
 
-#     def k3_v(p, k1_v, k2_v):
-#         return p + (3.0 / 32.0) * delta_time * k1_v + (9.0 / 32.0) * delta_time * k2_v
+    if np.any(np.isnan(start_pt)):
+        return start_pt, np.nan
 
-#     k3_x = k3_v(k2_x, k1_vx, k2_vx)
-#     k3_y = k3_v(k2_y, k1_vy, k2_vy)
-#     k3_pt = Point(
-#         start_pt.x + (3.0 / 32.0) * delta_time * k1_vx + (9.0 / 32.0) * delta_time * k2_vx,
-#         start_pt.y + (3.0 / 32.0) * delta_time * k1_vy + (9.0 / 32.0) * delta_time * k2_vy,
-#     )
+    k1_v = interpolate_at_point(Vx, Vy, x, y, *start_pt)
 
-#     if k3_pt.is_empty:
-#         return None, None
+    if np.any(np.isnan(k1_v)):
+        return k1_v, np.nan
 
-#     k3_vx, k3_vy = interpolate_at_point(Vx, Vy, x, y, k3_pt)
+    k2_pt = k2(start_pt, k1_v)
 
-#     if k3_vx is None or k3_vy is None:
-#         return None, None
+    if np.any(np.isnan(k2_pt)):
+        return k2_pt, np.nan
 
-#     k4_pt = Point(
-#         start_pt.x
-#         + (1932.0 / 2197.0) * delta_time * k1_vx
-#         - (7200.0 / 2197.0) * delta_time * k2_vx
-#         + (7296.0 / 2197.0) * delta_time * k3_vx,
-#         start_pt.y
-#         + (1932.0 / 2197.0) * delta_time * k1_vy
-#         - (7200.0 / 2197.0) * delta_time * k2_vy
-#         + (7296.0 / 2197.0) * delta_time * k3_vy,
-#     )
+    k2_v = interpolate_at_point(Vx, Vy, x, y, *k2_pt)
 
-#     if k4_pt.is_empty:
-#         return None, None
+    if np.any(np.isnan(k2_v)):
+        return k2_v
 
-#     k4_vx, k4_vy = interpolate_at_point(Vx, Vy, x, y, k4_pt)
+    k3_pt = k3(start_pt, k1_v, k2_v)
 
-#     if k4_vx is None or k4_vy is None:
-#         return None, None
+    if np.any(np.isnan(k3_pt)):
+        return k3_pt, np.nan
 
-#     k5_pt = Point(
-#         start_pt.x
-#         + (439.0 / 216.0) * delta_time * k1_vx
-#         - (8.0) * delta_time * k2_vx
-#         + (3680.0 / 513.0) * delta_time * k3_vx
-#         - (845.0 / 4104.0) * delta_time * k4_vx,
-#         start_pt.y
-#         + (439.0 / 216.0) * delta_time * k1_vy
-#         - (8.0) * delta_time * k2_vy
-#         + (3680.0 / 513.0) * delta_time * k3_vy
-#         - (845.0 / 4104.0) * delta_time * k4_vy,
-#     )
+    k3_v = interpolate_at_point(Vx, Vy, x, y, *k3_pt)
 
-#     if k5_pt.is_empty:
-#         return None, None
+    if np.any(np.isnan(k3_v)):
+        return k3_v
 
-#     k5_vx, k5_vy = interpolate_at_point(Vx, Vy, x, y, k5_pt)
+    k4_pt = k4(start_pt, k1_v, k2_v, k3_v)
 
-#     if k5_vx is None or k5_vy is None:
-#         return None, None
+    if np.any(np.isnan(k4_pt)):
+        return k4_pt, np.nan
 
-#     k6_pt = Point(
-#         start_pt.x
-#         - (8.0 / 27.0) * delta_time * k1_vx
-#         + (2.0) * delta_time * k2_vx
-#         - (3544.0 / 2565.0) * delta_time * k3_vx
-#         + (1859.0 / 4104.0) * delta_time * k4_vx
-#         - (11.0 / 40.0) * delta_time * k5_vx,
-#         start_pt.y
-#         - (8.0 / 27.0) * delta_time * k1_vy
-#         + (2.0) * delta_time * k2_vy
-#         - (3544.0 / 2565.0) * delta_time * k3_vy
-#         + (1859.0 / 4104.0) * delta_time * k4_vy
-#         - (11.0 / 40.0) * delta_time * k5_vy,
-#     )
+    k4_v = interpolate_at_point(Vx, Vy, x, y, *k4_pt)
 
-#     if k6_pt.is_empty:
-#         return None, None
+    if np.any(np.isnan(k4_v)):
+        return k4_v
 
-#     k6_vx, k6_vy = interpolate_at_point(Vx, Vy, x, y, k6_pt)
+    k5_pt = k5(start_pt, k1_v, k2_v, k3_v, k4_v)
 
-#     if k6_vx is None or k6_vy is None:
-#         return None, None
+    if np.any(np.isnan(k5_pt)):
+        return k5_pt, np.nan
 
-#     rkf_4o_x = start_pt.x + delta_time * (
-#         (25.0 / 216.0) * k1_vx + (1408.0 / 2565.0) * k3_vx + (2197.0 / 4104.0) * k4_vx - (1.0 / 5.0) * k5_vx
-#     )
-#     rkf_4o_y = start_pt.y + delta_time * (
-#         (25.0 / 216.0) * k1_vy + (1408.0 / 2565.0) * k3_vy + (2197.0 / 4104.0) * k4_vy - (1.0 / 5.0) * k5_vy
-#     )
-#     temp_pt = Point(rkf_4o_x, rkf_4o_y)
+    k5_v = interpolate_at_point(Vx, Vy, x, y, *k5_pt)
 
-#     interp_x = start_pt.x + delta_time * (
-#         (16.0 / 135.0) * k1_vx
-#         + (6656.0 / 12825.0) * k3_vx
-#         + (28561.0 / 56430.0) * k4_vx
-#         - (9.0 / 50.0) * k5_vx
-#         + (2.0 / 55.0) * k6_vx
-#     )
-#     interp_y = start_pt.y + delta_time * (
-#         (16.0 / 135.0) * k1_vy
-#         + (6656.0 / 12825.0) * k3_vy
-#         + (28561.0 / 56430.0) * k4_vy
-#         - (9.0 / 50.0) * k5_vy
-#         + (2.0 / 55.0) * k6_vy
-#     )
-#     interp_pt = Point(interp_x, interp_y)
+    if np.any(np.isnan(k5_v)):
+        return k5_v
 
-#     interp_pt_error_estim = interp_pt.distance(temp_pt)
+    k6_pt = k6(start_pt, k1_v, k2_v, k3_v, k4_v, k5_v)
 
-#     return interp_pt, interp_pt_error_estim
+    if np.any(np.isnan(k6_pt)):
+        return k6_pt, np.nan
+
+    k6_v = interpolate_at_point(Vx, Vy, x, y, *k6_pt)
+
+    if np.any(np.isnan(k6_v)):
+        return k6_v
+
+    rkf_4o_pt = rkf_4o(start_pt, k1_v, k3_v, k4_v, k5_v)
+
+    interp_pt = interp(start_pt, k1_v, k3_v, k4_v, k5_v, k6_v)
+
+    interp_pt_error_estim = distance(interp_pt, rkf_4o_pt)
+
+    return interp_pt, interp_pt_error_estim
+
+
+def distance(p, other):
+    """
+    Return distance to other point
+    """
+    return np.sqrt((p[0] - other[0]) ** 2 + (p[1] - other[1]) ** 2)
 
 
 def velocity_at_point(
@@ -560,7 +545,7 @@ def interpolate_at_point(
     y: ndarray,
     px: ndarray,
     py: ndarray,
-) -> Tuple:
+) -> ndarray:
     """
     Return velocity at Point px,py using bilinear interpolation
     """
@@ -568,4 +553,4 @@ def interpolate_at_point(
     A = InterpolationMatrix(x, y, px, py)
     vx = A.apply(Vx)
     vy = A.apply(Vy)
-    return vx, vy
+    return np.array([vx.item(), vy.item()])

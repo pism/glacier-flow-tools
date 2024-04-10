@@ -40,8 +40,8 @@ def test_masked_interpolation():
     z[0, 0] = np.nan
     z = np.ma.array(z, mask=[[True, False, False], [False, False, False]])
     # sample in the middle
-    px = [0.5]
-    py = [0.5]
+    px = 0.5
+    py = 0.5
 
     A = InterpolationMatrix(x, y, px, py)
 

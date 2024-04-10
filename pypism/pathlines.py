@@ -36,7 +36,12 @@ from tqdm import tqdm
 from xarray import DataArray
 
 # from pypism.geom import Point
-from pypism.interpolation import interpolate_rkf, velocity_at_point
+from pypism.interpolation import (
+    interpolate_at_point,
+    interpolate_rkf,
+    interpolate_rkf_np,
+    velocity_at_point,
+)
 from pypism.utils import tqdm_joblib
 
 # Need to figure out how to make hooks so we can detect and propagate how we use TQDM
@@ -45,10 +50,10 @@ from pypism.utils import tqdm_joblib
 
 def compute_trajectory(
     point: Point,
-    Vx: Union[ndarray, DataArray],
-    Vy: Union[ndarray, DataArray],
-    x: Union[ndarray, DataArray],
-    y: Union[ndarray, DataArray],
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
     dt: float = 0.1,
     total_time: float = 1000,
     reverse: bool = False,
@@ -135,6 +140,105 @@ def compute_trajectory(
     return pts, pts_error_estim
 
 
+def compute_pathline(
+    point: Union[list, ndarray],
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
+    dt: float = 0.1,
+    total_time: float = 1000,
+    reverse: bool = False,
+) -> np.ndarray:
+    """
+    Compute trajectory
+
+    Computes a trajectory using Runge-Kutta-Fehlberg integration. Routine is
+    unit-agnostic, requiring the user to ensure consistency of units. For example
+    if the velocity field is given in m/yr, the `dt` and `total_time` are assumed
+    to be in years.
+
+    Parameters
+    ----------
+    Point : shapely.Point
+        Starting point of the trajectory
+    Vx : numpy.ndarray or xarray.DataArray
+        x-component of velocity
+    Vy : numpy.ndarray or xarray.DataArray
+        y-component of velocity
+    x : numpy.ndarray or xarray.DataArray
+        coordinates in x direction
+    y : numpy.ndarray or xarray.DataArray
+        coordinates in y direction
+    dt : float
+        integration time step
+    total_time : float
+        total integration time
+
+    Returns
+    ----------
+    pts: np.ndarray
+        `dt`-spaced points along trajectory from 0 to `total_time`.
+    pts_error_estim: np.ndarray
+        error estimate at `dt`-spaced points along trajectory
+        from 0 to `total_time`.
+
+    Examples
+    ----------
+
+    Create data:
+
+    >>>    import numpy as np
+    >>>    from pypism.geom import Point
+
+    >>>    nx = 201
+    >>>    ny = 401
+    >>>    x = np.linspace(-100e3, 100e3, nx)
+    >>>    y = np.linspace(-100e3, 100e3, ny)
+    >>>    X, Y = np.meshgrid(x, y)
+
+    >>>    vx = -Y / np.sqrt(X**2 + Y**2) * 250
+    >>>    vy = X / np.sqrt(X**2 + Y**2) * 250
+    >>>    p = Point(0, -50000)
+
+    >>>    pts, pts_error_estim = compute_trajectory(p, vx, vx, x, y, dt=1, total_time=10)
+    >>>    pts
+    [<POINT (0 -50000)>,
+     <POINT (249.994 -49750.006)>,
+     <POINT (499.975 -49500.025)>,
+     <POINT (749.943 -49250.057)>,
+     <POINT (999.897 -49000.103)>,
+     <POINT (1249.825 -48750.175)>,
+     <POINT (1499.713 -48500.287)>,
+     <POINT (1749.56 -48250.44)>,
+     <POINT (1999.364 -48000.636)>,
+     <POINT (2249.113 -47750.887)>,
+     <POINT (2498.79 -47501.21)>,
+     <POINT (2748.394 -47251.606)>]
+    """
+    if reverse:
+        Vx = -Vx
+        Vy = -Vy
+
+    nt = int(total_time / dt) + 2
+    pts = np.zeros((nt, 2))
+    pts_error_estim = np.zeros((nt, 1))
+    pts[0, :] = point
+    pts_error_estim[0] = 0.0
+    time = 0.0
+    k = 0
+    while abs(time) <= (total_time):
+        k += 1
+        point, point_error_estim = interpolate_rkf_np(Vx, Vy, x, y, point, delta_time=dt)
+
+        if np.any(np.isnan(point)) or np.any(np.isnan(point_error_estim)):
+            break
+        pts[k, :] = point
+        pts_error_estim[k] = point_error_estim
+        time += dt
+    return pts, pts_error_estim
+
+
 def compute_pathlines(
     data_url: Union[str, Path],
     ogr_url: Union[str, Path],
@@ -201,69 +305,6 @@ def compute_pathlines(
         )
         results = pd.concat(result).reset_index(drop=True)
         return results
-
-
-def compute_perturbation(
-    data_url: Union[str, Path],
-    ogr_url: Union[str, Path],
-    perturbation: int = 0,
-    pl_exp: float = 1.0,
-    sigma: float = 1,
-    total_time: float = 10_000,
-    dt: float = 1,
-    reverse: bool = False,
-    crs: str = "EPSG:3413",
-) -> GeoDataFrame:
-    """
-    Compute a perturbed pathlines.
-
-
-    Parameters
-    ----------
-    url : string or pathlib.Path
-        Path to an ogr data set
-
-    Examples
-    --------
-
-
-
-    """
-
-    ds = xr.open_dataset(data_url, decode_times=False)
-
-    VX = np.squeeze(ds["vx"].to_numpy())
-    VY = np.squeeze(ds["vy"].to_numpy())
-    VX_e = np.squeeze(ds["vx_err"].fillna(0).to_numpy())
-    VY_e = np.squeeze(ds["vy_err"].fillna(0).to_numpy())
-    VX_e = np.where(VX_e < 0, 0, VX_e)
-    VY_e = np.where(VY_e < 0, 0, VY_e)
-    x = ds["x"].to_numpy()
-    y = ds["y"].to_numpy()
-
-    Vx, Vy = get_grf_perturbed_velocities(VX, VY, VX_e, VY_e, pl_exp, perturbation, sigma=sigma)
-
-    pts_gp = gp.read_file(ogr_url).to_crs(crs).reset_index(drop=True)
-
-    all_glaciers = []
-    with tqdm(enumerate(pts_gp), total=len(pts_gp), leave=False) as pbar:
-        for index, _ in pbar:
-            pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
-            if len(pts.geometry) > 0:
-                points = [Point(p) for p in pts.geometry[0].coords]
-                attrs = pts.to_dict()
-                attrs = {key: value[0] for key, value in attrs.items() if isinstance(value, dict)}
-                attrs["perturbation"] = perturbation
-                glacier_name = attrs["name"]
-                pbar.set_description(f"""Processing {glacier_name}""")
-                pathlines = []
-                for p in points:
-                    pathline, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
-                    pathlines.append(pathline)
-                df = pathlines_to_geopandas(pathlines, Vx, Vy, x, y, attrs=attrs)
-                all_glaciers.append(df)
-                pbar.refresh()
-    return pd.concat(all_glaciers)
 
 
 def get_perturbed_velocities(
@@ -371,10 +412,10 @@ def generate_field(
 
 def pathlines_to_geopandas(
     pathlines: list,
-    Vx: Union[ndarray, DataArray],
-    Vy: Union[ndarray, DataArray],
-    x: Union[ndarray, DataArray],
-    y: Union[ndarray, DataArray],
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
     attrs: dict = {},
 ) -> gp.GeoDataFrame:
     """Convert pathlines to GeoDataFrame"""

@@ -29,7 +29,7 @@ from numpy.testing import assert_array_almost_equal
 # from pypism.geom import Point
 from shapely import Point
 
-from pypism.pathlines import compute_trajectory
+from pypism.pathlines import compute_pathline, compute_trajectory
 
 np.seterr(divide="ignore", invalid="ignore")
 
@@ -175,3 +175,28 @@ def test_linear_flow(create_linear_flow):
     pts, _ = compute_trajectory(starting_point, Vx, Vy, x, y, total_time=total_time, dt=dt)
 
     assert_array_almost_equal([pts[-1].x, pts[-1].y], [r_exact.x, r_exact.y], decimal=4)
+
+
+def test_linear_flow_np(create_linear_flow):
+    """
+    Test linear flow
+
+    """
+    ds = create_linear_flow
+
+    def exact_solution(x0, t):
+        return x0 * np.exp([t, -t])
+
+    Vx = np.squeeze(ds["vx"].to_numpy())
+    Vy = np.squeeze(ds["vy"].to_numpy())
+    x = ds["x"].to_numpy()
+    y = ds["y"].to_numpy()
+    total_time = 1
+    starting_point = [0.05, 0.95]
+
+    r_exact = exact_solution(starting_point, total_time)
+
+    dt = 0.0001
+    pts, _ = compute_pathline(starting_point, Vx, Vy, x, y, total_time=total_time, dt=dt)
+
+    assert_array_almost_equal(pts[-1, :], *r_exact)
