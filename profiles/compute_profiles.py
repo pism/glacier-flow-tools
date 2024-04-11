@@ -61,7 +61,6 @@ def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: fl
     """
     Plot a profile dataset created with ds.profiles.extract_profile
     """
-    from pypism.profiles import CustomDatasetMethods
 
     fig = ds.profiles.plot(palette="Greens", sigma=sigma, alpha=alpha)
     profile_name = ds["profile_name"].values[0]
@@ -83,7 +82,6 @@ def plot_glacier(
     """
     Plot a surface over a hillshade, add profile and correlation coeffient.
     """
-    from pypism.profiles import CustomDatasetMethods
 
     def get_extent(ds: xr.DataArray):
         return [ds["x"].values[0], ds["x"].values[-1], ds["y"].values[-1], ds["y"].values[0]]
@@ -137,7 +135,7 @@ def plot_glacier(
         color="k",
     )
 
-    ax.set_extent(extent, crs=crs)
+    ax.set_extent(extent, crs=cartopy_crs)
     fig.colorbar(im, ax=ax, shrink=0.5, pad=0.025, label=overlay.units, extend="max", ticks=ticks)
     fig.colorbar(
         corr, ax=ax, shrink=0.5, pad=0.025, label="Pearson $r$ (1)", orientation="horizontal", location="bottom"
@@ -185,9 +183,9 @@ if __name__ == "__main__":
     options = parser.parse_args()
     profile_result_dir = Path(options.result_dir)
     profile_result_dir.mkdir(parents=True, exist_ok=True)
-    alpha = options.alpha
+    obs_scale_alpha = options.alpha
     crs = options.crs
-    sigma = options.sigma
+    obs_sigma = options.sigma
     profile_resolution = options.segmentize
 
     profiles_path = Path(options.profiles_url)
@@ -216,7 +214,7 @@ if __name__ == "__main__":
     )
 
     qgis_colormap = Path("../data/speed-colorblind.txt")
-    cmap = qgis2cmap(qgis_colormap, name="speeds")
+    overlay_cmap = qgis2cmap(qgis_colormap, name="speeds")
 
     stats: List[str] = ["rmsd", "pearson_r"]
 
@@ -229,8 +227,8 @@ if __name__ == "__main__":
     velocity_ds_scattered = client.scatter(velocity_ds)
     exp_ds_scattered = client.scatter(exp_ds)
     futures = []
-    for _, profile in profiles_gp.iterrows():
-        future = client.submit(process_profile, profile, velocity_ds_scattered, exp_ds_scattered, stats=stats)
+    for _, p in profiles_gp.iterrows():
+        future = client.submit(process_profile, p, velocity_ds_scattered, exp_ds_scattered, stats=stats)
         futures.append(future)
 
     futures_computed = client.compute(futures)
@@ -280,28 +278,28 @@ if __name__ == "__main__":
     print(f"Time elapsed {time_elapsed:.0f}s")
 
     gris_ds = xr.open_dataset(Path("/Users/andy/Google Drive/My Drive/data/MCdataset/BedMachineGreenland-v5.nc"))
-    glacier_surface = gris_ds["surface"]
-    glacier_overlay = velocity_ds["v"].where(velocity_ds["ice"])
+    surface_da = gris_ds["surface"]
+    overlay_da = velocity_ds["v"].where(velocity_ds["ice"])
 
     start = time.time()
     # print("hi")
     # for k, s in enumerate(stats_profiles.iterrows()):
     #     profile = stats_profiles[stats_profiles.index == k]
     #     plot_glacier(stats_profiles[stats_profiles.index == k],
-    #             glacier_surface,
-    #             glacier_overlay,
+    #             surface_da,
+    #             overlay_da,
     #             profile_result_dir,
-    #             cmap=cmap,
+    #             cmap=overlay_cmap,
     #         )
 
     with tqdm_joblib(tqdm(desc="Plotting glaciers", total=len(stats_profiles))) as progress_bar:
         Parallel(n_jobs=n_jobs)(
             delayed(plot_glacier)(
                 stats_profiles[stats_profiles.index == k],
-                glacier_surface,
-                glacier_overlay,
+                surface_da,
+                overlay_da,
                 profile_result_dir,
-                cmap=cmap,
+                cmap=overlay_cmap,
             )
             for k, _ in enumerate(stats_profiles.iterrows())
         )
@@ -310,7 +308,8 @@ if __name__ == "__main__":
 
     with tqdm_joblib(tqdm(desc="Plotting profiles", total=len(profiles_gp))) as progress_bar:
         Parallel(n_jobs=n_jobs)(
-            delayed(plot_profile)(ds, profile_result_dir, alpha=alpha, sigma=sigma) for ds in obs_sims_profiles
+            delayed(plot_profile)(ds, profile_result_dir, alpha=obs_scale_alpha, sigma=obs_sigma)
+            for ds in obs_sims_profiles
         )
 
     client.close()

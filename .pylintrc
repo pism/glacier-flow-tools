@@ -3,4 +3,4 @@ jobs=4 #number of processes to use
 [BASIC]
 good-names=nameOfYourProject #names to be considered ok
 [pre-commit-hook]
-disable=E0401, C0301, C0103, R0903, R0913, R0914, W0102, E1126, C0302, R0911, R1705, W0702, R0912, R0915
+disable=bare-except, import-outside-toplevel, too-many-return-statements, line-too-long, invalid-name, too-many-arguments, dangerous-default-value, too-many-locals

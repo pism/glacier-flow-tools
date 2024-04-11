@@ -181,7 +181,7 @@ def compute_pathline(
     Create data:
 
     >>>    import numpy as np
-    >>>    from pypism.geom import Point
+    >>>    from shapely import Point
 
     >>>    nx = 201
     >>>    ny = 401
@@ -433,3 +433,95 @@ def pathlines_to_geopandas(
         df = gp.GeoDataFrame.from_dict(pathline_data, geometry=pathline, crs="EPSG:3413")
         dfs.append(df)
     return pd.concat(dfs).reset_index(drop=True)
+
+
+def pathline_to_geopandas_dataframe(
+    points: Union[list[Point], np.ndarray], attrs: Union[dict, None] = None, crs="EPSG:3413"
+) -> gp.GeoDataFrame:
+    """
+    Convert a list of shapely.Point or np.ndarray to a geopandas.GeoDataFrame
+    Compute trajectory
+
+    Computes a trajectory using Runge-Kutta-Fehlberg integration. Routine is
+    unit-agnostic, requiring the user to ensure consistency of units. For example
+    if the velocity field is given in m/yr, the `dt` and `total_time` are assumed
+    to be in years.
+
+    Parameters
+    ----------
+    points : list[shapely.Point] or np.ndarray
+        Points along pathlines
+    attributes : dict
+        Dictionary of attributes to be added. E.g. {"pathline_id": 0}
+    crs : str
+        Coordinate reference system, e.g. "EPSG:3413:
+
+    Returns
+    ----------
+    df: gp.GeoDataFrame
+        Geopandas dataframe of pathline
+
+    Examples
+    ----------
+
+    Create data:
+
+    >>>    import numpy as np
+
+    >>>    nx = 201
+    >>>    ny = 401
+    >>>    x = np.linspace(-100e3, 100e3, nx)
+    >>>    y = np.linspace(-100e3, 100e3, ny)
+    >>>    X, Y = np.meshgrid(x, y)
+
+    >>>    vx = -Y / np.sqrt(X**2 + Y**2) * 250
+    >>>    vy = X / np.sqrt(X**2 + Y**2) * 250
+    >>>    p = [0, -50000
+
+    Compute pathline:
+
+    >>>    pts, _ = compute_pathline(p, vx, vx, x, y, dt=1, total_time=10)
+
+    Convert to geopandas.GeoDataFrame:
+
+    >>>    pathline_to_geopandas_dataframe(pts)
+
+    Convert to geopandas.GeoDataFrame, add attributes:
+
+    >>>    attributes = {"pathline_id": 0}
+    >>>    pl = pathline_to_geopandas_dataframe(pts, attributes)
+    >>>    pl.to_dict()
+    >>>        {'geometry': {0: <POINT (0 -50000)>,
+    >>>      1: <POINT (249.994 -49750.006)>,
+    >>>      2: <POINT (499.975 -49500.025)>,
+    >>>      3: <POINT (749.943 -49250.057)>,
+    >>>      4: <POINT (999.897 -49000.103)>,
+    >>>      5: <POINT (1249.825 -48750.175)>,
+    >>>      6: <POINT (1499.713 -48500.287)>,
+    >>>      7: <POINT (1749.56 -48250.44)>,
+    >>>      8: <POINT (1999.364 -48000.636)>,
+    >>>      9: <POINT (2249.113 -47750.887)>,
+    >>>      10: <POINT (2498.79 -47501.21)>,
+    >>>      11: <POINT (2748.394 -47251.606)>},
+    >>>     'pathline_no': {0: 0,
+    >>>      1: 0,
+    >>>      2: 0,
+    >>>      3: 0,
+    >>>      4: 0,
+    >>>      5: 0,
+    >>>      6: 0,
+    >>>      7: 0,
+    >>>      8: 0,
+    >>>      9: 0,
+    >>>      10: 0,
+    >>>      11: 0}}
+    """
+    if isinstance(points, np.ndarray):
+        geom = [Point(pt) for pt in points]
+    else:
+        geom = points
+    pathline_dict = {"geometry": geom}
+
+    if attrs is not None:
+        pathline_dict.update(attrs)
+    return gp.GeoDataFrame.from_dict(pathline_dict, crs=crs)

@@ -80,7 +80,8 @@ exclude = '''
 disable = """
     too-many-lines,
     no-else-return,
-    bare-except
+    bare-except,
+    import-outside-toplevel
 """
 
 [tool.pylint.format]

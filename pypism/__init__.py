@@ -2,6 +2,4 @@
 Main init
 """
 
-name = "pypism"
-
-__all__ = ["interpolation", "geom", "utils", "pathlines", "profiles"]
+__all__ = ["interpolation", "utils", "pathlines", "profiles"]
