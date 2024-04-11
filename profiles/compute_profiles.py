@@ -30,7 +30,6 @@ import dask_geopandas
 import fsspec
 import geopandas as gp
 import numpy as np
-import pandas as pd
 import pylab as plt
 import xarray as xr
 from dask import dataframe as dd
@@ -40,18 +39,14 @@ from matplotlib import cm, colors
 from matplotlib.colors import LightSource
 from tqdm.auto import tqdm
 
-from pypism import profiles
-from pypism.hillshade import hillshade
 from pypism.profiles import process_profile
-from pypism.utils import blend_multiply, preprocess_nc, qgis2cmap, tqdm_joblib
-
-
-def merge_on_intersection(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """
-    Merge two pd.DataFrame on interection keys
-    """
-    intersection_keys = list(set(df1.columns) & set(df2.columns))
-    return dd.merge(df1, df2, on=intersection_keys)
+from pypism.utils import (
+    blend_multiply,
+    merge_on_intersection,
+    preprocess_nc,
+    qgis2cmap,
+    tqdm_joblib,
+)
 
 
 def figure_extent(x_c: float, y_c: float, x_e: float = 50_000, y_e: float = 50_000):
@@ -99,7 +94,7 @@ def plot_glacier(
     x_c = round(profile_centroid.geometry.x.values[0])
     y_c = round(profile_centroid.geometry.y.values[0])
     extent_slice = figure_extent(x_c, y_c)
-    crs = ccrs.NorthPolarStereo(central_longitude=-45, true_scale_latitude=70, globe=None)
+    cartopy_crs = ccrs.NorthPolarStereo(central_longitude=-45, true_scale_latitude=70, globe=None)
     # Shade from the northwest, with the sun 45 degrees from horizontal
     light_source = LightSource(azdeg=315, altdeg=45)
     glacier_overlay = overlay.sel(**extent_slice)
@@ -112,7 +107,7 @@ def plot_glacier(
     v = mapper.to_rgba(glacier_overlay.to_numpy())
     z = glacier_surface.to_numpy()
     fig = plt.figure(figsize=(6.2, 6.2))
-    ax = fig.add_subplot(111, projection=crs)
+    ax = fig.add_subplot(111, projection=cartopy_crs)
     rgb = light_source.shade_rgb(v, elevation=z, vert_exag=0.01, blend_mode=blend_multiply)
     # Use a proxy artist for the colorbar...
     im = ax.imshow(v, cmap=cmap, vmin=vmin, vmax=vmax)
@@ -124,7 +119,7 @@ def plot_glacier(
         cmap="RdYlGn",
     )
     corr.remove()
-    ax.imshow(rgb, extent=extent, origin="upper", transform=crs)
+    ax.imshow(rgb, extent=extent, origin="upper", transform=cartopy_crs)
     profile.plot(ax=ax, color="k", lw=1)
     profile_centroid.plot(
         column="pearson_r", vmin=0, vmax=1, cmap="RdYlGn", markersize=50, legend=False, missing_kwds={}, ax=ax
@@ -188,8 +183,8 @@ if __name__ == "__main__":
     parser.add_argument("--profiles_url", help="""Path to profiles.""", default=None, type=str)
 
     options = parser.parse_args()
-    result_dir = Path(options.result_dir)
-    result_dir.mkdir(parents=True, exist_ok=True)
+    profile_result_dir = Path(options.result_dir)
+    profile_result_dir.mkdir(parents=True, exist_ok=True)
     alpha = options.alpha
     crs = options.crs
     sigma = options.sigma
@@ -250,59 +245,72 @@ if __name__ == "__main__":
         gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=n_partitions
     )
 
-    # def concat(profiles, obs_sims_profiles):
-    #    return dd.concat(
-    #        [merge_on_intersection(profiles, p.mean(["profile_axis"], skipna=True).to_dask_dataframe()) for p in obs_sims_profiles]
-    #     )
+    def concat(profiles_df, profiles_ds):
+        """
+        Concatenate a merged profiles
+        """
+        return dd.concat(
+            [
+                merge_on_intersection(profiles_df, p.mean(["profile_axis"], skipna=True).to_dask_dataframe())
+                for p in profiles_ds
+            ]
+        )
 
-    # print("Merging dataframes")
-    # start = time.time()
-    # stats_profiles = dd.concat(
-    #     [merge_on_intersection(profiles, p.mean(["profile_axis"], skipna=True).to_dask_dataframe()) for p in obs_sims_profiles]
-    # ).compute().reset_index(drop=True)
+    print("Merging dataframes")
+    start = time.time()
+    stats_profiles = (
+        dd.concat(
+            [
+                merge_on_intersection(profiles, p.mean(["profile_axis"], skipna=True).to_dask_dataframe())
+                for p in obs_sims_profiles
+            ]
+        )
+        .compute()
+        .reset_index(drop=True)
+    )
 
-    # # profiles_scattered = client.scatter(profiles)
-    # # obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
-    # # futures = client.submit(concat, profiles_scattered, obs_sims_profiles_scattered)
-    # # progress(futures)
-    # # stats_profiles = client.gather(futures)
-    # # stats_profiles = stats_profiles.compute().reset_index(drop=True)
+    # profiles_scattered = client.scatter(profiles)
+    # obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
+    # futures = client.submit(concat, profiles_scattered, obs_sims_profiles_scattered)
+    # progress(futures)
+    # stats_profiles = client.gather(futures)
+    # stats_profiles = stats_profiles.compute().reset_index(drop=True)
 
-    # time_elapsed = time.time() - start
-    # print(f"Time elapsed {time_elapsed:.0f}s")
+    time_elapsed = time.time() - start
+    print(f"Time elapsed {time_elapsed:.0f}s")
 
-    # gris_ds = xr.open_dataset(Path("/Users/andy/Google Drive/My Drive/data/MCdataset/BedMachineGreenland-v5.nc"))
-    # glacier_surface = gris_ds["surface"]
-    # glacier_overlay = velocity_ds["v"].where(velocity_ds["ice"])
+    gris_ds = xr.open_dataset(Path("/Users/andy/Google Drive/My Drive/data/MCdataset/BedMachineGreenland-v5.nc"))
+    glacier_surface = gris_ds["surface"]
+    glacier_overlay = velocity_ds["v"].where(velocity_ds["ice"])
 
-    # start = time.time()
-    # # print("hi")
-    # # for k, s in enumerate(stats_profiles.iterrows()):
-    # #     profile = stats_profiles[stats_profiles.index == k]
-    # #     plot_glacier(stats_profiles[stats_profiles.index == k],
-    # #             glacier_surface,
-    # #             glacier_overlay,
-    # #             result_dir,
-    # #             cmap=cmap,
-    # #         )
-
-    # with tqdm_joblib(tqdm(desc="Plotting glaciers", total=len(stats_profiles))) as progress_bar:
-    #     Parallel(n_jobs=n_jobs)(
-    #         delayed(plot_glacier)(
-    #             stats_profiles[stats_profiles.index == k],
+    start = time.time()
+    # print("hi")
+    # for k, s in enumerate(stats_profiles.iterrows()):
+    #     profile = stats_profiles[stats_profiles.index == k]
+    #     plot_glacier(stats_profiles[stats_profiles.index == k],
     #             glacier_surface,
     #             glacier_overlay,
-    #             result_dir,
+    #             profile_result_dir,
     #             cmap=cmap,
     #         )
-    #         for k, _ in enumerate(stats_profiles.iterrows())
-    #     )
-    # time_elapsed = time.time() - start
-    # print(f"Time elapsed {time_elapsed:.0f}s")
 
-    # with tqdm_joblib(tqdm(desc="Plotting profiles", total=len(profiles_gp))) as progress_bar:
-    #     Parallel(n_jobs=n_jobs)(
-    #         delayed(plot_profile)(ds, result_dir, alpha=alpha, sigma=sigma) for ds in obs_sims_profiles
-    #     )
+    with tqdm_joblib(tqdm(desc="Plotting glaciers", total=len(stats_profiles))) as progress_bar:
+        Parallel(n_jobs=n_jobs)(
+            delayed(plot_glacier)(
+                stats_profiles[stats_profiles.index == k],
+                glacier_surface,
+                glacier_overlay,
+                profile_result_dir,
+                cmap=cmap,
+            )
+            for k, _ in enumerate(stats_profiles.iterrows())
+        )
+    time_elapsed = time.time() - start
+    print(f"Time elapsed {time_elapsed:.0f}s")
+
+    with tqdm_joblib(tqdm(desc="Plotting profiles", total=len(profiles_gp))) as progress_bar:
+        Parallel(n_jobs=n_jobs)(
+            delayed(plot_profile)(ds, profile_result_dir, alpha=alpha, sigma=sigma) for ds in obs_sims_profiles
+        )
 
     client.close()

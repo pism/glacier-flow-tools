@@ -400,13 +400,21 @@ def interpolate_rkf_np(
         return p + (3.0 / 32.0) * delta_time * k1_v + (9.0 / 32.0) * delta_time * k2_v
 
     def k4(p, k1_v, k2_v, k3_v):
-        return p + (1932.0 / 2197.0) * delta_time * k1_v
-        -(7200.0 / 2197.0) * delta_time * k2_v
-        +(7296.0 / 2197.0) * delta_time * k3_v
+        return (
+            p
+            + (1932.0 / 2197.0) * delta_time * k1_v
+            - (7200.0 / 2197.0) * delta_time * k2_v
+            + (7296.0 / 2197.0) * delta_time * k3_v
+        )
 
     def k5(p, k1_v, k2_v, k3_v, k4_v):
-        return p + (439.0 / 216.0) * delta_time * k1_v - (8.0) * delta_time * k2_v
-        +(3680.0 / 513.0) * delta_time * k3_v - (845.0 / 4104.0) * delta_time * k4_v
+        return (
+            p
+            + (439.0 / 216.0) * delta_time * k1_v
+            - (8.0) * delta_time * k2_v
+            + (3680.0 / 513.0) * delta_time * k3_v
+            - (845.0 / 4104.0) * delta_time * k4_v
+        )
 
     def k6(p, k1_v, k2_v, k3_v, k4_v, k5_v):
         return (

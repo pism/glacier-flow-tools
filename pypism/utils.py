@@ -27,6 +27,7 @@ from typing import List, Union
 
 import joblib
 import numpy as np
+import pandas as pd
 from matplotlib import colors
 
 
@@ -120,3 +121,11 @@ def preprocess_nc(
         m_id = str(m_id_re.group(1))
     ds[dim] = m_id
     return ds.drop_vars(drop_vars, errors="ignore").drop_dims(drop_dims, errors="ignore")
+
+
+def merge_on_intersection(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge two pd.DataFrame on interection keys
+    """
+    intersection_keys = list(set(df1.columns) & set(df2.columns))
+    return pd.merge(df1, df2, on=intersection_keys)

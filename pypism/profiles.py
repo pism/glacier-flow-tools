@@ -18,22 +18,13 @@
 """
 Module provides profile functions
 """
-from typing import List, Tuple, Union
+from typing import List, Union
 
-import geopandas as gp
 import numpy as np
 import pandas as pd
 import pylab as plt
 import seaborn as sns
 import xarray as xr
-
-
-def merge_on_intersection(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """
-    Merge two pd.DataFrame on interection keys
-    """
-    intersection_keys = list(set(df1.columns) & set(df2.columns))
-    return pd.merge(df1, df2, on=intersection_keys)
 
 
 def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
@@ -173,6 +164,8 @@ def process_profile(
         sim_ds,
         profile_name=profile_name,
         profile_id=profile_id,
+        normal_var=sim_normal_var,
+        normal_component_vars=sim_normal_component_vars,
         compute_profile_normal=compute_profile_normal,
     )
 
@@ -344,9 +337,9 @@ class CustomDatasetMethods:
         if compute_profile_normal:
 
             a = [(v in v.data_vars) for v in normal_component_vars.values()]
-            assert np.alltrue(a)
+            assert np.alltrue(np.array(a))  # type: ignore[attr-defined]
             a = [(v in v.data_vars) for v in normal_component_error_vars.values()]
-            assert np.alltrue(a)
+            assert np.alltrue(np.array(a))  # type: ignore[attr-defined]
 
             ds.profiles.add_normal_component(
                 x_component=normal_component_vars["x"],
