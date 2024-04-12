@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Andy Aschwanden, Constantine Khroulev
+# Copyright (C) 2023-24 Andy Aschwanden, Constantine Khroulev
 #
 # This file is part of pypism.
 #
@@ -7,7 +7,7 @@
 # Foundation; either version 3 of the License, or (at your option) any later
 # version.
 #
-# PISM-RAGIS is distributed in the hope that it will be useful, but WITHOUT ANY
+# PYPISM is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details.
@@ -22,7 +22,7 @@ Module provides functions for calculating pathlines (trajectories)
 
 
 from pathlib import Path
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Tuple, Union
 
 import geopandas as gp
 import numpy as np
@@ -35,7 +35,7 @@ from shapely import Point
 from tqdm import tqdm
 from xarray import DataArray
 
-# from pypism.geom import Point
+from pypism.gaussian_random_fields import distrib_normal, generate_field, power_spectrum
 from pypism.interpolation import interpolate_rkf, interpolate_rkf_np, velocity_at_point
 from pypism.utils import tqdm_joblib
 
@@ -301,26 +301,6 @@ def compute_pathlines(
         return results
 
 
-def get_perturbed_velocities(
-    VX: Union[ndarray, DataArray],
-    VY: Union[ndarray, DataArray],
-    VX_e: Union[ndarray, DataArray],
-    VY_e: Union[ndarray, DataArray],
-    sample,
-    sigma: float = 1.0,
-) -> Tuple[Union[ndarray, DataArray], Union[ndarray, DataArray]]:
-    """
-    Return perturbed velocity field
-    """
-    VX_min, VX_max = VX - sigma * VX_e, VX + sigma * VX_e
-    VY_min, VY_max = VY - sigma * VY_e, VY + sigma * VY_e
-
-    Vx = VX_min + sample[0] * (VX_max - VX_min)
-    Vy = VY_min + sample[1] * (VY_max - VY_min)
-
-    return Vx, Vy
-
-
 def get_grf_perturbed_velocities(
     VX: Union[ndarray, DataArray],
     VY: Union[ndarray, DataArray],
@@ -334,74 +314,20 @@ def get_grf_perturbed_velocities(
     Return perturbed velocity field
     """
 
-    # Generates power-law power spectrum - structures of all sizes and fractal sub-structures
-    def plPk(n):
-        def Pk(k):
-            return np.power(k, -n)
-
-        return Pk
-
     d_x, d_y = distrib_normal(VX_e, sigma=sigma, seed=perturbation), distrib_normal(
         VY_e, sigma=sigma, seed=perturbation
     )
 
-    Vx_grf = generate_field(d_x, plPk(pl_exp))
-    Vy_grf = generate_field(d_y, plPk(pl_exp))
+    Vx_grf = generate_field(d_x, power_spectrum, pl_exp)
+    Vy_grf = generate_field(d_y, power_spectrum, pl_exp)
 
     Vx = VX + Vx_grf
     Vy = VY + Vy_grf
 
+    Vx = VX
+    Vy = VY
+
     return Vx, Vy
-
-
-def distrib_normal(da: Union[xr.DataArray, np.ndarray], sigma: float = 1.0, seed: int = 0, n: float = 1):
-    """
-    Generates a complex normal distribution
-    """
-    rng = np.random.default_rng(seed=seed)
-    a = rng.normal(
-        loc=0,
-        scale=(sigma * da) ** n,
-    )
-    b = rng.normal(
-        loc=0,
-        scale=(sigma * da) ** n,
-    )
-    return a + 1j * b
-
-
-def generate_field(
-    fftfield: np.ndarray,
-    power_spectrum: Callable[[np.ndarray], np.ndarray],
-    unit_length: float = 1,
-    fft: Any = np.fft,
-    fft_args: Dict[str, Any] = {},
-) -> np.ndarray:
-    """
-    Generates a field given a statistic and a power_spectrum.
-    """
-
-    try:
-        fftfreq = fft.fftfreq
-    except AttributeError:
-        # Fallback on numpy for the frequencies
-        fftfreq = np.fft.fftfreq
-    else:
-        fftfreq = fft.fftfreq
-
-    # Compute the k grid
-    shape = fftfield.shape
-    all_k = [fftfreq(s, d=unit_length) for s in shape]
-
-    kgrid = np.meshgrid(*all_k, indexing="ij")
-    knorm = np.hypot(*kgrid)
-
-    power_k = np.zeros_like(knorm)
-    mask = knorm > 0
-    power_k[mask] = np.sqrt(power_spectrum(knorm[mask]))
-    fftfield *= power_k
-
-    return np.real(fft.ifftn(fftfield, **fft_args))
 
 
 def pathlines_to_geopandas(
