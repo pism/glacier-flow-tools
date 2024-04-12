@@ -36,7 +36,12 @@ from tqdm import tqdm
 from xarray import DataArray
 
 from pypism.gaussian_random_fields import distrib_normal, generate_field, power_spectrum
-from pypism.interpolation import interpolate_rkf, interpolate_rkf_np, velocity_at_point
+from pypism.interpolation import (
+    interpolate_at_point,
+    interpolate_rkf,
+    interpolate_rkf_np,
+    velocity_at_point,
+)
 from pypism.utils import tqdm_joblib
 
 
@@ -133,7 +138,7 @@ def compute_trajectory(
 
 
 def compute_pathline(
-    point: Union[list, ndarray],
+    point: Union[list, ndarray, Point],
     Vx: ndarray,
     Vy: ndarray,
     x: ndarray,
@@ -141,7 +146,7 @@ def compute_pathline(
     dt: float = 0.1,
     total_time: float = 1000,
     reverse: bool = False,
-) -> Tuple[ndarray, ndarray]:
+) -> Tuple[ndarray, ndarray, ndarray]:
     """
     Compute trajectory
 
@@ -212,28 +217,38 @@ def compute_pathline(
         Vx = -Vx
         Vy = -Vy
 
+    if isinstance(point, Point):
+        point = np.squeeze(np.array(point.coords.xy).reshape(1, -1))
+
     nt = int(total_time / dt) + 2
+
     pts = np.zeros((nt, 2))
-    pts_error_estim = np.zeros((nt, 1))
     pts[0, :] = point
-    pts_error_estim[0] = 0.0
+
+    pts_error_estimate = np.zeros((nt, 1))
+    pts_error_estimate[0] = 0.0
+
+    velocities = np.zeros((nt, 2))
+    velocities[0, :] = interpolate_at_point(Vx, Vy, x, y, *point)
+
     time = 0.0
     k = 0
     while abs(time) <= (total_time):
         k += 1
-        point, point_error_estim = interpolate_rkf_np(Vx, Vy, x, y, point, delta_time=dt)
+        point, v, error_estimate = interpolate_rkf_np(Vx, Vy, x, y, point, delta_time=dt)
 
-        if np.any(np.isnan(point)) or np.any(np.isnan(point_error_estim)):
+        if np.any(np.isnan(point)) or np.any(np.isnan(error_estimate)):
             break
         pts[k, :] = point
-        pts_error_estim[k] = point_error_estim
+        velocities[k, :] = v
+        pts_error_estimate[k] = error_estimate
         time += dt
-    return pts, pts_error_estim
+    return pts, velocities, pts_error_estimate
 
 
 def compute_pathlines(
-    data_url: Union[str, Path],
-    ogr_url: Union[str, Path],
+    raster_url: Union[str, Path],
+    vector_url: Union[str, Path],
     perturbation: int = 0,
     dt: float = 1,
     total_time: float = 10_000,
@@ -249,14 +264,14 @@ def compute_pathlines(
 
     """
 
-    ds = xr.open_dataset(data_url, decode_times=False)
+    ds = xr.open_dataset(raster_url, decode_times=False)
 
     Vx = np.squeeze(ds[x_var].to_numpy())
     Vy = np.squeeze(ds[y_var].to_numpy())
     x = ds["x"].to_numpy()
     y = ds["y"].to_numpy()
 
-    pts_gp = gp.read_file(ogr_url).to_crs(crs).reset_index(drop=True)
+    pts_gp = gp.read_file(vector_url).to_crs(crs).reset_index(drop=True)
     geom = pts_gp.simplify(tolerance)
     pts_gp = gp.GeoDataFrame(pts_gp, geometry=geom)
 

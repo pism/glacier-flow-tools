@@ -228,7 +228,7 @@ def interpolate_rkf(
     y: ndarray,
     start_pt: Point,
     delta_time: float = 0.1,
-) -> Tuple[Optional[Point], Optional[float]]:
+) -> Tuple[Optional[ndarray], Optional[float]]:
     """
     Interpolate point-like object position according to the Runge-Kutta-Fehlberg method.
 
@@ -377,7 +377,7 @@ def interpolate_rkf_np(
     y: ndarray,
     start_pt: Union[list, ndarray],
     delta_time: float = 0.1,
-) -> Tuple[Union[list, ndarray], float]:
+) -> Tuple[Union[list, ndarray], Union[list, ndarray], float]:
     """
     Interpolate point-like object position according to the Runge-Kutta-Fehlberg method.
 
@@ -441,62 +441,62 @@ def interpolate_rkf_np(
         )
 
     if np.any(np.isnan(start_pt)):
-        return start_pt, np.nan
+        return start_pt, [np.nan, np.nan], np.nan
 
     k1_v = interpolate_at_point(Vx, Vy, x, y, *start_pt)
 
     if np.any(np.isnan(k1_v)):
-        return k1_v, np.nan
+        return [np.nan, np.nan], k1_v, np.nan
 
     k2_pt = k2(start_pt, k1_v)
 
     if np.any(np.isnan(k2_pt)):
-        return k2_pt, np.nan
+        return k2_pt, [np.nan, np.nan], np.nan
 
     k2_v = interpolate_at_point(Vx, Vy, x, y, *k2_pt)
 
     if np.any(np.isnan(k2_v)):
-        return k2_v, np.nan
+        return [np.nan, np.nan], k2_v, np.nan
 
     k3_pt = k3(start_pt, k1_v, k2_v)
 
     if np.any(np.isnan(k3_pt)):
-        return k3_pt, np.nan
+        return k3_pt, [np.nan, np.nan], np.nan
 
     k3_v = interpolate_at_point(Vx, Vy, x, y, *k3_pt)
 
     if np.any(np.isnan(k3_v)):
-        return k3_v, np.nan
+        return [np.nan, np.nan], k3_v, np.nan
 
     k4_pt = k4(start_pt, k1_v, k2_v, k3_v)
 
     if np.any(np.isnan(k4_pt)):
-        return k4_pt, np.nan
+        return k4_pt, [np.nan, np.nan], np.nan
 
     k4_v = interpolate_at_point(Vx, Vy, x, y, *k4_pt)
 
     if np.any(np.isnan(k4_v)):
-        return k4_v, np.nan
+        return [np.nan, np.nan], k4_v, np.nan
 
     k5_pt = k5(start_pt, k1_v, k2_v, k3_v, k4_v)
 
     if np.any(np.isnan(k5_pt)):
-        return k5_pt, np.nan
+        return k5_pt, [np.nan, np.nan], np.nan
 
     k5_v = interpolate_at_point(Vx, Vy, x, y, *k5_pt)
 
     if np.any(np.isnan(k5_v)):
-        return k5_v, np.nan
+        return [np.nan, np.nan], k5_v, np.nan
 
     k6_pt = k6(start_pt, k1_v, k2_v, k3_v, k4_v, k5_v)
 
     if np.any(np.isnan(k6_pt)):
-        return k6_pt, np.nan
+        return k6_pt, [np.nan, np.nan], np.nan
 
     k6_v = interpolate_at_point(Vx, Vy, x, y, *k6_pt)
 
     if np.any(np.isnan(k6_v)):
-        return k6_v, np.nan
+        return [np.nan, np.nan], k6_v, np.nan
 
     rkf_4o_pt = rkf_4o(start_pt, k1_v, k3_v, k4_v, k5_v)
 
@@ -504,7 +504,9 @@ def interpolate_rkf_np(
 
     interp_pt_error_estim = distance(interp_pt, rkf_4o_pt)
 
-    return interp_pt, interp_pt_error_estim
+    interp_v = interpolate_at_point(Vx, Vy, x, y, *interp_pt)
+
+    return interp_pt, interp_v, interp_pt_error_estim
 
 
 def distance(p, other):

@@ -201,7 +201,7 @@ def test_linear_flow_np(create_linear_flow):
     r_exact = exact_solution(starting_point, total_time)
 
     dt = 0.0001
-    pts, _ = compute_pathline(starting_point, Vx, Vy, x, y, total_time=total_time, dt=dt)
+    pts, _, _ = compute_pathline(starting_point, Vx, Vy, x, y, total_time=total_time, dt=dt)
 
     assert_array_almost_equal(pts[-1, :], *r_exact)
 
