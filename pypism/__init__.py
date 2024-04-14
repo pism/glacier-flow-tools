@@ -2,4 +2,4 @@
 Main init
 """
 
-__all__ = ["interpolation", "gaussian_random_fields", "pathlines", "profiles", "utils"]
+__all__ = ["geom", "interpolation", "gaussian_random_fields", "pathlines", "profiles", "utils"]

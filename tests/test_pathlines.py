@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Andy Aschwanden
+# Copyright (C) 2023-24 Andy Aschwanden
 #
 # This file is part of pypism.
 #
@@ -27,7 +27,7 @@ import pytest
 import xarray as xr
 from numpy.testing import assert_array_almost_equal
 from pandas.testing import assert_frame_equal
-from shapely import Point
+from shapely.geometry import Point
 
 from pypism.pathlines import (
     compute_pathline,
@@ -211,7 +211,7 @@ def test_pathline_to_geopandas():
     Test converting pathline points to geopandas.GeoDataFrame.
     """
 
-    df_true = {
+    true_dict = {
         "geometry": {
             0: Point(0, -50000),
             1: Point(249.994, -49750.006),
@@ -227,8 +227,36 @@ def test_pathline_to_geopandas():
             11: Point(2748.394, -47251.606),
         },
         "pathline_id": {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0},
+        "vx": {
+            0: 250.0,
+            1: 249.98737724611084,
+            2: 249.97450152124216,
+            3: 249.9613611799404,
+            4: 249.94796017540068,
+            5: 249.90805496694236,
+            6: 249.86733950159993,
+            7: 249.8257702467272,
+            8: 249.7833771945812,
+            9: 249.71298833558737,
+            10: 249.64113140550904,
+            11: 249.56773625309484,
+        },
+        "vy": {
+            0: 250.0,
+            1: 249.98737724611084,
+            2: 249.97450152124216,
+            3: 249.9613611799404,
+            4: 249.94796017540068,
+            5: 249.90805496694236,
+            6: 249.86733950159993,
+            7: 249.8257702467272,
+            8: 249.7833771945812,
+            9: 249.71298833558737,
+            10: 249.64113140550904,
+            11: 249.56773625309484,
+        },
     }
-    gp_true = gp.GeoDataFrame.from_dict(df_true)
+    gp_true = gp.GeoDataFrame.from_dict(true_dict)
 
     pts_shapely_points = [
         Point(0, -50000),
@@ -245,9 +273,26 @@ def test_pathline_to_geopandas():
         Point(2748.394, -47251.606),
     ]
 
+    v = np.array(
+        [
+            [250.0, 250.0],
+            [249.98737725, 249.98737725],
+            [249.97450152, 249.97450152],
+            [249.96136118, 249.96136118],
+            [249.94796018, 249.94796018],
+            [249.90805497, 249.90805497],
+            [249.8673395, 249.8673395],
+            [249.82577025, 249.82577025],
+            [249.78337719, 249.78337719],
+            [249.71298834, 249.71298834],
+            [249.64113141, 249.64113141],
+            [249.56773625, 249.56773625],
+        ]
+    )
+
     pts_np_points = np.array([p.xy for p in pts_shapely_points]).reshape(-1, 2)
 
-    attributes = {"pathline_id": 0}
+    attributes = {"pathline_id": 0, "vx": [vx[0] for vx in v], "vy": [vy[1] for vy in v]}
 
     pathline_gp_np = pathline_to_geopandas_dataframe(pts_np_points, attributes)
     assert_frame_equal(pathline_gp_np, gp_true, check_exact=False, atol=0.01)

@@ -31,7 +31,7 @@ import xarray as xr
 from geopandas import GeoDataFrame
 from joblib import Parallel, delayed
 from numpy import ndarray
-from shapely import Point
+from shapely.geometry import Point
 from tqdm import tqdm
 from xarray import DataArray
 
@@ -421,7 +421,7 @@ def pathline_to_geopandas_dataframe(
 
     Compute pathline:
 
-    >>>    pts, _ = compute_pathline(p, vx, vx, x, y, dt=1, total_time=10)
+    >>>    pts, v, _ = compute_pathline(p, vx, vx, x, y, dt=1, total_time=10)
 
     Convert to geopandas.GeoDataFrame:
 
@@ -444,7 +444,7 @@ def pathline_to_geopandas_dataframe(
     >>>      9: <POINT (2249.113 -47750.887)>,
     >>>      10: <POINT (2498.79 -47501.21)>,
     >>>      11: <POINT (2748.394 -47251.606)>},
-    >>>     'pathline_no': {0: 0,
+    >>>     'pathline_id': {0: 0,
     >>>      1: 0,
     >>>      2: 0,
     >>>      3: 0,
