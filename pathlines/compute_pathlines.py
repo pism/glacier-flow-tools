@@ -23,8 +23,6 @@ Calculate pathlines (trajectories)
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
 
-from pypism.pathlines import compute_pathlines
-
 if __name__ == "__main__":
     # set up the option parser
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -52,13 +50,13 @@ if __name__ == "__main__":
     p = Path(options.outfile[-1])
     p.parent.mkdir(parents=True, exist_ok=True)
 
-    result = compute_pathlines(
-        options.raster_url,
-        options.vector_url,
-        dt=options.dt,
-        total_time=options.total_time,
-        n_jobs=options.n_jobs,
-        reverse=options.reverse,
-    )
+    # result = compute_pathlines(
+    #     options.raster_url,
+    #     options.vector_url,
+    #     dt=options.dt,
+    #     total_time=options.total_time,
+    #     n_jobs=options.n_jobs,
+    #     reverse=options.reverse,
+    # )
 
-    result.to_file(p, mode="w")
+    # result.to_file(p, mode="w")

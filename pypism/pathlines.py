@@ -20,29 +20,23 @@
 Module provides functions for calculating pathlines (trajectories)
 """
 
-
-from pathlib import Path
-from typing import Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import geopandas as gp
 import numpy as np
 import pandas as pd
-import xarray as xr
-from geopandas import GeoDataFrame
-from joblib import Parallel, delayed
 from numpy import ndarray
 from shapely.geometry import Point
-from tqdm import tqdm
 from xarray import DataArray
 
 from pypism.gaussian_random_fields import distrib_normal, generate_field, power_spectrum
+from pypism.geom import distances
 from pypism.interpolation import (
     interpolate_at_point,
     interpolate_rkf,
     interpolate_rkf_np,
     velocity_at_point,
 )
-from pypism.utils import tqdm_joblib
 
 
 def compute_trajectory(
@@ -146,11 +140,14 @@ def compute_pathline(
     dt: float = 0.1,
     total_time: float = 1000,
     reverse: bool = False,
+    notebook: bool = False,
+    progress: bool = False,
+    progress_kwargs: Dict = {"leave": False, "position": 0},
 ) -> Tuple[ndarray, ndarray, ndarray]:
     """
-    Compute trajectory
+    Compute a pathline
 
-    Computes a trajectory using Runge-Kutta-Fehlberg integration. Routine is
+    Computes a pathline using Runge-Kutta-Fehlberg integration. Routine is
     unit-agnostic, requiring the user to ensure consistency of units. For example
     if the velocity field is given in m/yr, the `dt` and `total_time` are assumed
     to be in years.
@@ -158,14 +155,14 @@ def compute_pathline(
     Parameters
     ----------
     Point : shapely.Point
-        Starting point of the trajectory
-    Vx : numpy.ndarray or xarray.DataArray
+        Starting point of the pathline
+    Vx : numpy.ndarray
         x-component of velocity
-    Vy : numpy.ndarray or xarray.DataArray
+    Vy : numpy.ndarray
         y-component of velocity
-    x : numpy.ndarray or xarray.DataArray
+    x : numpy.ndarray
         coordinates in x direction
-    y : numpy.ndarray or xarray.DataArray
+    y : numpy.ndarray
         coordinates in y direction
     dt : float
         integration time step
@@ -198,7 +195,7 @@ def compute_pathline(
     >>>    vy = X / np.sqrt(X**2 + Y**2) * 250
     >>>    p = Point(0, -50000)
 
-    >>>    pts, pts_error_estim = compute_trajectory(p, vx, vx, x, y, dt=1, total_time=10)
+    >>>    pts, pts_error_estim = compute_pathline(p, vx, vx, x, y, dt=1, total_time=10)
     >>>    pts
     [<POINT (0 -50000)>,
      <POINT (249.994 -49750.006)>,
@@ -213,6 +210,14 @@ def compute_pathline(
      <POINT (2498.79 -47501.21)>,
      <POINT (2748.394 -47251.606)>]
     """
+
+    if progress:
+        if notebook:
+            from tqdm.notebook import tqdm  # pylint: disable=reimported
+
+        else:
+            from tqdm import tqdm  # pylint: disable=reimported
+
     if reverse:
         Vx = -Vx
         Vy = -Vy
@@ -220,7 +225,7 @@ def compute_pathline(
     if isinstance(point, Point):
         point = np.squeeze(np.array(point.coords.xy).reshape(1, -1))
 
-    nt = int(total_time / dt) + 2
+    nt = int(total_time / dt) + 1
 
     pts = np.zeros((nt, 2))
     pts[0, :] = point
@@ -233,87 +238,90 @@ def compute_pathline(
 
     time = 0.0
     k = 0
+    if progress:
+        p_bar = tqdm(desc="Integrating pathline", total=total_time, **progress_kwargs)
     while abs(time) <= (total_time):
-        k += 1
         point, v, error_estimate = interpolate_rkf_np(Vx, Vy, x, y, point, delta_time=dt)
-
         if np.any(np.isnan(point)) or np.any(np.isnan(error_estimate)):
             break
         pts[k, :] = point
         velocities[k, :] = v
         pts_error_estimate[k] = error_estimate
         time += dt
+        k += 1
+        if progress:
+            p_bar.update(dt)
     return pts, velocities, pts_error_estimate
 
 
-def compute_pathlines(
-    raster_url: Union[str, Path],
-    vector_url: Union[str, Path],
-    perturbation: int = 0,
-    dt: float = 1,
-    total_time: float = 10_000,
-    x_var: str = "vx",
-    y_var: str = "vy",
-    reverse: bool = False,
-    n_jobs: int = 4,
-    tolerance: float = 0.1,
-    crs: str = "EPSG:3413",
-) -> GeoDataFrame:
-    """
-    Compute a pathline (pathlines).
+# def compute_pathlines(
+#     raster_url: Union[str, Path],
+#     vector_url: Union[str, Path],
+#     perturbation: int = 0,
+#     dt: float = 1,
+#     total_time: float = 10_000,
+#     x_var: str = "vx",
+#     y_var: str = "vy",
+#     reverse: bool = False,
+#     n_jobs: int = 4,
+#     tolerance: float = 0.1,
+#     crs: str = "EPSG:3413",
+# ) -> GeoDataFrame:
+#     """
+#     Compute a pathline (pathlines).
 
-    """
+#     """
 
-    ds = xr.open_dataset(raster_url, decode_times=False)
+#     ds = xr.open_dataset(raster_url, decode_times=False)
 
-    Vx = np.squeeze(ds[x_var].to_numpy())
-    Vy = np.squeeze(ds[y_var].to_numpy())
-    x = ds["x"].to_numpy()
-    y = ds["y"].to_numpy()
+#     Vx = np.squeeze(ds[x_var].to_numpy())
+#     Vy = np.squeeze(ds[y_var].to_numpy())
+#     x = ds["x"].to_numpy()
+#     y = ds["y"].to_numpy()
 
-    pts_gp = gp.read_file(vector_url).to_crs(crs).reset_index(drop=True)
-    geom = pts_gp.simplify(tolerance)
-    pts_gp = gp.GeoDataFrame(pts_gp, geometry=geom)
+#     pts_gp = gp.read_file(vector_url).to_crs(crs).reset_index(drop=True)
+#     geom = pts_gp.simplify(tolerance)
+#     pts_gp = gp.GeoDataFrame(pts_gp, geometry=geom)
 
-    n_pts = len(pts_gp)
+#     n_pts = len(pts_gp)
 
-    def compute_pathline_gp(
-        index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse
-    ) -> gp.GeoDataFrame:
-        pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
-        if len(pts.geometry) > 0:
-            points = [Point(p) for p in pts.geometry[0].coords]
-            attrs = pts.to_dict()
-            attrs = {key: value[0] for key, value in attrs.items() if isinstance(value, dict)}
-            attrs["perturbation"] = perturbation
-            pathlines = []
-            for p in points:
-                pathline, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
-                pathlines.append(pathline)
-            df = pathlines_to_geopandas(pathlines, Vx, Vy, x, y, attrs=attrs)
-        else:
-            df = gp.GeoDataFrame()
-        return df
+#     def compute_pathline_gp(
+#         index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse
+#     ) -> gp.GeoDataFrame:
+#         pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
+#         if len(pts.geometry) > 0:
+#             points = [Point(p) for p in pts.geometry[0].coords]
+#             attrs = pts.to_dict()
+#             attrs = {key: value[0] for key, value in attrs.items() if isinstance(value, dict)}
+#             attrs["perturbation"] = perturbation
+#             pathlines = []
+#             for p in points:
+#                 pathline, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
+#                 pathlines.append(pathline)
+#             df = pathlines_to_geopandas(pathlines, Vx, Vy, x, y, attrs=attrs)
+#         else:
+#             df = gp.GeoDataFrame()
+#         return df
 
-    with tqdm_joblib(
-        tqdm(desc="Processing Pathlines", total=n_pts, leave=True, position=0)
-    ) as progress_bar:  # pylint: disable=unused-variable
-        result = Parallel(n_jobs=n_jobs)(
-            delayed(compute_pathline_gp)(
-                index,
-                pts_gp,
-                Vx,
-                Vy,
-                x,
-                y,
-                dt=dt,
-                total_time=total_time,
-                reverse=reverse,
-            )
-            for index in range(n_pts)
-        )
-        results = pd.concat(result).reset_index(drop=True)
-        return results
+#     with tqdm_joblib(
+#         tqdm(desc="Processing Pathlines", total=n_pts, leave=True, position=0)
+#     ) as progress_bar:  # pylint: disable=unused-variable
+#         result = Parallel(n_jobs=n_jobs)(
+#             delayed(compute_pathline_gp)(
+#                 index,
+#                 pts_gp,
+#                 Vx,
+#                 Vy,
+#                 x,
+#                 y,
+#                 dt=dt,
+#                 total_time=total_time,
+#                 reverse=reverse,
+#             )
+#             for index in range(n_pts)
+#         )
+#         results = pd.concat(result).reset_index(drop=True)
+#         return results
 
 
 def get_grf_perturbed_velocities(
@@ -466,3 +474,28 @@ def pathline_to_geopandas_dataframe(
     if attrs is not None:
         pathline_dict.update(attrs)
     return gp.GeoDataFrame.from_dict(pathline_dict, crs=crs)
+
+
+def row_to_pathline_geopandas_dataframe(row: gp.GeoSeries, pathline: List) -> gp.GeoDataFrame:
+    """
+    Convert a row (geopandas.GeoSeries) of a geopandas.GeoDataFrame and a list containing a pathline to a geopandas.GeoDataFrame
+    """
+    k = row["index"]
+    points = pathline[0]
+    v = pathline[1]
+    attributes = row.drop(columns="geometry").to_dict()
+    vx = v[:, 0]
+    vy = v[:, 1]
+    speed = np.sqrt(vx**2 + vy**2)
+
+    d = distances(points)
+    pathline_data = {
+        "vx": vx,
+        "vy": vy,
+        "v": speed,
+        "pathline_id": k,
+        "distance": d,
+        "distance_from_origin": np.cumsum(d),
+    }
+    attributes.update(pathline_data)
+    return pathline_to_geopandas_dataframe(points, attributes)
