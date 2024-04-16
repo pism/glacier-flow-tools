@@ -23,6 +23,16 @@ Calculate pathlines (trajectories)
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
 
+import geopandas as gp
+import numpy as np
+import pandas as pd
+import xarray as xr
+from joblib import Parallel, delayed
+from tqdm.auto import tqdm
+
+from pypism.pathlines import compute_pathline, row_to_pathline_geopandas_dataframe
+from pypism.utils import tqdm_joblib
+
 if __name__ == "__main__":
     # set up the option parser
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -50,13 +60,40 @@ if __name__ == "__main__":
     p = Path(options.outfile[-1])
     p.parent.mkdir(parents=True, exist_ok=True)
 
-    # result = compute_pathlines(
-    #     options.raster_url,
-    #     options.vector_url,
-    #     dt=options.dt,
-    #     total_time=options.total_time,
-    #     n_jobs=options.n_jobs,
-    #     reverse=options.reverse,
-    # )
+    starting_points_df = gp.read_file(options.vector_url).convert.to_points()
 
-    # result.to_file(p, mode="w")
+    ds = xr.open_dataset(options.raster_url)
+    Vx = np.squeeze(ds["vx"].to_numpy())
+    Vy = np.squeeze(ds["vy"].to_numpy())
+    x = ds["x"].to_numpy()
+    y = ds["y"].to_numpy()
+
+    n_pts = len(starting_points_df)
+
+    with tqdm_joblib(
+        tqdm(desc="Processing Pathlines", total=n_pts, leave=True, position=0)
+    ) as progress_bar:  # pylint: disable=unused-variable
+        pathlines = Parallel(n_jobs=options.n_jobs)(
+            delayed(compute_pathline)(
+                [*df.geometry.coords[0]],
+                Vx,
+                Vy,
+                x,
+                y,
+                dt=options.dt,
+                total_time=options.total_time,
+                reverse=options.reverse,
+                progress=True,
+                progress_kwargs={"leave": False, "position": 1},
+            )
+            for index, df in starting_points_df.iterrows()
+        )
+    result = pd.concat(
+        list(
+            starting_points_df.reset_index().apply(
+                row_to_pathline_geopandas_dataframe, pathline=next(iter(pathlines)), axis=1
+            )
+        )
+    ).reset_index(drop=True)
+
+    result.to_file(p, mode="w")
