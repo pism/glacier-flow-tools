@@ -1,13 +1,13 @@
 # Copyright (C) 2024 Andy Aschwanden
 #
-# This file is part of pypism.
+# This file is part of glacier-flow-tools.
 #
-# PYPISM is free software; you can redistribute it and/or modify it under the
+# GLACIER-FLOW-TOOLS is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
 # Foundation; either version 3 of the License, or (at your option) any later
 # version.
 #
-# PYPISM is distributed in the hope that it will be useful, but WITHOUT ANY
+# GLACIER-FLOW-TOOLS is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details.
@@ -21,7 +21,7 @@ Module provides profile functions
 
 import numpy as np
 
-from pypism.profiles import normal, tangential
+from glacier_flow_tools.profiles import normal, tangential
 
 
 def test_normal():

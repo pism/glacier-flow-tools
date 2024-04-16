@@ -1,9 +1,8 @@
-name: pypism
+name: glacier-flow-tools
 channels:
   - conda-forge
 dependencies:
   - pre-commit
-  - gdal
   - pytest
   - mypy
   - pylint

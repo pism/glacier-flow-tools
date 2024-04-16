@@ -1,13 +1,13 @@
 # Copyright (C) 2024 Andy Aschwanden, Constantine Khroulev
 #
-# This file is part of pypism.
+# This file is part of glacier-flow-tools.
 #
-# PYPISM is free software; you can redistribute it and/or modify it under the
+# GLACIER-FLOW-TOOLS is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
 # Foundation; either version 3 of the License, or (at your option) any later
 # version.
 #
-# PYPISM is distributed in the hope that it will be useful, but WITHOUT ANY
+# GLACIER-FLOW-TOOLS is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details.
@@ -30,8 +30,11 @@ import xarray as xr
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
-from pypism.pathlines import compute_pathline, row_to_pathline_geopandas_dataframe
-from pypism.utils import tqdm_joblib
+from glacier_flow_tools.pathlines import (
+    compute_pathline,
+    row_to_pathline_geopandas_dataframe,
+)
+from glacier_flow_tools.utils import tqdm_joblib
 
 if __name__ == "__main__":
     # set up the option parser

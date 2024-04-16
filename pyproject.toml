@@ -1,8 +1,8 @@
 [project]
-name = "pypism"
+name = "glacier-flow-tools"
 version = "0.1.1"
 maintainers = [{name = "Andy Aschwanden", email = "andy.aschwanden@gmail.com"}]
-description = """Tools for pre- and postprocessing of PISM results"""
+description = """Tools for analysing glacier flow."""
 readme = "README.md"
 requires-python = ">3.8"
 license = {text = "GPL 3.0"}
@@ -18,10 +18,11 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [project.scripts]
-compute_pathlines = "pypism:compute_pathlines"
+compute_pathlines = "glacier_flow_tools:compute_pathlines"
+
 
 [tool.setuptools.packages.find]
-include = ["pypism"]
+include = ["glacier_flow_tools"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
@@ -31,7 +32,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["pypism"]
+py-modules = ["glacier_flow_tools"]
 
 [tool.isort]
 multi_line_output = 3

@@ -2,25 +2,25 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
-# pypism
+# glacier-flow-tools
 
 A set of random tools
 
 ## Installation
 
-Get pypism source from GitHub:
+Get glacier-flow-tools source from GitHub:
 
-    $ git clone git@github.com:pism/pypism.git
-    $ cd pypism
+    $ git clone git@github.com:pism/glacier-flow-tools.git
+    $ cd glacier-flow-tools
 
-Optionally create Conda environment named *pypism*:
+Optionally create Conda environment named *glacier-flow-tools*:
 
     $ conda env create -f environment.yml
-    $ conda activate pypism
+    $ conda activate glacier-flow-tools
 
-Install pypism:
+Install glacier-flow-tools:
 
     $ pip install -e .
 
 
-![Pathlines starting from the Jakobshaven Isbræ flux gate.](https://github.com/pism/pypism/blob/main/images/jak_obs_speed.png)
+![Pathlines starting from the Jakobshaven Isbræ flux gate.](https://github.com/pism/glacier-flow-tools/blob/main/images/jak_obs_speed.png)

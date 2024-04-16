@@ -2,7 +2,7 @@
 #
 # This file is part of pypism.
 #
-# PYPISM is free software; you can redistribute it and/or modify it under the
+# GLACIER-FLOW-TOOLS is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
 # Foundation; either version 3 of the License, or (at your option) any later
 # version.
@@ -39,8 +39,8 @@ from matplotlib import cm, colors
 from matplotlib.colors import LightSource
 from tqdm.auto import tqdm
 
-from pypism.profiles import process_profile
-from pypism.utils import (
+from glacier_flow_tools.profiles import process_profile
+from glacier_flow_tools.utils import (
     blend_multiply,
     merge_on_intersection,
     preprocess_nc,

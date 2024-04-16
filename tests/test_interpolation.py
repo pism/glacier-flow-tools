@@ -1,13 +1,13 @@
-# Copyright (C) 2023 Andy Aschwanden
+# Copyright (C) 2024 Andy Aschwanden
 #
-# This file is part of pism-ragis.
+# This file is part of glacier-flow-tools.
 #
-# PISM-RAGIS is free software; you can redistribute it and/or modify it under the
+# GLACIER-FLOW-TOOLS is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
 # Foundation; either version 3 of the License, or (at your option) any later
 # version.
 #
-# PISM-RAGIS is distributed in the hope that it will be useful, but WITHOUT ANY
+# GLACIER-FLOW-TOOLS is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details.
@@ -23,7 +23,7 @@ Tests for procesing module
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
-from pypism.interpolation import InterpolationMatrix
+from glacier_flow_tools.interpolation import InterpolationMatrix
 
 np.seterr(divide="ignore", invalid="ignore")
 
