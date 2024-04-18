@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Module provides functions for interpolation
+Module provides functions for interpolation.
 """
 
 import numbers
@@ -30,9 +30,9 @@ from shapely import Point
 
 
 class InterpolationMatrix:
-    """Stores bilinear and nearest neighbor interpolation weights used to
+    """
+    Stores bilinear and nearest neighbor interpolation weights used to
     extract profiles.
-
     """
 
     def __init__(
@@ -43,11 +43,16 @@ class InterpolationMatrix:
         py: Union[float, list, ndarray],
         bilinear: bool = True,
     ):
-        """Interpolate values of z to points (px,py) assuming that z is on a
-        regular grid defined by x and y."""
+        """
+        Interpolate values of z to points (px,py) assuming that z is on a
+        regular grid defined by x and y.
+        """
         super().__init__()
 
         def to_array(data):
+            """
+            Convert data to an array.
+            """
             if isinstance(data, numbers.Number):
                 data = np.array([data])
             elif isinstance(data, list):
@@ -91,17 +96,19 @@ class InterpolationMatrix:
             raise NotImplementedError
 
     def column(self, r, c):
-        """Interpolation matrix column number corresponding to r,c of the
+        """
+        Interpolation matrix column number corresponding to r,c of the
         array *subset*. This is the same as the linear index within
         the subset needed for interpolation.
-
         """
         return self.n_cols * min(r, self.n_rows - 1) + min(c, self.n_cols - 1)
 
     @staticmethod
     def find(grid, delta, point):
-        """Find the point to the left of point on the grid with spacing
-        delta."""
+        """
+        Find the point to the left of point on the grid with spacing
+        delta.
+        """
         if delta > 0:
             # grid points are stored in the increasing order
             if point <= grid[0]:  # pylint: disable=R1705

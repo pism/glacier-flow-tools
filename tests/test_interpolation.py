@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Tests for procesing module
+Tests for interpolation module.
 """
 
 import numpy as np
@@ -29,7 +29,9 @@ np.seterr(divide="ignore", invalid="ignore")
 
 
 def test_masked_interpolation():
-    """Test matrix adjustment."""
+    """
+    Test matrix adjustment.
+    """
 
     # 2x2 grid of ones
     x = [0, 1, 2]
@@ -51,8 +53,9 @@ def test_masked_interpolation():
 
 
 def test_masked_missing_interpolation():
-    """Test interpolation from a masked array that produces missing values
-    in the output."""
+    """
+    Test interpolation from a masked array that produces missing values in the output.
+    """
 
     x = [-1, 0, 1, 2]
     y = [-1, 0, 1]
@@ -78,15 +81,35 @@ def test_masked_missing_interpolation():
 
 
 def test_flipped_y_interpolation():
-    """Test interpolation from a grid with decreasing y coordinates"""
+    """
+    Test interpolation from a grid with decreasing y coordinates.
+    """
 
     x = [-2, -1, 0, 1]
     y = [1, 0, -1]
 
     # a linear function (perfectly recovered using bilinear
     # interpolation)
-    def Z(x, y):
-        "A linear function for testing."
+    def Z(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """
+        A linear function for testing.
+
+        Parameters
+        ----------
+        x : np.ndarray
+          Y is a np.ndarray.
+        y : np.ndarray
+          Y is a np.ndarray.
+
+        Returns
+        -------
+        np.ndarray
+          Returns a linear function of x and y.
+
+        Examples
+        --------
+        FIXME: Add docs.
+        """
         return 0.3 * x + 0.2 * y + 0.1
 
     xx, yy = np.meshgrid(x, y)
@@ -104,7 +127,9 @@ def test_flipped_y_interpolation():
 
 
 def test_interpolation():
-    """Test interpolation by recovering values of a linear function."""
+    """
+    Test interpolation by recovering values of a linear function.
+    """
 
     Lx = 10.0  # size of the box in the x direction
     Ly = 20.0  # size of the box in the y direction
@@ -132,8 +157,26 @@ def test_interpolation():
 
     # a linear function (perfectly recovered using bilinear
     # interpolation)
-    def Z(x, y):
-        "A linear function for testing."
+    def Z(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """
+        A linear function for testing.
+
+        Parameters
+        ----------
+        x : np.ndarray
+          Y is a np.ndarray.
+        y : np.ndarray
+          Y is a np.ndarray.
+
+        Returns
+        -------
+        np.ndarray
+          Returns a linear function of x and y.
+
+        Examples
+        --------
+        FIXME: Add docs.
+        """
         return 0.3 * x + 0.2 * y + 0.1
 
     # compute values of Z on the grid

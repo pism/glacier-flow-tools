@@ -35,7 +35,16 @@ from glacier_flow_tools.gaussian_random_fields import (
 @pytest.fixture(name="field_numpy")
 def fixture_create_field() -> np.ndarray:
     """
-    Create test data as numpy.ndarray.
+    Create test data as a numpy.ndarray.
+
+    This fixture creates a 2D Gaussian function on a grid of points. The grid
+    ranges from -1 to 1 in both the x and y directions, with 5 points in each
+    direction.
+
+    Returns
+    -------
+    np.ndarray
+        The test data as a 2D numpy array.
     """
 
     x = y = np.linspace(-1, 1, 5)
@@ -46,9 +55,20 @@ def fixture_create_field() -> np.ndarray:
 @pytest.fixture(name="field_datarray")
 def fixture_create_field_da() -> xr.DataArray:
     """
-    Create test data as xarray.DataArray.
-    """
+    Create test data as an xarray.DataArray.
 
+    This fixture creates a 2D Gaussian function on a grid of points. The grid
+    ranges from -1 to 1 in both the x and y directions, with 5 points in each
+    direction. The resulting data is wrapped in an xarray.DataArray for easier
+    handling and manipulation.
+
+    Returns
+    -------
+    xr.DataArray
+        The test data as a 2D xarray.DataArray with dimensions 'x' and 'y',
+        and coordinate labels for each point in the 'x' and 'y' directions.
+        The name of the DataArray is 'power'.
+    """
     x = y = np.linspace(-1, 1, 5)
     X, Y = np.meshgrid(x, y)
     field = np.exp(-(X**2.0 + Y**2.0))
@@ -60,11 +80,22 @@ def fixture_create_field_da() -> xr.DataArray:
     )
 
 
-def test_power_spectrum(field_numpy, field_datarray):
+def test_power_spectrum(field_numpy: np.ndarray, field_datarray: xr.DataArray):
     """
-    Test power spectrum function
-    """
+    Test the power spectrum function.
 
+    This function tests the power spectrum function with two different fields:
+    one represented as a numpy.ndarray and the other as an xarray.DataArray.
+    It checks that the power spectrum function returns the expected results
+    for different input parameters.
+
+    Parameters
+    ----------
+    field_numpy : np.ndarray
+        The field represented as a numpy.ndarray to test the power spectrum function with.
+    field_datarray : xr.DataArray
+        The field represented as an xarray.DataArray to test the power spectrum function with.
+    """
     true_n_1 = np.array(
         [
             [7.3890561, 3.49034296, 2.71828183, 3.49034296, 7.3890561],
@@ -95,9 +126,21 @@ def test_power_spectrum(field_numpy, field_datarray):
     assert_array_almost_equal(ps, true_n_2, decimal=3)
 
 
-def test_distrib_normal(field_numpy, field_datarray):
+def test_distrib_normal(field_numpy: np.ndarray, field_datarray: xr.DataArray):
     """
-    Test complex normal distribution
+    Test the complex normal distribution function.
+
+    This function tests the complex normal distribution function with two different fields:
+    one represented as a numpy.ndarray and the other as an xarray.DataArray.
+    It checks that the complex normal distribution function returns the expected results
+    for different input parameters.
+
+    Parameters
+    ----------
+    field_numpy : np.ndarray
+        The field represented as a numpy.ndarray to test the complex normal distribution function with.
+    field_datarray : xr.DataArray
+        The field represented as an xarray.DataArray to test the complex normal distribution function with.
     """
 
     complex_normal_dist_sigma_1_n_1_seed_0 = np.array(
@@ -235,7 +278,11 @@ def test_distrib_normal(field_numpy, field_datarray):
 
 def test_gaussian_random_field():
     """
-    Test Gaussian Random Fields
+    Test the Gaussian Random Fields function.
+
+    This function tests the Gaussian Random Fields function with a predefined field.
+    It checks that the Gaussian Random Fields function returns the expected results
+    for different input parameters.
     """
 
     field = np.array(

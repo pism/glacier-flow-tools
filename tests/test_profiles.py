@@ -16,7 +16,7 @@
 # along with PISM; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
-Module provides profile functions
+Module provides profile test functions.
 """
 
 import numpy as np
@@ -26,7 +26,7 @@ from glacier_flow_tools.profiles import normal, tangential
 
 def test_normal():
     """
-    Test normal vector code
+    Test normal vector code.
     """
     point0 = np.array([0, 0])
     point1 = np.array([1, 0])
@@ -47,7 +47,7 @@ def test_normal():
 
 def test_tangential():
     """
-    Test tangential vector code
+    Test tangential vector code.
     """
     point0 = np.array([0, 0])
     point1 = np.array([1, 0])

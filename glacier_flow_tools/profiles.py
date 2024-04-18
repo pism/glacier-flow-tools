@@ -178,20 +178,27 @@ def process_profile(
 @xr.register_dataset_accessor("profiles")
 class CustomDatasetMethods:
     """
-    Custom Dataset Methods
+    Custom methods for xarray Dataset.
+
+    This class is used to add custom methods to xarray Dataset objects. The methods can be accessed via the 'profiles' attribute.
     """
 
-    def __init__(self, xarray_obj):
+    def __init__(self, xarray_obj: xr.Dataset):
         """
-        Init
+        Initialize the CustomDatasetMethods class.
+
+        Parameters
+        ----------
+        xarray_obj : xr.Dataset
+            The xarray Dataset to which to add the custom methods.
         """
         self._obj = xarray_obj
 
     def init(self):
         """
-        Do-nothing method
+        Do-nothing method.
 
-        Needed to work with joblib Parallel
+        This method is needed to work with joblib Parallel.
         """
 
     def add_normal_component(
@@ -199,23 +206,21 @@ class CustomDatasetMethods:
         x_component: str = "vx",
         y_component: str = "vy",
         normal_name: str = "v_normal",
-    ) -> xr.Dataset:
+    ):
         """
-        Add normal component
+        Add a normal component to the xarray Dataset.
+
+        This method computes the normal component of the vectors defined by the x and y components, and adds it to the Dataset.
+
+        Parameters
+        ----------
+        x_component : str, optional
+            The name of the x component variable in the Dataset, by default "vx".
+        y_component : str, optional
+            The name of the y component variable in the Dataset, by default "vy".
+        normal_name : str, optional
+            The name of the normal component variable to add to the Dataset, by default "v_normal".
         """
-        assert (x_component and y_component) in self._obj.data_vars
-
-        def func(x, x_n, y, y_n):
-            return x * x_n + y * y_n
-
-        self._obj[normal_name] = xr.apply_ufunc(
-            func,
-            self._obj[x_component],
-            self._obj["nx"],
-            self._obj[y_component],
-            self._obj["ny"],
-        )
-        return self._obj
 
     def calculate_stats(
         self,
@@ -225,17 +230,69 @@ class CustomDatasetMethods:
         stats: List[str] = ["rmsd", "pearson_r"],
     ) -> xr.Dataset:
         """
-        Add rmsd
+        Calculate statistical metrics between observed and simulated data.
+
+        This function calculates the Root Mean Square Deviation (RMSD) and Pearson correlation coefficient between
+        observed and simulated data along a specified dimension.
+
+        Parameters
+        ----------
+        obs_var : str, optional
+            The observed data variable name in the xarray Dataset, by default "v".
+        sim_var : str, optional
+            The simulated data variable name in the xarray Dataset, by default "velsurf_mag".
+        dim : str, optional
+            The dimension along which to calculate the statistics, by default "profile_axis".
+        stats : List[str], optional
+            The list of statistical metrics to calculate, by default ["rmsd", "pearson_r"].
+
+        Returns
+        -------
+        xr.Dataset
+            The xarray Dataset with the calculated statistical metrics added as new data variables.
         """
         assert (obs_var and sim_var) in self._obj.data_vars
 
-        def rmsd(sim, obs):
-            diff = sim - obs
+        def rmsd(sim: xr.DataArray, obs: xr.DataArray) -> float:
+            """
+            Compute the Root Mean Square Deviation (RMSD) between simulated and observed data.
 
+            This function computes the RMSD between two xarray DataArrays. The RMSD is calculated as the square root
+            of the mean of the squared differences between the simulated and observed data.
+
+            Parameters
+            ----------
+            sim : xr.DataArray
+                The simulated data as an xarray DataArray.
+            obs : xr.DataArray
+                The observed data as an xarray DataArray.
+
+            Returns
+            -------
+            float
+                The computed RMSD value.
+            """
+            diff = sim - obs
             return np.sqrt(np.nanmean(diff**2, axis=-1))
 
-        def pearson_r(sim, obs):
+        def pearson_r(sim: xr.DataArray, obs: xr.DataArray) -> xr.DataArray:
+            """
+            Compute the Pearson correlation coefficient between simulated and observed data.
 
+            This function computes the Pearson correlation coefficient (r) between two xarray DataArrays along the "profile_axis" dimension.
+
+            Parameters
+            ----------
+            sim : xr.DataArray
+                The simulated data as an xarray DataArray.
+            obs : xr.DataArray
+                The observed data as an xarray DataArray.
+
+            Returns
+            -------
+            xr.DataArray
+                The computed Pearson correlation coefficient as an xarray DataArray.
+            """
             return xr.corr(sim, obs, dim="profile_axis")
 
         func = {"rmsd": {"func": rmsd, "ufunc": True}, "pearson_r": {"func": pearson_r, "ufunc": False}}
@@ -270,17 +327,34 @@ class CustomDatasetMethods:
         """
         Extract a profile from a dataset given x and y coordinates.
 
-        Parameters:
-        x: x-coordinates of the profile
-        y: y-coordinates of the profile
-        profile_name: name of the profile
-        profile_id: id of the profile
-        data_vars: list of data variables to include in the profile. If None, all data variables are included.
+        Parameters
+        ----------
+        xs : np.ndarray
+            The x-coordinates of the profile.
+        ys : np.ndarray
+            The y-coordinates of the profile.
+        profile_name : str, optional
+            The name of the profile, by default "Glacier X".
+        profile_id : int, optional
+            The id of the profile, by default 0.
+        data_vars : Union[None, List[str]], optional
+            The list of data variables to include in the profile. If None, all data variables are included, by default None.
+        normal_var : str, optional
+            The name of the normal variable, by default "v_normal".
+        normal_error_var : str, optional
+            The name of the normal error variable, by default "v_err_normal".
+        normal_component_vars : dict, optional
+            The dictionary of normal component variables, by default {"x": "vx", "y": "vy"}.
+        normal_component_error_vars : dict, optional
+            The dictionary of normal component error variables, by default {"x": "vx_err", "y": "vy_err"}.
+        compute_profile_normal : bool, optional
+            Whether to compute the profile normal, by default False.
 
-        Returns:
-        A new xarray Dataset containing the extracted profile.
+        Returns
+        -------
+        xr.Dataset
+            A new xarray Dataset containing the extracted profile.
         """
-
         profile_axis = np.sqrt((xs - xs[0]) ** 2 + (ys - ys[0]) ** 2)
 
         x: xr.DataArray

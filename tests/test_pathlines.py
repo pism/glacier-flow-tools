@@ -20,6 +20,8 @@
 Tests for pathlines.
 """
 
+from typing import List
+
 import geopandas as gp
 import numpy as np
 import pandas as pd
@@ -31,7 +33,6 @@ from shapely.geometry import Point
 
 from glacier_flow_tools.pathlines import (
     compute_pathline,
-    compute_trajectory,
     pathline_to_geopandas_dataframe,
 )
 
@@ -41,8 +42,18 @@ np.seterr(divide="ignore", invalid="ignore")
 @pytest.fixture(name="create_linear_flow")
 def fixture_create_linear_flow() -> xr.Dataset:
     """
-    Create xr.Dataset with linear velocity field
+    Create xr.Dataset with linear velocity field.
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset describing linear flow.
+
+    Examples
+    --------
+    FIXME: Add docs.
     """
+
     time = pd.date_range("2000-01-01", periods=1)
 
     nx = 201
@@ -154,55 +165,56 @@ def fixture_create_linear_flow() -> xr.Dataset:
     return ds
 
 
-def test_linear_flow(create_linear_flow):
+def test_linear_flow_np(create_linear_flow: xr.Dataset):
     """
-    Test linear flow
+    Test linear flow.
 
+    Parameters
+    ----------
+    create_linear_flow : xr.Dataset
+        A test dataset describing linear flow.
+
+    Examples
+    --------
+    FIXME: Add docs.
     """
+
     ds = create_linear_flow
 
-    def exact_solution(x0, t):
-        x = x0.x * np.exp(t)
-        y = x0.y * np.exp(-t)
-        return Point(x, y)
+    def exact_solution(x0: np.ndarray, t: float) -> np.ndarray:
+        """
+        Exact solution for linear flow.
 
-    Vx = np.squeeze(ds["vx"].to_numpy())
-    Vy = np.squeeze(ds["vy"].to_numpy())
-    x = ds["x"].to_numpy()
-    y = ds["y"].to_numpy()
-    total_time = 1
-    starting_point = Point(0.05, 0.95)
+        Parameters
+        ----------
+        x0 : np.ndarray
+            Initial position.
+        t : float
+            Time.
 
-    r_exact = exact_solution(starting_point, total_time)
+        Returns
+        -------
 
-    dt = 0.0001
-    pts, _ = compute_trajectory(starting_point, Vx, Vy, x, y, total_time=total_time, dt=dt)
+        np.ndarray
+          Exact position after time t.
 
-    assert_array_almost_equal([pts[-1].x, pts[-1].y], [r_exact.x, r_exact.y], decimal=4)
-
-
-def test_linear_flow_np(create_linear_flow):
-    """
-    Test linear flow
-
-    """
-    ds = create_linear_flow
-
-    def exact_solution(x0, t):
+        Examples
+        --------
+        FIXME: Add docs.
+        """
         return x0 * np.exp([t, -t])
 
     Vx = np.squeeze(ds["vx"].to_numpy())
     Vy = np.squeeze(ds["vy"].to_numpy())
     x = ds["x"].to_numpy()
     y = ds["y"].to_numpy()
-    total_time = 1
-    starting_point = [0.05, 0.95]
+    total_time = 1.0
+    starting_point = np.array([0.05, 0.95])
 
     r_exact = exact_solution(starting_point, total_time)
 
     dt = 0.0001
     pts, _, _ = compute_pathline(starting_point, Vx, Vy, x, y, total_time=total_time, dt=dt)
-
     assert_array_almost_equal(pts[-1, :], *r_exact)
 
 

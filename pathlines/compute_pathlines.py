@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Calculate pathlines (trajectories)
+Calculate pathlines (trajectories).
 """
 
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
@@ -32,7 +32,7 @@ from tqdm.auto import tqdm
 
 from glacier_flow_tools.pathlines import (
     compute_pathline,
-    row_to_pathline_geopandas_dataframe,
+    series_to_pathline_geopandas_dataframe,
 )
 from glacier_flow_tools.utils import tqdm_joblib
 
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     result = pd.concat(
         list(
             starting_points_df.reset_index().apply(
-                row_to_pathline_geopandas_dataframe, pathline=next(iter(pathlines)), axis=1
+                series_to_pathline_geopandas_dataframe, pathline=next(iter(pathlines)), axis=1
             )
         )
     ).reset_index(drop=True)

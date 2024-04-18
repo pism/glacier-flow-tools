@@ -17,13 +17,13 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Calculate proifles and compute statistics along profiles
+Calculate proifles and compute statistics along profiles.
 """
 
 import time
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
-from typing import List, Union
+from typing import Dict, List, Union
 
 import cartopy.crs as ccrs
 import dask_geopandas
@@ -49,17 +49,49 @@ from glacier_flow_tools.utils import (
 )
 
 
-def figure_extent(x_c: float, y_c: float, x_e: float = 50_000, y_e: float = 50_000):
+def figure_extent(x_c: float, y_c: float, x_e: float = 50_000, y_e: float = 50_000) -> Dict[str, slice]:
     """
-    Calculate bounding box (figure extent) given center coorinates
-    and x,y half-width/height.
+    Calculate bounding box (figure extent) given center coordinates and x,y half-width/height.
+
+    This function calculates the bounding box (figure extent) for a figure given the center coordinates
+    and the half-width and half-height in the x and y directions, respectively.
+
+    Parameters
+    ----------
+    x_c : float
+        The x-coordinate of the center of the figure.
+    y_c : float
+        The y-coordinate of the center of the figure.
+    x_e : float, optional
+        The half-width of the figure in the x direction, by default 50_000.
+    y_e : float, optional
+        The half-height of the figure in the y direction, by default 50_000.
+
+    Returns
+    -------
+    Dict[str, slice]
+        A dictionary with keys 'x' and 'y' and values that are slices representing the extent of the figure.
     """
     return {"x": slice(x_c - x_e / 2, x_c + x_e / 2), "y": slice(y_c + y_e / 2, y_c - y_e / 2)}
 
 
 def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: float = 1.0):
     """
-    Plot a profile dataset created with ds.profiles.extract_profile
+    Plot a profile dataset created with ds.profiles.extract_profile.
+
+    This function plots a profile dataset that was created with the `extract_profile` method of the `profiles`
+    attribute of an `xr.Dataset` object. The plot is saved as a PDF file in the specified result directory.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The profile dataset to be plotted.
+    result_dir : Path
+        The directory where the result PDF file will be saved.
+    alpha : float, optional
+        The alpha value to be used for the plot, which determines the transparency of the plot, by default 0.0.
+    sigma : float, optional
+        The sigma value to be used for the plot, which determines the width of the Gaussian kernel, by default 1.0.
     """
 
     fig = ds.profiles.plot(palette="Greens", sigma=sigma, alpha=alpha)
@@ -67,6 +99,26 @@ def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: fl
     fig.savefig(result_dir / f"{profile_name}_profile.pdf")
     plt.close()
     del fig
+
+
+def get_extent(ds: xr.DataArray) -> List[float]:
+    """
+    Get the extent of the data array.
+
+    This function returns the extent (the minimum and maximum values) of the 'x' and 'y' dimensions
+    of the input data array.
+
+    Parameters
+    ----------
+    ds : xr.DataArray
+        The input data array.
+
+    Returns
+    -------
+    List[float]
+        The extent of the data array, in the format [xmin, xmax, ymax, ymin].
+    """
+    return [ds["x"].values[0], ds["x"].values[-1], ds["y"].values[-1], ds["y"].values[0]]
 
 
 def plot_glacier(
@@ -80,11 +132,30 @@ def plot_glacier(
     ticks: Union[List[float], np.ndarray] = [10, 100, 250, 500, 750, 1500],
 ):
     """
-    Plot a surface over a hillshade, add profile and correlation coeffient.
-    """
+    Plot a surface over a hillshade, add profile and correlation coefficient.
 
-    def get_extent(ds: xr.DataArray):
-        return [ds["x"].values[0], ds["x"].values[-1], ds["y"].values[-1], ds["y"].values[0]]
+    This function plots a surface over a hillshade, adds a profile and correlation coefficient.
+    The plot is saved as a PDF file in the specified result directory.
+
+    Parameters
+    ----------
+    profile : gp.GeoDataFrame
+        The profile to be plotted.
+    surface : xr.DataArray
+        The surface to be plotted over the hillshade.
+    overlay : xr.DataArray
+        The overlay to be added to the plot.
+    result_dir : Union[str, Path]
+        The directory where the result PDF file will be saved.
+    cmap : str, optional
+        The colormap to be used for the plot, by default "viridis".
+    vmin : float, optional
+        The minimum value for the colormap, by default 10.
+    vmax : float, optional
+        The maximum value for the colormap, by default 1500.
+    ticks : Union[List[float], np.ndarray], optional
+        The ticks to be used for the colorbar, by default [10, 100, 250, 500, 750, 1500].
+    """
 
     profile_centroid = gp.GeoDataFrame(profile, geometry=profile.geometry.centroid)
     glacier_name = profile.iloc[0]["profile_name"]
@@ -168,7 +239,12 @@ if __name__ == "__main__":
         help="""Path to thickness dataset.""",
         default=None,
     )
-    parser.add_argument("--alpha", help="""Scale observational error. Default=0.""", default=0.0, type=float)
+    parser.add_argument(
+        "--alpha",
+        help="""Scale observational error. Use 0.05 to reproduce 'Commplex Outlet Glacier Flow Captured'. Default=0.""",
+        default=0.0,
+        type=float,
+    )
     parser.add_argument(
         "--sigma",
         help="""Sigma multiplier observational error. Default=1. (i.e. error is 1 standard deviation""",

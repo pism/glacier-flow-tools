@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Module provides functions for calculating pathlines (trajectories)
+Module provides functions for calculating pathlines (trajectories).
 """
 
 from typing import Dict, List, Tuple, Union
@@ -35,104 +35,7 @@ from glacier_flow_tools.gaussian_random_fields import (
     power_spectrum,
 )
 from glacier_flow_tools.geom import distances
-from glacier_flow_tools.interpolation import (
-    interpolate_at_point,
-    interpolate_rkf,
-    interpolate_rkf_np,
-    velocity_at_point,
-)
-
-
-def compute_trajectory(
-    point: Point,
-    Vx: ndarray,
-    Vy: ndarray,
-    x: ndarray,
-    y: ndarray,
-    dt: float = 0.1,
-    total_time: float = 1000,
-    reverse: bool = False,
-) -> Tuple[list[Point], list]:
-    """
-    Compute trajectory
-
-    Computes a trajectory using Runge-Kutta-Fehlberg integration. Routine is
-    unit-agnostic, requiring the user to ensure consistency of units. For example
-    if the velocity field is given in m/yr, the `dt` and `total_time` are assumed
-    to be in years.
-
-    Parameters
-    ----------
-    Point : shapely.Point
-        Starting point of the trajectory
-    Vx : numpy.ndarray or xarray.DataArray
-        x-component of velocity
-    Vy : numpy.ndarray or xarray.DataArray
-        y-component of velocity
-    x : numpy.ndarray or xarray.DataArray
-        coordinates in x direction
-    y : numpy.ndarray or xarray.DataArray
-        coordinates in y direction
-    dt : float
-        integration time step
-    dt : float
-        total integration time
-
-    Returns
-    ----------
-    pts: list[shapely.Point]
-        `dt`-spaced points along trajectory from 0 to `total_time`.
-    pts_error_estim: list[
-        error estimate at `dt`-spaced points along trajectory
-        from 0 to `total_time`.
-
-    Examples
-    ----------
-
-    Create data:
-
-    >>>    import numpy as np
-    >>>    from glacier_flow_tools.geom import Point
-
-    >>>    nx = 201
-    >>>    ny = 401
-    >>>    x = np.linspace(-100e3, 100e3, nx)
-    >>>    y = np.linspace(-100e3, 100e3, ny)
-    >>>    X, Y = np.meshgrid(x, y)
-
-    >>>    vx = -Y / np.sqrt(X**2 + Y**2) * 250
-    >>>    vy = X / np.sqrt(X**2 + Y**2) * 250
-    >>>    p = Point(0, -50000)
-
-    >>>    pts, pts_error_estim = compute_trajectory(p, vx, vx, x, y, dt=1, total_time=10)
-    >>>    pts
-    [<POINT (0 -50000)>,
-     <POINT (249.994 -49750.006)>,
-     <POINT (499.975 -49500.025)>,
-     <POINT (749.943 -49250.057)>,
-     <POINT (999.897 -49000.103)>,
-     <POINT (1249.825 -48750.175)>,
-     <POINT (1499.713 -48500.287)>,
-     <POINT (1749.56 -48250.44)>,
-     <POINT (1999.364 -48000.636)>,
-     <POINT (2249.113 -47750.887)>,
-     <POINT (2498.79 -47501.21)>,
-     <POINT (2748.394 -47251.606)>]
-    """
-    if reverse:
-        Vx = -Vx
-        Vy = -Vy
-    pts = [point]
-    pts_error_estim = [0.0]
-    time = 0.0
-    while abs(time) <= (total_time):
-        point, point_error_estim = interpolate_rkf(Vx, Vy, x, y, point, delta_time=dt)
-        if (point is None) or (point_error_estim is None) or (point.is_empty):
-            break
-        pts.append(point)
-        pts_error_estim.append(point_error_estim)
-        time += dt
-    return pts, pts_error_estim
+from glacier_flow_tools.interpolation import interpolate_at_point, interpolate_rkf_np
 
 
 def compute_pathline(
@@ -149,7 +52,7 @@ def compute_pathline(
     progress_kwargs: Dict = {"leave": False, "position": 0},
 ) -> Tuple[ndarray, ndarray, ndarray]:
     """
-    Compute a pathline
+    Compute a pathline.
 
     Computes a pathline using Runge-Kutta-Fehlberg integration. Routine is
     unit-agnostic, requiring the user to ensure consistency of units. For example
@@ -258,76 +161,6 @@ def compute_pathline(
     return pts, velocities, pts_error_estimate
 
 
-# def compute_pathlines(
-#     raster_url: Union[str, Path],
-#     vector_url: Union[str, Path],
-#     perturbation: int = 0,
-#     dt: float = 1,
-#     total_time: float = 10_000,
-#     x_var: str = "vx",
-#     y_var: str = "vy",
-#     reverse: bool = False,
-#     n_jobs: int = 4,
-#     tolerance: float = 0.1,
-#     crs: str = "EPSG:3413",
-# ) -> GeoDataFrame:
-#     """
-#     Compute a pathline (pathlines).
-
-#     """
-
-#     ds = xr.open_dataset(raster_url, decode_times=False)
-
-#     Vx = np.squeeze(ds[x_var].to_numpy())
-#     Vy = np.squeeze(ds[y_var].to_numpy())
-#     x = ds["x"].to_numpy()
-#     y = ds["y"].to_numpy()
-
-#     pts_gp = gp.read_file(vector_url).to_crs(crs).reset_index(drop=True)
-#     geom = pts_gp.simplify(tolerance)
-#     pts_gp = gp.GeoDataFrame(pts_gp, geometry=geom)
-
-#     n_pts = len(pts_gp)
-
-#     def compute_pathline_gp(
-#         index, pts_gp, Vx, Vy, x, y, dt=dt, total_time=total_time, reverse=reverse
-#     ) -> gp.GeoDataFrame:
-#         pts = pts_gp[pts_gp.index == index].reset_index(drop=True)
-#         if len(pts.geometry) > 0:
-#             points = [Point(p) for p in pts.geometry[0].coords]
-#             attrs = pts.to_dict()
-#             attrs = {key: value[0] for key, value in attrs.items() if isinstance(value, dict)}
-#             attrs["perturbation"] = perturbation
-#             pathlines = []
-#             for p in points:
-#                 pathline, _ = compute_trajectory(p, Vx, Vy, x, y, total_time=total_time, dt=dt, reverse=reverse)
-#                 pathlines.append(pathline)
-#             df = pathlines_to_geopandas(pathlines, Vx, Vy, x, y, attrs=attrs)
-#         else:
-#             df = gp.GeoDataFrame()
-#         return df
-
-#     with tqdm_joblib(
-#         tqdm(desc="Processing Pathlines", total=n_pts, leave=True, position=0)
-#     ) as progress_bar:  # pylint: disable=unused-variable
-#         result = Parallel(n_jobs=n_jobs)(
-#             delayed(compute_pathline_gp)(
-#                 index,
-#                 pts_gp,
-#                 Vx,
-#                 Vy,
-#                 x,
-#                 y,
-#                 dt=dt,
-#                 total_time=total_time,
-#                 reverse=reverse,
-#             )
-#             for index in range(n_pts)
-#         )
-#         results = pd.concat(result).reset_index(drop=True)
-#         return results
-
-
 def get_grf_perturbed_velocities(
     VX: Union[ndarray, DataArray],
     VY: Union[ndarray, DataArray],
@@ -355,37 +188,6 @@ def get_grf_perturbed_velocities(
     Vy = VY
 
     return Vx, Vy
-
-
-def pathlines_to_geopandas(
-    pathlines: list,
-    Vx: ndarray,
-    Vy: ndarray,
-    x: ndarray,
-    y: ndarray,
-    attrs: dict = {},
-) -> gp.GeoDataFrame:
-    """Convert pathlines to GeoDataFrame"""
-
-    dfs = []
-    for pathline_id, pathline in enumerate(pathlines):
-        vx, vy = velocity_at_point(Vx, Vy, x, y, pathline)
-        v = np.sqrt(vx**2 + vy**2)
-        d = [0] + [pathline[k].distance(pathline[k - 1]) for k in range(1, len(pathline))]
-        pathline_data = {
-            "vx": vx,
-            "vy": vy,
-            "v": v,
-            "pathline_id": pathline_id,
-            "pathline_pt": range(len(pathline)),
-            "distance": d,
-            "distance_from_origin": np.cumsum(d),
-        }
-        for k, v in attrs.items():
-            pathline_data[k] = v
-        df = gp.GeoDataFrame.from_dict(pathline_data, geometry=pathline, crs="EPSG:3413")
-        dfs.append(df)
-    return pd.concat(dfs).reset_index(drop=True)
 
 
 def pathline_to_geopandas_dataframe(
@@ -420,6 +222,9 @@ def pathline_to_geopandas_dataframe(
     Create data:
 
     >>>    import numpy as np
+    >>>    from glacier_flow_tools.pathlines import compute_pathline, pathline_to_geopandas_dataframe
+
+    >>>    np.seterr(all="ignore")
 
     >>>    nx = 201
     >>>    ny = 401
@@ -429,7 +234,7 @@ def pathline_to_geopandas_dataframe(
 
     >>>    vx = -Y / np.sqrt(X**2 + Y**2) * 250
     >>>    vy = X / np.sqrt(X**2 + Y**2) * 250
-    >>>    p = [0, -50000
+    >>>    p = [0, -50000]
 
     Compute pathline:
 
@@ -437,7 +242,19 @@ def pathline_to_geopandas_dataframe(
 
     Convert to geopandas.GeoDataFrame:
 
-    >>>    pathline_to_geopandas_dataframe(pts)
+    >>>    pl = pathline_to_geopandas_dataframe(pts)
+    >>>    plt.to_dict()
+    >>>    {'geometry': {0: <POINT (249.994 -49750.006)>,
+    >>>      1: <POINT (499.975 -49500.025)>,
+    >>>      2: <POINT (749.943 -49250.057)>,
+    >>>      3: <POINT (999.897 -49000.103)>,
+    >>>      4: <POINT (1249.825 -48750.175)>,
+    >>>      5: <POINT (1499.713 -48500.287)>,
+    >>>      6: <POINT (1749.56 -48250.44)>,
+    >>>      7: <POINT (1999.364 -48000.636)>,
+    >>>      8: <POINT (2249.113 -47750.887)>,
+    >>>      9: <POINT (2498.79 -47501.21)>,
+    >>>      10: <POINT (2748.394 -47251.606)>}}
 
     Convert to geopandas.GeoDataFrame, add attributes:
 
@@ -468,6 +285,104 @@ def pathline_to_geopandas_dataframe(
     >>>      9: 0,
     >>>      10: 0,
     >>>      11: 0}}
+
+    Convert to geopandas.GeoDataFrame, add more attributes:
+
+    >>>    from glacier_flow_tools.geom import distances
+
+    >>>    vx = v[:, 0]
+    >>>    vy = v[:, 1]
+    >>>    speed = np.sqrt(vx**2 + vy**2)
+
+    >>>    d = distances(pts)
+    >>>    pathline_data = {
+    >>>        "vx": vx,
+    >>>        "vy": vy,
+    >>>        "v": speed,
+    >>>        "distance": d,
+    >>>        "distance_from_origin": np.cumsum(d),
+    >>>    }
+    >>>    attributes.update(pathline_data)
+
+
+    >>>      {'geometry': {0: <POINT (249.994 -49750.006)>,
+    >>>    1: <POINT (499.975 -49500.025)>,
+    >>>    2: <POINT (749.943 -49250.057)>,
+    >>>    3: <POINT (999.897 -49000.103)>,
+    >>>    4: <POINT (1249.825 -48750.175)>,
+    >>>    5: <POINT (1499.713 -48500.287)>,
+    >>>    6: <POINT (1749.56 -48250.44)>,
+    >>>    7: <POINT (1999.364 -48000.636)>,
+    >>>    8: <POINT (2249.113 -47750.887)>,
+    >>>    9: <POINT (2498.79 -47501.21)>,
+    >>>    10: <POINT (2748.394 -47251.606)>},
+    >>>      'pathline_id': {0: 0,
+    >>>    1: 0,
+    >>>    2: 0,
+    >>>    3: 0,
+    >>>    4: 0,
+    >>>    5: 0,
+    >>>    6: 0,
+    >>>    7: 0,
+    >>>    8: 0,
+    >>>    9: 0,
+    >>>    10: 0},
+    >>>    'vx': {0: 249.98737724611084,
+    >>>    1: 249.97450152124216,
+    >>>    2: 249.9613611799404,
+    >>>    3: 249.94796017540068,
+    >>>    4: 249.90805496694236,
+    >>>    5: 249.86733950159993,
+    >>>    6: 249.82577024672722,
+    >>>    7: 249.78337719458116,
+    >>>    8: 249.71298833558737,
+    >>>    9: 249.64113140550904,
+    >>>    10: 249.56773625309486},
+    >>>      'vy': {0: 249.98737724611084,
+    >>>    1: 249.97450152124216,
+    >>>    2: 249.9613611799404,
+    >>>    3: 249.94796017540068,
+    >>>    4: 249.90805496694236,
+    >>>    5: 249.86733950159993,
+    >>>    6: 249.82577024672722,
+    >>>    7: 249.78337719458116,
+    >>>    8: 249.71298833558737,
+    >>>    9: 249.64113140550904,
+    >>>    10: 249.56773625309486},
+    >>>      'v': {0: 353.53553932352924,
+    >>>    1: 353.51733029879455,
+    >>>    2: 353.4987470499114,
+    >>>    3: 353.4797951675419,
+    >>>    4: 353.4233606805308,
+    >>>    5: 353.3657803172452,
+    >>>    6: 353.3069925132265,
+    >>>    7: 353.2470396839311,
+    >>>    8: 353.1474948049021,
+    >>>    9: 353.0458737598349,
+    >>>    10: 352.9420773398783},
+    >>>      'distance': {0: 0.0,
+    >>>    1: 353.526464621023,
+    >>>    2: 353.50806939740113,
+    >>>    3: 353.48930182481575,
+    >>>    4: 353.4516779458979,
+    >>>    5: 353.3946646996867,
+    >>>    6: 353.33648355384537,
+    >>>    7: 353.2771131453923,
+    >>>    8: 353.1974692722979,
+    >>>    9: 353.09684911801355,
+    >>>    10: 352.99414582417967},
+    >>>      'distance_from_origin': {0: 0.0,
+    >>>    1: 353.526464621023,
+    >>>    2: 707.0345340184242,
+    >>>    3: 1060.52383584324,
+    >>>    4: 1413.975513789138,
+    >>>    5: 1767.3701784888246,
+    >>>    6: 2120.70666204267,
+    >>>    7: 2473.9837751880623,
+    >>>    8: 2827.18124446036,
+    >>>    9: 3180.278093578374,
+    >>>    10: 3533.2722394025536}}
+
     """
     if isinstance(points, np.ndarray):
         geom = [Point(pt) for pt in points]
@@ -480,14 +395,167 @@ def pathline_to_geopandas_dataframe(
     return gp.GeoDataFrame.from_dict(pathline_dict, crs=crs)
 
 
-def row_to_pathline_geopandas_dataframe(row: gp.GeoSeries, pathline: List) -> gp.GeoDataFrame:
+def series_to_pathline_geopandas_dataframe(series: gp.GeoSeries, pathline: Tuple) -> gp.GeoDataFrame:
     """
-    Convert a row (geopandas.GeoSeries) of a geopandas.GeoDataFrame and a list containing a pathline to a geopandas.GeoDataFrame
+    Convert a  pathline tuple and a geopandas.GeoSeries to a geopandas.GeoDataFrame
+
+    Convert a geopandas.GeoSeries single point and a pathline to a geopandas.GeoDataFrame
+
+    Parameters
+    ----------
+    series : geopandas.GeoSeries
+        A series with attributes
+    pathline : Tuple
+        Tuple of (List[Points], List[vx, vy], List[error])
+
+    Returns
+    ----------
+    df: gp.GeoDataFrame
+        Geopandas dataframe of pathline
+
+    Examples
+    ----------
+
+    Create data:
+
+    >>>    import numpy as np
+    >>>    import geopandas as gp
+    >>>    from glacier_flow_tools.pathlines import series_to_pathline_geopandas_dataframe
+
+    >>>    series = gp.GeoSeries([Point([0, -5000])])
+    >>>    pathline = (np.array([[   249.99370971, -49750.00629029],
+    >>>            [   499.97467017, -49500.02532983],
+    >>>            [   749.94262324, -49250.05737676],
+    >>>            [   999.89730564, -49000.10269436],
+    >>>            [  1249.82538394, -48750.17461606],
+    >>>            [  1499.71314778, -48500.28685222],
+    >>>            [  1749.55977134, -48250.44022866],
+    >>>            [  1999.36441369, -48000.63558631],
+    >>>            [  2249.11273931, -47750.88726069],
+    >>>            [  2498.78991573, -47501.21008427],
+    >>>            [  2748.39446997, -47251.60553003]]),
+    >>>     np.array([[249.98737725, 249.98737725],
+    >>>            [249.97450152, 249.97450152],
+    >>>            [249.96136118, 249.96136118],
+    >>>            [249.94796018, 249.94796018],
+    >>>            [249.90805497, 249.90805497],
+    >>>            [249.8673395 , 249.8673395 ],
+    >>>            [249.82577025, 249.82577025],
+    >>>            [249.78337719, 249.78337719],
+    >>>            [249.71298834, 249.71298834],
+    >>>            [249.64113141, 249.64113141],
+    >>>            [249.56773625, 249.56773625]]),
+    >>>     np.array([[2.84217094e-14],
+    >>>            [0.00000000e+00],
+    >>>            [7.58982048e-12],
+    >>>            [0.00000000e+00],
+    >>>            [4.19384810e-08],
+    >>>            [2.27373675e-13],
+    >>>            [1.87642803e-10],
+    >>>            [2.27373675e-13],
+    >>>            [2.69376538e-07],
+    >>>            [4.54747351e-13],
+    >>>            [2.25377857e-09]]))
+
+    >>>    pathline_df = series_to_pathline_geopandas_dataframe(series, pathline).to_dict()
+    >>>    pathline_df.to_dict()
+    >>>   {'geometry': {0: <POINT (249.994 -49750.006)>,
+    >>>     1: <POINT (499.975 -49500.025)>,
+    >>>     2: <POINT (749.943 -49250.057)>,
+    >>>     3: <POINT (999.897 -49000.103)>,
+    >>>     4: <POINT (1249.825 -48750.175)>,
+    >>>     5: <POINT (1499.713 -48500.287)>,
+    >>>     6: <POINT (1749.56 -48250.44)>,
+    >>>     7: <POINT (1999.364 -48000.636)>,
+    >>>     8: <POINT (2249.113 -47750.887)>,
+    >>>     9: <POINT (2498.79 -47501.21)>,
+    >>>     10: <POINT (2748.394 -47251.606)>},
+    >>>    0: {0: <POINT (0 -5000)>,
+    >>>     1: <POINT (0 -5000)>,
+    >>>     2: <POINT (0 -5000)>,
+    >>>     3: <POINT (0 -5000)>,
+    >>>     4: <POINT (0 -5000)>,
+    >>>     5: <POINT (0 -5000)>,
+    >>>     6: <POINT (0 -5000)>,
+    >>>     7: <POINT (0 -5000)>,
+    >>>     8: <POINT (0 -5000)>,
+    >>>     9: <POINT (0 -5000)>,
+    >>>     10: <POINT (0 -5000)>},
+    >>>    'vx': {0: 249.98737725,
+    >>>     1: 249.97450152,
+    >>>     2: 249.96136118,
+    >>>     3: 249.94796018,
+    >>>     4: 249.90805497,
+    >>>     5: 249.8673395,
+    >>>     6: 249.82577025,
+    >>>     7: 249.78337719,
+    >>>     8: 249.71298834,
+    >>>     9: 249.64113141,
+    >>>     10: 249.56773625},
+    >>>    'vy': {0: 249.98737725,
+    >>>     1: 249.97450152,
+    >>>     2: 249.96136118,
+    >>>     3: 249.94796018,
+    >>>     4: 249.90805497,
+    >>>     5: 249.8673395,
+    >>>     6: 249.82577025,
+    >>>     7: 249.78337719,
+    >>>     8: 249.71298834,
+    >>>     9: 249.64113141,
+    >>>     10: 249.56773625},
+    >>>    'v': {0: 353.53553932902935,
+    >>>     1: 353.51733029703786,
+    >>>     2: 353.4987470499957,
+    >>>     3: 353.4797951740463,
+    >>>     4: 353.42336068485497,
+    >>>     5: 353.3657803149826,
+    >>>     6: 353.3069925178549,
+    >>>     7: 353.2470396774524,
+    >>>     8: 353.14749481114256,
+    >>>     9: 353.04587376618605,
+    >>>     10: 352.9420773355015},
+    >>>    'pathline_id': {0: None,
+    >>>     1: None,
+    >>>     2: None,
+    >>>     3: None,
+    >>>     4: None,
+    >>>     5: None,
+    >>>     6: None,
+    >>>     7: None,
+    >>>     8: None,
+    >>>     9: None,
+    >>>     10: None},
+    >>>    'distance': {0: 0.0,
+    >>>     1: 353.5264646175854,
+    >>>     2: 353.5080693902363,
+    >>>     3: 353.48930182873886,
+    >>>     4: 353.4516779497044,
+    >>>     5: 353.3946646936138,
+    >>>     6: 353.33648355167645,
+    >>>     7: 353.2771131551291,
+    >>>     8: 353.1974692717807,
+    >>>     9: 353.0968491081801,
+    >>>     10: 352.99414583630073},
+    >>>    'distance_from_origin': {0: 0.0,
+    >>>     1: 353.5264646175854,
+    >>>     2: 707.0345340078218,
+    >>>     3: 1060.5238358365607,
+    >>>     4: 1413.975513786265,
+    >>>     5: 1767.3701784798789,
+    >>>     6: 2120.7066620315554,
+    >>>     7: 2473.9837751866844,
+    >>>     8: 2827.1812444584652,
+    >>>     9: 3180.278093566645,
+    >>>     10: 3533.272239402946}}
     """
-    k = row["index"]
+
+    k = series.name
+    attributes = series.drop(columns="geometry").to_dict()
+    if hasattr(attributes, "geometry"):
+        del attributes["geometry"]
+
     points = pathline[0]
     v = pathline[1]
-    attributes = row.drop(columns="geometry").to_dict()
     vx = v[:, 0]
     vy = v[:, 1]
     speed = np.sqrt(vx**2 + vy**2)
@@ -502,4 +570,4 @@ def row_to_pathline_geopandas_dataframe(row: gp.GeoSeries, pathline: List) -> gp
         "distance_from_origin": np.cumsum(d),
     }
     attributes.update(pathline_data)
-    return pathline_to_geopandas_dataframe(points, attributes)
+    return pathline_to_geopandas_dataframe(points, attributes).reset_index(drop=True)

@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Module geometry functions
+Module geometry functions.
 """
 
 from typing import List
@@ -33,11 +33,17 @@ def multilinestring_to_points(multilinestring: MultiLineString) -> List[Point]:
     """
     Convert a MultiLineString to a list of Points.
 
-    Args:
-        multilinestring (MultiLineString): The MultiLineString to convert.
+    Parameters
+    ----------
 
-    Returns:
-        List[Point]: The list of Points.
+    multilinestring : MultiLineString
+      The MultiLineString to convert.
+
+    Returns
+    -------
+
+    List[Point]
+      The list of Points.
     """
     return [Point(x, y) for linestring in multilinestring.geoms for x, y in zip(*linestring.xy)]
 
@@ -46,11 +52,17 @@ def linestring_to_points(linestring: LineString) -> List[Point]:
     """
     Convert a LineString to a list of Points.
 
-    Args:
-        linestring (LineString): The LineString to convert.
+    Parameters
+    ----------
 
-    Returns:
-        List[Point]: The list of Points.
+    linestring : LineString
+      The LineString to convert.
+
+    Returns
+    -------
+
+    List[Point]
+      The list of Points.
     """
     return [Point(x, y) for x, y in zip(*linestring.xy)]
 

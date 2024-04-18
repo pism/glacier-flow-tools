@@ -20,7 +20,6 @@ dynamic = ["dependencies"]
 [project.scripts]
 compute_pathlines = "glacier_flow_tools:compute_pathlines"
 
-
 [tool.setuptools.packages.find]
 include = ["glacier_flow_tools"]
 
@@ -40,6 +39,18 @@ include_trailing_comma = "True"
 force_grid_wrap = 0
 use_parentheses = "True"
 line_length = 88
+
+[tool.numpydoc_validation]
+checks = [
+    "all",   # report on all checks, except the below
+    "EX01",
+    "SA01",
+    "ES01",
+]
+exclude = [  # don't report on objects that match any of these regex
+    '\.undocumented_method$',
+    '\.__repr__$',
+]
 
 [tool.pycodestyle]
 max-line-length = 119
