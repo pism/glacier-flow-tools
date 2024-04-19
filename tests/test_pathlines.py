@@ -29,8 +29,10 @@ from numpy.testing import assert_array_almost_equal
 from pandas.testing import assert_frame_equal
 from shapely.geometry import Point
 
+from glacier_flow_tools.interpolation import velocity
 from glacier_flow_tools.pathlines import (
     compute_pathline,
+    compute_pathline_rkf,
     pathline_to_geopandas_dataframe,
 )
 
@@ -213,6 +215,11 @@ def test_linear_flow_np(create_linear_flow: xr.Dataset):
 
     dt = 0.0001
     pts, _, _ = compute_pathline(starting_point, Vx, Vy, x, y, total_time=total_time, dt=dt)
+    assert_array_almost_equal(pts[-1, :], *r_exact)
+
+    pts, _, _, _ = compute_pathline_rkf(
+        starting_point, velocity, f_args=(Vx, Vy, x, y), start_time=0, end_time=total_time, hmin=0.1, hmax=0.1, tol=1e-4
+    )
     assert_array_almost_equal(pts[-1, :], *r_exact)
 
 

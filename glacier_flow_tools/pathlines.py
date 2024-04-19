@@ -20,12 +20,15 @@
 Module provides functions for calculating pathlines (trajectories).
 """
 
-from typing import Dict, Tuple, Union
+from typing import Callable, Dict, Tuple, Union
 
 import geopandas as gp
 import numpy as np
 from numpy import ndarray
+from numpy.linalg import norm
 from shapely.geometry import Point
+from tqdm import tqdm as tqdm_script
+from tqdm import tqdm_notebook
 from xarray import DataArray
 
 from glacier_flow_tools.gaussian_random_fields import (
@@ -35,6 +38,210 @@ from glacier_flow_tools.gaussian_random_fields import (
 )
 from glacier_flow_tools.geom import distances
 from glacier_flow_tools.interpolation import interpolate_at_point, interpolate_rkf_np
+
+
+class nullcontext:
+    """
+    A context manager that does nothing.
+
+    This is used when you want to have a context manager that effectively does nothing. It's useful in cases where you have some optional context management behavior that you want to turn on or off based on some condition.
+
+    Methods
+    -------
+    __enter__():
+        Does nothing and returns None when entering the context.
+
+    __exit__(*exc):
+        Does nothing and returns False when exiting the context.
+
+    Examples
+    --------
+    >>> with nullcontext():
+    ...     print("Inside the nullcontext")
+    Inside the nullcontext
+    """
+
+    def __enter__(self):
+        """
+        Enter the runtime context related to this object.
+
+        The with statement will bind this method’s return value to the target(s) specified in the as clause of the statement, if any.
+
+        Returns
+        -------
+        None
+        """
+        return None
+
+    def __exit__(self, *exc):
+        """
+        Exit the runtime context related to this object.
+
+        The parameters describe the exception that caused the context to be exited. If the context was exited without an exception, all three arguments will be None.
+
+        Parameters
+        ----------
+        exc : tuple, optional
+            A tuple containing exception type, value and traceback information, by default None
+
+        Returns
+        -------
+        bool
+            False, indicating that any exception should be propagated upwards.
+        """
+        return False
+
+
+# pylint: disable=too-many-statements
+def compute_pathline_rkf(
+    point: Union[list, ndarray, Point],
+    f: Callable,
+    f_args: Tuple,
+    start_time: float = 0.0,
+    end_time: float = 1000.0,
+    hmin: float = 0.0001,
+    hmax: float = 10,
+    tol: float = 1e-4,
+    notebook: bool = False,
+    progress: bool = False,
+    progress_kwargs: Dict = {"leave": False, "position": 0},
+) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
+    """
+    Compute a pathline using Runge-Kutta-Fehlberg integration.
+
+    This function computes a pathline, which is a trajectory traced by a particle in a fluid flow. The pathline is computed by integrating the velocity field using the Runge-Kutta-Fehlberg method. The function is unit-agnostic, requiring the user to ensure consistency of units. For example, if the velocity field is given in m/yr, the `start_time` and `end_time` are assumed to be in years.
+
+    Parameters
+    ----------
+    point : list, ndarray, or shapely.Point
+        Starting point of the pathline.
+    f : callable
+        Function that computes the derivative of the state at a given point.
+    f_args : tuple
+        Additional arguments to pass to the function `f`.
+    start_time : float, optional
+        The start time of integration. Default is 0.0.
+    end_time : float, optional
+        The end time of integration. Default is 1000.0.
+    hmin : float, optional
+        The minimum step size for the integration. Default is 0.0001.
+    hmax : float, optional
+        The maximum step size for the integration. Default is 10.
+    tol : float, optional
+        The error tolerance for the integration. Default is 1e-4.
+    notebook : bool, optional
+        If True, a progress bar is displayed in a Jupyter notebook. Default is False.
+    progress : bool, optional
+        If True, a progress bar is displayed. Default is False.
+    progress_kwargs : dict, optional
+        Additional keyword arguments for the progress bar. Default is {"leave": False, "position": 0}.
+
+    Returns
+    -------
+    pts : ndarray
+        The points along the pathline.
+    velocities : ndarray
+        The velocity at each point along the pathline.
+    pts_error_estimate : ndarray
+        Error estimate at each point along the pathline.
+
+    Examples
+    ----------
+    >>> import numpy as np
+    >>> from shapely.geometry import Point
+    >>> def velocity_field(point, t):
+    >>>     x, y = point
+    >>>     return np.array([-y, x])
+    >>> point = [1, 0]
+    >>> pts, v, _ = compute_pathline_rfk(point, velocity_field, (), start_time=0, end_time=2*np.pi)
+    """
+    a2 = 2.500000000000000e-01  #  1/4
+    a3 = 3.750000000000000e-01  #  3/8
+    a4 = 9.230769230769231e-01  #  12/13
+    a5 = 1.000000000000000e00  #  1
+    a6 = 5.000000000000000e-01  #  1/2
+
+    b21 = 2.500000000000000e-01  #  1/4
+    b31 = 9.375000000000000e-02  #  3/32
+    b32 = 2.812500000000000e-01  #  9/32
+    b41 = 8.793809740555303e-01  #  1932/2197
+    b42 = -3.277196176604461e00  # -7200/2197
+    b43 = 3.320892125625853e00  #  7296/2197
+    b51 = 2.032407407407407e00  #  439/216
+    b52 = -8.000000000000000e00  # -8
+    b53 = 7.173489278752436e00  #  3680/513
+    b54 = -2.058966861598441e-01  # -845/4104
+    b61 = -2.962962962962963e-01  # -8/27
+    b62 = 2.000000000000000e00  #  2
+    b63 = -1.381676413255361e00  # -3544/2565
+    b64 = 4.529727095516569e-01  #  1859/4104
+    b65 = -2.750000000000000e-01  # -11/40
+
+    r1 = 2.777777777777778e-03  #  1/360
+    r3 = -2.994152046783626e-02  # -128/4275
+    r4 = -2.919989367357789e-02  # -2197/75240
+    r5 = 2.000000000000000e-02  #  1/50
+    r6 = 3.636363636363636e-02  #  2/55
+
+    c1 = 1.157407407407407e-01  #  25/216
+    c3 = 5.489278752436647e-01  #  1408/2565
+    c4 = 5.353313840155945e-01  #  2197/4104
+    c5 = -2.000000000000000e-01  # -1/5
+
+    if isinstance(point, Point):
+        point = np.squeeze(np.array(point.coords.xy).reshape(1, -1))
+
+    x = point
+    t = start_time
+    h = hmax
+
+    pts = np.empty((0, len(x)), dtype=float)
+    velocities = np.empty((0, len(x)), dtype=float)
+    time = np.empty(0, dtype=float)
+    error_estimate = np.empty(0, dtype=float)
+
+    pts = np.vstack([pts, x])
+    velocities = np.vstack([velocities, f(point, start_time, *f_args)])
+    time = np.append(time, start_time)
+
+    k = 0
+    p_bar = tqdm_notebook if notebook else tqdm_script
+    with p_bar(desc="Integrating pathline", total=end_time, **progress_kwargs) if progress else nullcontext():
+        while t < end_time:
+
+            if np.isclose(t + h, end_time, rtol=1e-5):
+                h = end_time - t
+
+            k1 = h * f(x, t, *f_args)
+            k2 = h * f(x + b21 * k1, t + a2 * h, *f_args)
+            k3 = h * f(x + b31 * k1 + b32 * k2, t + a3 * h, *f_args)
+            k4 = h * f(x + b41 * k1 + b42 * k2 + b43 * k3, t + a4 * h, *f_args)
+            k5 = h * f(x + b51 * k1 + b52 * k2 + b53 * k3 + b54 * k4, t + a5 * h, *f_args)
+            k6 = h * f(x + b61 * k1 + b62 * k2 + b63 * k3 + b64 * k4 + b65 * k5, t + a6 * h, *f_args)
+
+            r = norm(r1 * k1 + r3 * k3 + r4 * k4 + r5 * k5 + r6 * k6) / h
+            if r <= tol:
+                t = t + h
+                x = x + c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
+
+            s = (tol / r) ** 0.25
+            h = np.minimum(h * s, hmax)
+
+            if (h < hmin) and (t < end_time):
+                raise RuntimeError(
+                    f"Error: Could not converge to the required tolerance {tol:e} with minimum stepsize  {hmin:e}"
+                )
+
+            pts = np.append(pts, [x], axis=0)
+            velocities = np.append(velocities, [f(x, start_time, *f_args)])
+            time = np.append(time, t)
+            error_estimate = np.append(error_estimate, r)
+            k += 1
+
+            if progress:
+                p_bar.update(t)
+
+    return pts, velocities, time, error_estimate
 
 
 def compute_pathline(
