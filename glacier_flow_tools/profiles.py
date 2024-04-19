@@ -176,7 +176,7 @@ def process_profile(
     compute_profile_normal: bool = False,
 ) -> xr.Dataset:
     """
-    Process a profile from observed and simulated datasets.
+    Compute a profile from observed and simulated datasets.
 
     Parameters
     ----------

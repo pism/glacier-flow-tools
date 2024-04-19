@@ -37,7 +37,6 @@ from glacier_flow_tools.gaussian_random_fields import (
     power_spectrum,
 )
 from glacier_flow_tools.geom import distances
-from glacier_flow_tools.interpolation import interpolate_at_point, interpolate_rkf_np
 
 
 class nullcontext:
@@ -70,6 +69,7 @@ class nullcontext:
         Returns
         -------
         None
+          Return None.
         """
         return None
 
@@ -81,8 +81,8 @@ class nullcontext:
 
         Parameters
         ----------
-        exc : tuple, optional
-            A tuple containing exception type, value and traceback information, by default None
+        *exc : tuple, optional
+            A tuple containing exception type, value and traceback information, by default None.
 
         Returns
         -------
@@ -93,7 +93,7 @@ class nullcontext:
 
 
 # pylint: disable=too-many-statements
-def compute_pathline_rkf(
+def compute_pathline(
     point: Union[list, ndarray, Point],
     f: Callable,
     f_args: Tuple,
@@ -155,6 +155,7 @@ def compute_pathline_rkf(
     >>> point = [1, 0]
     >>> pts, v, _ = compute_pathline_rfk(point, velocity_field, (), start_time=0, end_time=2*np.pi)
     """
+
     a2 = 2.500000000000000e-01  #  1/4
     a3 = 3.750000000000000e-01  #  3/8
     a4 = 9.230769230769231e-01  #  12/13
@@ -242,135 +243,6 @@ def compute_pathline_rkf(
                 p_bar.update(t)
 
     return pts, velocities, time, error_estimate
-
-
-def compute_pathline(
-    point: Union[list, ndarray, Point],
-    Vx: ndarray,
-    Vy: ndarray,
-    x: ndarray,
-    y: ndarray,
-    dt: float = 0.1,
-    total_time: float = 1000,
-    reverse: bool = False,
-    notebook: bool = False,
-    progress: bool = False,
-    progress_kwargs: Dict = {"leave": False, "position": 0},
-) -> Tuple[ndarray, ndarray, ndarray]:
-    """
-    Compute a pathline using Runge-Kutta-Fehlberg integration.
-
-    This function computes a pathline, which is a trajectory traced by a particle in a fluid flow. The pathline is computed by integrating the velocity field using the Runge-Kutta-Fehlberg method. The function is unit-agnostic, requiring the user to ensure consistency of units. For example, if the velocity field is given in m/yr, the `dt` and `total_time` are assumed to be in years.
-
-    Parameters
-    ----------
-    point : list, ndarray, or shapely.Point
-        Starting point of the pathline.
-    Vx : ndarray
-        The x-component of the velocity field.
-    Vy : ndarray
-        The y-component of the velocity field.
-    x : ndarray
-        The coordinates in the x direction.
-    y : ndarray
-        The coordinates in the y direction.
-    dt : float, optional
-        The integration time step. Default is 0.1.
-    total_time : float, optional
-        The total integration time. Default is 1000.
-    reverse : bool, optional
-        If True, the velocity field is reversed before computing the pathline. Default is False.
-    notebook : bool, optional
-        If True, a progress bar is displayed in a Jupyter notebook. Default is False.
-    progress : bool, optional
-        If True, a progress bar is displayed. Default is False.
-    progress_kwargs : dict, optional
-        Additional keyword arguments for the progress bar. Default is {"leave": False, "position": 0}.
-
-    Returns
-    -------
-    pts : ndarray
-        The `dt`-spaced points along the pathline from 0 to `total_time`.
-    velocities : ndarray
-        The velocity at each point along the pathline.
-    pts_error_estimate : ndarray
-        Error estimate at each point along the pathline.
-
-    Examples
-    ----------
-
-    Create data:
-
-    >>>    import numpy as np
-    >>>    from shapely import Point
-
-    >>>    nx = 201
-    >>>    ny = 401
-    >>>    x = np.linspace(-100e3, 100e3, nx)
-    >>>    y = np.linspace(-100e3, 100e3, ny)
-    >>>    X, Y = np.meshgrid(x, y)
-
-    >>>    vx = -Y / np.sqrt(X**2 + Y**2) * 250
-    >>>    vy = X / np.sqrt(X**2 + Y**2) * 250
-    >>>    p = Point(0, -50000)
-
-    >>>    pts, pts_error_estim = compute_pathline(p, vx, vx, x, y, dt=1, total_time=10)
-    >>>    pts
-    [<POINT (0 -50000)>,
-     <POINT (249.994 -49750.006)>,
-     <POINT (499.975 -49500.025)>,
-     <POINT (749.943 -49250.057)>,
-     <POINT (999.897 -49000.103)>,
-     <POINT (1249.825 -48750.175)>,
-     <POINT (1499.713 -48500.287)>,
-     <POINT (1749.56 -48250.44)>,
-     <POINT (1999.364 -48000.636)>,
-     <POINT (2249.113 -47750.887)>,
-     <POINT (2498.79 -47501.21)>,
-     <POINT (2748.394 -47251.606)>]
-    """
-
-    if progress:
-        if notebook:
-            from tqdm.notebook import tqdm  # pylint: disable=reimported
-
-        else:
-            from tqdm import tqdm  # pylint: disable=reimported
-
-    if reverse:
-        Vx = -Vx
-        Vy = -Vy
-
-    if isinstance(point, Point):
-        point = np.squeeze(np.array(point.coords.xy).reshape(1, -1))
-
-    nt = int(total_time / dt) + 1
-
-    pts = np.zeros((nt, 2))
-    pts[0, :] = point
-
-    pts_error_estimate = np.zeros((nt, 1))
-    pts_error_estimate[0] = 0.0
-
-    velocities = np.zeros((nt, 2))
-    velocities[0, :] = interpolate_at_point(Vx, Vy, x, y, *point)
-
-    time = 0.0
-    k = 0
-    if progress:
-        p_bar = tqdm(desc="Integrating pathline", total=total_time, **progress_kwargs)
-    while abs(time) <= (total_time):
-        point, v, error_estimate = interpolate_rkf_np(Vx, Vy, x, y, point, delta_time=dt)
-        if np.any(np.isnan(point)) or np.any(np.isnan(error_estimate)):
-            break
-        pts[k, :] = point
-        velocities[k, :] = v
-        pts_error_estimate[k] = error_estimate
-        time += dt
-        k += 1
-        if progress:
-            p_bar.update(dt)
-    return pts, velocities, pts_error_estimate
 
 
 def get_grf_perturbed_velocities(

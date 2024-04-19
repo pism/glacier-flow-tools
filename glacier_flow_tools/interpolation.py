@@ -20,8 +20,7 @@
 Module provides functions for interpolation.
 """
 
-import numbers
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 import scipy
@@ -30,36 +29,82 @@ from numpy import ndarray
 
 class InterpolationMatrix:
     """
-    Stores bilinear and nearest neighbor interpolation weights used to
-    extract profiles.
+    Stores bilinear and nearest neighbor interpolation weights used to extract profiles.
+
+    Parameters
+    ----------
+    x : Union[list, ndarray]
+        The x-coordinates of the grid points.
+    y : Union[list, ndarray]
+        The y-coordinates of the grid points.
+    px : Union[float, list, ndarray]
+        The x-coordinates of the points where the interpolation is to be computed.
+    py : Union[float, list, ndarray]
+        The y-coordinates of the points where the interpolation is to be computed.
+    bilinear : bool, optional
+        If True, use bilinear interpolation. If False, raise a NotImplementedError. Default is True.
+
+    Raises
+    ------
+    AssertionError
+        If the grid is not equally spaced, or if the spacing between grid points in the x or y direction is zero.
+    NotImplementedError
+        If bilinear is False.
+
+    Examples
+    --------
+    >>> x = np.array([1.0, 2.0, 3.0])
+    >>> y = np.array([4.0, 5.0, 6.0])
+    >>> px = np.array([1.5, 2.5])
+    >>> py = np.array([4.5, 5.5])
+    >>> interp_matrix = InterpolationMatrix(x, y, px, py)
     """
 
     def __init__(
         self,
         x: Union[list, ndarray],
         y: Union[list, ndarray],
-        px: Union[float, list, ndarray],
-        py: Union[float, list, ndarray],
+        px: Union[float, list[float], ndarray],
+        py: Union[float, list[float], ndarray],
         bilinear: bool = True,
     ):
         """
-        Interpolate values of z to points (px,py) assuming that z is on a
-        regular grid defined by x and y.
+        Initialize the InterpolationMatrix object.
+
+        Interpolate values of z to points (px,py) assuming that z is on a regular grid defined by x and y.
+
+        Parameters
+        ----------
+        x : Union[list, ndarray]
+            The x-coordinates of the grid points.
+        y : Union[list, ndarray]
+            The y-coordinates of the grid points.
+        px : Union[float, list, ndarray]
+            The x-coordinates of the points where the interpolation is to be computed.
+        py : Union[float, list, ndarray]
+            The y-coordinates of the points where the interpolation is to be computed.
+        bilinear : bool, optional
+            If True, use bilinear interpolation. If False, raise a NotImplementedError. Default is True.
+
+        Raises
+        ------
+        AssertionError
+            If the grid is not equally spaced, or if the spacing between grid points in the x or y direction is zero.
+        NotImplementedError
+            If bilinear is False.
+
+        Examples
+        --------
+        >>> x = np.array([1.0, 2.0, 3.0])
+        >>> y = np.array([4.0, 5.0, 6.0])
+        >>> px = np.array([1.5, 2.5])
+        >>> py = np.array([4.5, 5.5])
+        >>> interp_matrix = InterpolationMatrix(x, y, px, py)
         """
         super().__init__()
 
-        def to_array(data):
-            """
-            Convert data to an array.
-            """
-            if isinstance(data, numbers.Number):
-                data = np.array([data])
-            elif isinstance(data, list):
-                data = np.array(data)
-            return data
-
-        px_arr: ndarray = to_array(px)
-        py_arr: ndarray = to_array(py)
+        px_arr: ndarray = self._to_array(px)
+        py_arr: ndarray = self._to_array(py)
 
         assert px_arr.size == py_arr.size
 
@@ -94,19 +139,86 @@ class InterpolationMatrix:
         else:
             raise NotImplementedError
 
-    def column(self, r, c):
+    def _to_array(self, data: Union[float, list[float], np.ndarray]) -> np.ndarray:
         """
+        Convert data to an array.
+
+        Parameters
+        ----------
+        data : Union[float, List[float], np.ndarray]
+            The data to be converted to an array. It can be a single number, a list of numbers, or a numpy array.
+
+        Returns
+        -------
+        np.ndarray
+            The data converted to a numpy array.
+
+        Examples
+        --------
+        >>> _to_array(5)
+        array([5])
+        >>> _to_array([1, 2, 3])
+        array([1, 2, 3])
+        >>> _to_array(np.array([4, 5, 6]))
+        array([4, 5, 6])
+        """
+        if isinstance(data, float):
+            data = np.array([data])
+        elif isinstance(data, List):
+            data = np.array(data)
+        return data
+
+    def column(self, r: int, c: int) -> int:
+        """
+        Interpolate matrix column.
+
         Interpolation matrix column number corresponding to r,c of the
         array *subset*. This is the same as the linear index within
         the subset needed for interpolation.
+
+        Parameters
+        ----------
+        r : int
+            The row number in the grid.
+        c : int
+            The column number in the grid.
+
+        Returns
+        -------
+        int
+            The column number in the interpolation matrix corresponding to r, c.
+
+        Examples
+        --------
+        >>> interp_matrix = InterpolationMatrix(x, y, px, py)
+        >>> interp_matrix.column(1, 2)
+        4
         """
         return self.n_cols * min(r, self.n_rows - 1) + min(c, self.n_cols - 1)
 
     @staticmethod
-    def find(grid, delta, point):
+    def find(grid: Union[np.ndarray, List[float]], delta: float, point: float) -> int:
         """
-        Find the point to the left of point on the grid with spacing
-        delta.
+        Find the point to the left of point on the grid with spacing delta.
+
+        Parameters
+        ----------
+        grid : np.ndarray
+            The coordinates of the grid points.
+        delta : float
+            The spacing between grid points.
+        point : float
+            The coordinate of the point where the interpolation is to be computed.
+
+        Returns
+        -------
+        int
+            The index of the grid point to the left of the point.
+
+        Examples
+        --------
+        >>> InterpolationMatrix.find(np.array([1.0, 2.0, 3.0]), 1.0, 2.5)
+        1
         """
         if delta > 0:
             # grid points are stored in the increasing order
@@ -125,16 +237,90 @@ class InterpolationMatrix:
             else:
                 return int(np.floor((point - grid[0]) / delta))
 
-    def grid_column(self, x, dx, X):
-        "Input grid column number corresponding to X."
+    def grid_column(self, x: Union[np.ndarray, List[float]], dx: float, X: float) -> int:
+        """
+        Input grid column number corresponding to X.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            The x-coordinates of the grid points.
+        dx : float
+            The spacing between grid points in the x-direction.
+        X : float
+            The x-coordinate of the point where the interpolation is to be computed.
+
+        Returns
+        -------
+        int
+            The column number in the grid corresponding to X.
+
+        Examples
+        --------
+        >>> interp_matrix = InterpolationMatrix(x, y, px, py)
+        >>> interp_matrix.grid_column(x, 1.0, 2.0)
+        2
+        """
         return self.find(x, dx, X)
 
-    def grid_row(self, y, dy, Y):
-        "Input grid row number corresponding to Y."
+    def grid_row(self, y: Union[np.ndarray, List[float]], dy: float, Y: float) -> int:
+        """
+        Input grid row number corresponding to Y.
+
+        Parameters
+        ----------
+        y : np.ndarray
+            The y-coordinates of the grid points.
+        dy : float
+            The spacing between grid points in the y-direction.
+        Y : float
+            The y-coordinate of the point where the interpolation is to be computed.
+
+        Returns
+        -------
+        int
+            The row number in the grid corresponding to Y.
+
+        Examples
+        --------
+        >>> interp_matrix = InterpolationMatrix(x, y, px, py)
+        >>> interp_matrix.grid_row(y, 1.0, 2.0)
+        2
+        """
         return self.find(y, dy, Y)
 
-    def _compute_bilinear_matrix(self, x, y, dx, dy, px, py):
-        """Initialize a bilinear interpolation matrix."""
+    def _compute_bilinear_matrix(
+        self,
+        x: Union[np.ndarray, List[float]],
+        y: Union[np.ndarray, List[float]],
+        dx: float,
+        dy: float,
+        px: np.ndarray,
+        py: np.ndarray,
+    ) -> None:
+        """
+        Initialize a bilinear interpolation matrix.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            The x-coordinates of the grid points.
+        y : np.ndarray
+            The y-coordinates of the grid points.
+        dx : float
+            The spacing between grid points in the x-direction.
+        dy : float
+            The spacing between grid points in the y-direction.
+        px : np.ndarray
+            The x-coordinates of the points where the interpolation is to be computed.
+        py : np.ndarray
+            The y-coordinates of the points where the interpolation is to be computed.
+
+        Examples
+        --------
+        >>> interp_matrix = InterpolationMatrix(x, y, px, py)
+        >>> interp_matrix._compute_bilinear_matrix(x, y, 1.0, 1.0, px, py)
+        """
         for k in range(self.A.shape[0]):
             x_k = px[k]
             y_k = py[k]
@@ -176,10 +362,28 @@ class InterpolationMatrix:
             self.A[k, self.column(r, c + 1)] += alpha * (1.0 - beta)
             self.A[k, self.column(r + 1, c + 1)] += alpha * beta
 
-    def adjusted_matrix(self, mask):
-        """Return adjusted interpolation matrix that ignores missing (masked)
-        values."""
+    def adjusted_matrix(self, mask: np.ndarray) -> Tuple[scipy.sparse.csr_matrix, np.ndarray]:
+        """
+        Return adjusted interpolation matrix that ignores missing (masked) values.
 
+        Parameters
+        ----------
+        mask : np.ndarray
+            A boolean array indicating the masked (missing) values in the original array.
+
+        Returns
+        -------
+        A : scipy.sparse.csr_matrix
+            The adjusted interpolation matrix.
+        output_mask : np.ndarray
+            A boolean array indicating the masked (missing) values in the output.
+
+        Examples
+        --------
+        >>> interp_matrix = InterpolationMatrix(x, y, px, py)
+        >>> mask = np.array([[False, True], [False, False]])
+        >>> A, output_mask = interp_matrix.adjusted_matrix(mask)
+        """
         A = self.A.tocsr()
         n_points = A.shape[0]
 
@@ -211,252 +415,56 @@ class InterpolationMatrix:
         return A, output_mask
 
     def apply(self, array):
-        """Apply the interpolation to an array. Returns values at points along
-        the profile."""
+        """
+        Apply the interpolation to an array. Returns values at points along the profile.
+
+        Parameters
+        ----------
+        array : np.ndarray or np.ma.MaskedArray
+            The array to which the interpolation should be applied.
+
+        Returns
+        -------
+        np.ndarray or np.ma.MaskedArray
+            The result of applying the interpolation to the array. If the input array is a masked array, the output will also be a masked array.
+
+        Examples
+        --------
+        >>> interp_matrix = InterpolationMatrix(x, y, px, py)
+        >>> array = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        >>> interp_matrix.apply(array)
+        array([5.])
+        """
         subset = array[self.r_min : self.r_max + 1, self.c_min : self.c_max + 1]
         return self.apply_to_subset(subset)
 
     def apply_to_subset(self, subset):
-        """Apply interpolation to an array subset."""
+        """
+        Apply interpolation to an array subset.
 
+        Parameters
+        ----------
+        subset : np.ndarray or np.ma.MaskedArray
+            The subset of the array to which the interpolation should be applied.
+
+        Returns
+        -------
+        np.ndarray or np.ma.MaskedArray
+            The result of applying the interpolation to the subset. If the input subset is a masked array, the output will also be a masked array.
+
+        Examples
+        --------
+        >>> interp_matrix = InterpolationMatrix(x, y, px, py)
+        >>> subset = np.array([[1, 2], [3, 4]])
+        >>> interp_matrix.apply_to_subset(subset)
+        array([2.5])
+        """
         if np.ma.is_masked(subset):
             A, mask = self.adjusted_matrix(subset.mask)
             data = A * np.ravel(subset)
             return np.ma.array(data, mask=mask)
 
         return self.A.tocsr() * np.ravel(subset)
-
-
-# def interpolate_rkf(
-#     Vx: ndarray,
-#     Vy: ndarray,
-#     x: ndarray,
-#     y: ndarray,
-#     start_pt: Union[list, ndarray],
-#     delta_time: float = 0.1,
-# ) -> Tuple[Union[list, ndarray], Union[list, ndarray], float]:
-
-#     def check_nan(val):
-#         if np.any(np.isnan(val)):
-#             return True
-#         return False
-
-#     def interpolate_and_check(Vx, Vy, x, y, pt):
-#         v = interpolate_at_point(Vx, Vy, x, y, *pt)
-#         if check_nan(v):
-#             return [np.nan, np.nan]
-#         return v
-
-#     def calculate_k(p, k_values):
-#         factors = [
-#             (0.25, 0),
-#             (3.0 / 32.0, 9.0 / 32.0),
-#             (1932.0 / 2197.0, -7200.0 / 2197.0, 7296.0 / 2197.0),
-#             (439.0 / 216.0, -8.0, 3680.0 / 513.0, -845.0 / 4104.0),
-#             (-8.0 / 27.0, 2.0, -3544.0 / 2565.0, 1859.0 / 4104.0, -11.0 / 40.0),
-#         ]
-#         for i, factor in enumerate(factors):
-#             p += delta_time * sum(f * v for f, v in zip(factor, k_values[: len(factor)]))
-#             v = interpolate_and_check(Vx, Vy, x, y, p)
-#             if check_nan(v):
-#                 return [np.nan, np.nan]
-#             k_values.append(v)
-#         return k_values
-
-#     if check_nan(start_pt):
-#         return start_pt, [np.nan, np.nan], np.nan
-
-#     k_values = [interpolate_and_check(Vx, Vy, x, y, start_pt)]
-#     if check_nan(k_values[0]):
-#         return [np.nan, np.nan], k_values[0], np.nan
-
-#     k_values = calculate_k(start_pt, k_values)
-
-#     rkf_4o_pt = start_pt + delta_time * (
-#         (25.0 / 216.0) * k_values[0]
-#         + (1408.0 / 2565.0) * k_values[2]
-#         + (2197.0 / 4104.0) * k_values[3]
-#         - (1.0 / 5.0) * k_values[4]
-#     )
-
-#     interp_pt = start_pt + delta_time * (
-#         (16.0 / 135.0) * k_values[0]
-#         + (6656.0 / 12825.0) * k_values[2]
-#         + (28561.0 / 56430.0) * k_values[3]
-#         - (9.0 / 50.0) * k_values[4]
-#         + (2.0 / 55.0) * k_values[5]
-#     )
-
-#     interp_pt_error_estim = distance(interp_pt, rkf_4o_pt)
-
-#     interp_v = interpolate_and_check(Vx, Vy, x, y, interp_pt)
-
-#     return interp_pt, interp_v, interp_pt_error_estim
-
-
-def interpolate_rkf_np(
-    Vx: ndarray,
-    Vy: ndarray,
-    x: ndarray,
-    y: ndarray,
-    start_pt: Union[list, ndarray],
-    delta_time: float = 0.1,
-) -> Tuple[Union[list, ndarray], Union[list, ndarray], float]:
-    """
-    Interpolate point-like object position according to the Runge-Kutta-Fehlberg method.
-
-    This function computes the new position of a point-like object moving in a velocity field (Vx, Vy) over a grid (x, y) using the Runge-Kutta-Fehlberg method. The function also estimates the error of the interpolation.
-
-    Parameters
-    ----------
-    Vx : ndarray
-        The x-component of the velocity field.
-    Vy : ndarray
-        The y-component of the velocity field.
-    x : ndarray
-        The coordinates in the x direction.
-    y : ndarray
-        The coordinates in the y direction.
-    start_pt : Union[list, ndarray]
-        The initial position of the point-like object. It should be a list or 1D array of length 2, where the first element is the x-coordinate and the second element is the y-coordinate.
-    delta_time : float, optional
-        The time step for the interpolation. The default is 0.1.
-
-    Returns
-    -------
-    interp_pt : Union[list, ndarray]
-        The interpolated position of the point-like object at the incremented time.
-    interp_v : Union[list, ndarray]
-        The interpolated velocity of the point-like object at the incremented time.
-    interp_pt_error_estim : float
-        The estimated error of the interpolated position.
-
-    Examples
-    --------
-    >>> Vx = np.array([[0, 1], [0, 1]])
-    >>> Vy = np.array([[0, 0], [1, 1]])
-    >>> x = np.array([0, 1])
-    >>> y = np.array([0, 1])
-    >>> start_pt = [0, 0]
-    >>> delta_time = 0.1
-    >>> interpolate_rkf_np(Vx, Vy, x, y, start_pt, delta_time)
-    ([0.1, 0.0], [0.1, 0.0], 0.0)
-    """
-
-    def k2(p, k1_v):
-        return p + (0.25) * delta_time * k1_v
-
-    def k3(p, k1_v, k2_v):
-        return p + (3.0 / 32.0) * delta_time * k1_v + (9.0 / 32.0) * delta_time * k2_v
-
-    def k4(p, k1_v, k2_v, k3_v):
-        return (
-            p
-            + (1932.0 / 2197.0) * delta_time * k1_v
-            - (7200.0 / 2197.0) * delta_time * k2_v
-            + (7296.0 / 2197.0) * delta_time * k3_v
-        )
-
-    def k5(p, k1_v, k2_v, k3_v, k4_v):
-        return (
-            p
-            + (439.0 / 216.0) * delta_time * k1_v
-            - (8.0) * delta_time * k2_v
-            + (3680.0 / 513.0) * delta_time * k3_v
-            - (845.0 / 4104.0) * delta_time * k4_v
-        )
-
-    def k6(p, k1_v, k2_v, k3_v, k4_v, k5_v):
-        return (
-            p
-            - (8.0 / 27.0) * delta_time * k1_v
-            + (2.0) * delta_time * k2_v
-            - (3544.0 / 2565.0) * delta_time * k3_v
-            + (1859.0 / 4104.0) * delta_time * k4_v
-            - (11.0 / 40.0) * delta_time * k5_v
-        )
-
-    def rkf_4o(p, k1_v, k3_v, k4_v, k5_v):
-        return p + delta_time * (
-            (25.0 / 216.0) * k1_v + (1408.0 / 2565.0) * k3_v + (2197.0 / 4104.0) * k4_v - (1.0 / 5.0) * k5_v
-        )
-
-    def interp(p, k1_v, k3_v, k4_v, k5_v, k6_v):
-        return p + delta_time * (
-            (16.0 / 135.0) * k1_v
-            + (6656.0 / 12825.0) * k3_v
-            + (28561.0 / 56430.0) * k4_v
-            - (9.0 / 50.0) * k5_v
-            + (2.0 / 55.0) * k6_v
-        )
-
-    if np.any(np.isnan(start_pt)):
-        return start_pt, [np.nan, np.nan], np.nan
-
-    k1_v = interpolate_at_point(Vx, Vy, x, y, *start_pt)
-
-    if np.any(np.isnan(k1_v)):
-        return [np.nan, np.nan], k1_v, np.nan
-
-    k2_pt = k2(start_pt, k1_v)
-
-    if np.any(np.isnan(k2_pt)):
-        return k2_pt, [np.nan, np.nan], np.nan
-
-    k2_v = interpolate_at_point(Vx, Vy, x, y, *k2_pt)
-
-    if np.any(np.isnan(k2_v)):
-        return [np.nan, np.nan], k2_v, np.nan
-
-    k3_pt = k3(start_pt, k1_v, k2_v)
-
-    if np.any(np.isnan(k3_pt)):
-        return k3_pt, [np.nan, np.nan], np.nan
-
-    k3_v = interpolate_at_point(Vx, Vy, x, y, *k3_pt)
-
-    if np.any(np.isnan(k3_v)):
-        return [np.nan, np.nan], k3_v, np.nan
-
-    k4_pt = k4(start_pt, k1_v, k2_v, k3_v)
-
-    if np.any(np.isnan(k4_pt)):
-        return k4_pt, [np.nan, np.nan], np.nan
-
-    k4_v = interpolate_at_point(Vx, Vy, x, y, *k4_pt)
-
-    if np.any(np.isnan(k4_v)):
-        return [np.nan, np.nan], k4_v, np.nan
-
-    k5_pt = k5(start_pt, k1_v, k2_v, k3_v, k4_v)
-
-    if np.any(np.isnan(k5_pt)):
-        return k5_pt, [np.nan, np.nan], np.nan
-
-    k5_v = interpolate_at_point(Vx, Vy, x, y, *k5_pt)
-
-    if np.any(np.isnan(k5_v)):
-        return [np.nan, np.nan], k5_v, np.nan
-
-    k6_pt = k6(start_pt, k1_v, k2_v, k3_v, k4_v, k5_v)
-
-    if np.any(np.isnan(k6_pt)):
-        return k6_pt, [np.nan, np.nan], np.nan
-
-    k6_v = interpolate_at_point(Vx, Vy, x, y, *k6_pt)
-
-    if np.any(np.isnan(k6_v)):
-        return [np.nan, np.nan], k6_v, np.nan
-
-    rkf_4o_pt = rkf_4o(start_pt, k1_v, k3_v, k4_v, k5_v)
-
-    interp_pt = interp(start_pt, k1_v, k3_v, k4_v, k5_v, k6_v)
-
-    interp_pt_error_estim = distance(interp_pt, rkf_4o_pt)
-
-    interp_v = interpolate_at_point(Vx, Vy, x, y, *interp_pt)
-
-    return interp_pt, interp_v, interp_pt_error_estim
 
 
 def distance(p: ndarray, other: ndarray) -> float:

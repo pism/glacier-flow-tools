@@ -71,13 +71,27 @@ def to_geopandas_row(df: gp.GeoDataFrame, k: int, points: List[Point]) -> gp.Geo
     """
     Convert a row of a GeoDataFrame and a list of Points to a new GeoDataFrame.
 
-    Args:
-        df (GeoDataFrame): The original GeoDataFrame.
-        k (int): The index of the row to convert.
-        points (List[Point]): The list of Points.
+    Parameters
+    ----------
+    df : GeoDataFrame
+        The original GeoDataFrame.
+    k : int
+        The index of the row to convert.
+    points : List[Point]
+        The list of Points.
 
-    Returns:
-        GeoDataFrame: The new GeoDataFrame.
+    Returns
+    -------
+    GeoDataFrame
+        The new GeoDataFrame.
+
+    Examples
+    --------
+    >>> gdf = geopandas.read_file(geopandas.datasets.get_path('nybb'))
+    >>> points = [Point(1, 1), Point(2, 2)]
+    >>> new_gdf = to_geopandas_row(gdf, 0, points)
+    >>> new_gdf.geometry.type.unique()
+    array(['Point'], dtype=object)
     """
     return pd.concat([gp.GeoDataFrame(df.loc[[k]].drop(columns="geometry"), geometry=[pt]) for pt in points])
 
@@ -86,15 +100,32 @@ def convert_geopands_row_geometry_to_point(df: gp.GeoDataFrame, k: int) -> gp.Ge
     """
     Convert a row of a GeoDataFrame with "LineString" or "MultiLineString" geometry to "Point" geometry.
 
-    Args:
-        df (GeoDataFrame): The original GeoDataFrame.
-        k (int): The index of the row to convert.
+    Parameters
+    ----------
+    df : GeoDataFrame
+        The original GeoDataFrame.
+    k : int
+        The index of the row to convert.
 
-    Returns:
-        GeoDataFrame: The new GeoDataFrame.
+    Returns
+    -------
+    GeoDataFrame
+        The new GeoDataFrame with "Point" geometry.
 
-    Raises:
-        ValueError: If the geometry type is not supported.
+    Raises
+    ------
+    ValueError
+        If the geometry type is not supported.
+
+    Examples
+    --------
+    >>> gdf = geopandas.read_file(geopandas.datasets.get_path('nybb'))
+    >>> gdf = gdf.set_geometry(gdf.geometry.centroid)
+    >>> gdf.geometry.type.unique()
+    array(['Point'], dtype=object)
+    >>> new_gdf = convert_geopands_row_geometry_to_point(gdf, 0)
+    >>> new_gdf.geometry.type.unique()
+    array(['Point'], dtype=object)
     """
     geom_type = df.geom_type[k]
     geometry = df.geometry[k]
@@ -115,11 +146,25 @@ def convert_to_point_geometry_dataframe(df: gp.GeoDataFrame) -> gp.GeoDataFrame:
     """
     Convert a GeoDataFrame with "LineString" or "MultiLineString" geometry to "Point" geometry.
 
-    Args:
-        df (GeoDataFrame): The original GeoDataFrame.
+    Parameters
+    ----------
+    df : GeoDataFrame
+        The original GeoDataFrame with "LineString" or "MultiLineString" geometry.
 
-    Returns:
-        GeoDataFrame: The new GeoDataFrame.
+    Returns
+    -------
+    GeoDataFrame
+        The new GeoDataFrame with "Point" geometry.
+
+    Examples
+    --------
+    >>> gdf = geopandas.read_file(geopandas.datasets.get_path('nybb'))
+    >>> gdf = gdf.set_geometry(gdf.geometry.centroid)
+    >>> gdf.geometry.type.unique()
+    array(['Point'], dtype=object)
+    >>> gdf = convert_to_point_geometry_dataframe(gdf)
+    >>> gdf.geometry.type.unique()
+    array(['Point'], dtype=object)
     """
     return pd.concat([convert_geopands_row_geometry_to_point(df, k) for k in df.index]).reset_index(drop=True)
 
@@ -128,12 +173,24 @@ def distance(a: ndarray, b: ndarray) -> float:
     """
     Calculate the Euclidean distance between two points.
 
-    Args:
-        a (ndarray): The first point.
-        b (ndarray): The second point.
+    Parameters
+    ----------
+    a : ndarray
+        The first point. It can be an array of any shape.
+    b : ndarray
+        The second point. It should be the same shape as `a`.
 
-    Returns:
-        float: The distance.
+    Returns
+    -------
+    float
+        The Euclidean distance between `a` and `b`.
+
+    Examples
+    --------
+    >>> a = np.array([1, 2, 3])
+    >>> b = np.array([4, 5, 6])
+    >>> distance(a, b)
+    5.196152422706632
     """
     return float(np.linalg.norm(a - b))
 
@@ -142,11 +199,21 @@ def distances(pts: ndarray) -> ndarray:
     """
     Calculate the Euclidean distances between consecutive points.
 
-    Args:
-        pts (ndarray): The points.
+    Parameters
+    ----------
+    pts : ndarray
+        The points. It should be a 2D array where each row represents a point.
 
-    Returns:
-        ndarray: The distances.
+    Returns
+    -------
+    ndarray
+        The distances. It is a 1D array where each element is the distance between consecutive points. The first element is always 0.
+
+    Examples
+    --------
+    >>> pts = np.array([[1, 2], [4, 6], [7, 8]])
+    >>> distances(pts)
+    array([0.        , 5.        , 3.60555128])
     """
     # Shift the pts array by one row
     pts_shifted = np.roll(pts, shift=1, axis=0)
@@ -163,21 +230,45 @@ def distances(pts: ndarray) -> ndarray:
 @pd.api.extensions.register_dataframe_accessor("convert")
 class GeometryConverter:  # pylint: disable=too-few-public-methods
     """
-    pandas.DataFrame Accessor
+    The pandas.DataFrame Accessor to convert a GeoDataFrame with "LineString" or "MultiLineString" geometry to "Point" geometry.
+
+    This class is used as an extension to pandas DataFrame objects, and can be accessed via the `.convert` attribute.
+
+    Parameters
+    ----------
+    pandas_obj : GeoDataFrame
+        The GeoDataFrame to be converted.
+
+    Examples
+    --------
+    >>> gdf = geopandas.read_file(geopandas.datasets.get_path('nybb'))
+    >>> gdf.convert.to_points()
     """
 
     def __init__(self, pandas_obj):
+        """
+        Initialize the GeometryConverter object.
+
+        Parameters
+        ----------
+        pandas_obj : GeoDataFrame
+            The GeoDataFrame to be converted.
+        """
         self._obj = pandas_obj
 
     def to_points(self):
         """
         Convert a GeoDataFrame with "LineString" or "MultiLineString" geometry to "Point" geometry.
 
-        Args:
-            df (GeoDataFrame): The original GeoDataFrame.
+        Returns
+        -------
+        GeoDataFrame
+            The new GeoDataFrame with "Point" geometry.
 
-        Returns:
-            GeoDataFrame: The new GeoDataFrame.
+        Examples
+        --------
+        >>> gdf = geopandas.read_file(geopandas.datasets.get_path('nybb'))
+        >>> gdf.convert.to_points()
         """
         return pd.concat([convert_geopands_row_geometry_to_point(self._obj, k) for k in self._obj.index]).reset_index(
             drop=True
