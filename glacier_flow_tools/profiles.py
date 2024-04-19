@@ -16,20 +16,37 @@
 # along with PISM; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
-Module provides profile functions
+Module provides profile functions.
 """
 from typing import List, Union
 
 import numpy as np
-import pandas as pd
 import pylab as plt
 import seaborn as sns
 import xarray as xr
 
 
 def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
-    """Compute the unit normal vector orthogonal to (point1-point0),
-    pointing 'to the right' of (point1-point0).
+    """
+    Compute the unit normal vector orthogonal to (point1-point0), pointing 'to the right' of (point1-point0).
+
+    Parameters
+    ----------
+    point0 : np.ndarray
+        The starting point of the vector.
+    point1 : np.ndarray
+        The ending point of the vector.
+
+    Returns
+    -------
+    np.ndarray
+        The unit normal vector orthogonal to the vector from point0 to point1.
+
+    Notes
+    -----
+    This function computes the unit normal vector orthogonal to the vector from point0 to point1.
+    The normal vector points to the right of the vector from point0 to point1.
+    If the dot product of the vector from point0 to point1 and the normal vector is negative, the direction of the normal vector is flipped.
     """
 
     a = point0 - point1
@@ -44,10 +61,26 @@ def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
 
 
 def tangential(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
-    """Compute the unit tangential vector to (point1-point0),
-    pointing 'to the right' of (point1-point0).
     """
+    Compute the unit tangential vector to (point1-point0), pointing 'to the right' of (point1-point0).
 
+    Parameters
+    ----------
+    point0 : np.ndarray
+        The starting point of the vector.
+    point1 : np.ndarray
+        The ending point of the vector.
+
+    Returns
+    -------
+    np.ndarray
+        The unit tangential vector pointing from point0 to point1.
+
+    Notes
+    -----
+    This function computes the unit tangential vector from point0 to point1.
+    If the norm of the vector from point0 to point1 is zero, the function returns the zero vector.
+    """
     a = point1 - point0
     norm = np.linalg.norm(a)
 
@@ -57,10 +90,26 @@ def tangential(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
 
 def compute_normals(px: Union[np.ndarray, xr.DataArray, list], py: Union[np.ndarray, xr.DataArray, list]):
     """
-    Compute normals to a profile described by 'p'. Normals point 'to
-    the right' of the path.
-    """
+    Compute normals to a profile described by 'p'. Normals point 'to the right' of the path.
 
+    Parameters
+    ----------
+    px : Union[np.ndarray, xr.DataArray, list]
+        The x-coordinates of the points describing the profile.
+    py : Union[np.ndarray, xr.DataArray, list]
+        The y-coordinates of the points describing the profile.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        The x and y components of the normal vectors to the profile.
+
+    Notes
+    -----
+    This function computes the normal vectors to a profile described by the points (px, py).
+    The normal vector at each point is computed as the vector from the previous point to the next point, rotated 90 degrees clockwise.
+    For the first and last points, the normal vector is computed as the vector from the first point to the second point and from the second last point to the last point, respectively, also rotated 90 degrees clockwise.
+    """
     p = np.vstack((px, py)).T
 
     if len(p) < 2:
@@ -78,9 +127,26 @@ def compute_normals(px: Union[np.ndarray, xr.DataArray, list], py: Union[np.ndar
 
 def compute_tangentials(px: Union[np.ndarray, list], py: Union[np.ndarray, list]):
     """
-    Compute tangetials to a profile described by 'p'.
-    """
+    Compute tangentials to a profile described by 'p'.
 
+    Parameters
+    ----------
+    px : Union[np.ndarray, list]
+        The x-coordinates of the points describing the profile.
+    py : Union[np.ndarray, list]
+        The y-coordinates of the points describing the profile.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        The x and y components of the tangential vectors to the profile.
+
+    Notes
+    -----
+    This function computes the tangential vectors to a profile described by the points (px, py).
+    The tangential vector at each point is computed as the vector from the previous point to the next point.
+    For the first and last points, the tangential vector is computed as the vector from the first point to the second point and from the second last point to the last point, respectively.
+    """
     p = np.vstack((px, py)).T
 
     if len(p) < 2:
@@ -94,30 +160,6 @@ def compute_tangentials(px: Union[np.ndarray, list], py: Union[np.ndarray, list]
     ts[-1] = tangential(p[-2], p[-1])
 
     return ts[:, 0], ts[:, 1]
-
-
-def distance_from_start(px, py):
-    "Initialize the distance along a profile."
-    result = np.zeros_like(px)
-    result[1::] = np.sqrt(np.diff(px) ** 2 + np.diff(py) ** 2)
-    return result.cumsum()
-
-
-def calculate_stats(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
-    """
-    Calculate Pearson correlation and root mean square difference between two DataFrame columns.
-    """
-
-    with np.errstate(divide="ignore", invalid="ignore"):
-
-        diff = df[col1] - df[col2]
-        if np.isnan(diff).all() or (len(diff) <= 2):
-            rmsd = np.nan
-            pearson_r = np.nan
-        else:
-            pearson_r = df[col2].corr(df[col1])
-            rmsd = np.sqrt(np.nanmean(diff**2))
-    return pd.DataFrame(data=[[pearson_r, rmsd]], columns=["pearson_r", "rmsd"])
 
 
 def process_profile(
@@ -135,7 +177,42 @@ def process_profile(
 ) -> xr.Dataset:
     """
     Process a profile from observed and simulated datasets.
+
+    Parameters
+    ----------
+    profile : GeoDataFrame
+        The profile to process.
+    obs_ds : xr.Dataset
+        The observed dataset.
+    sim_ds : xr.Dataset
+        The simulated dataset.
+    stats : List[str], optional
+        The list of statistics to calculate, by default ["rmsd", "pearson_r"].
+    obs_normal_var : str, optional
+        The name of the normal variable in the observed dataset, by default "v_normal".
+    obs_normal_error_var : str, optional
+        The name of the normal error variable in the observed dataset, by default "v_err_normal".
+    obs_normal_component_vars : dict, optional
+        The dictionary of normal component variables in the observed dataset, by default {"x": "vx", "y": "vy"}.
+    obs_normal_component_error_vars : dict, optional
+        The dictionary of normal component error variables in the observed dataset, by default {"x": "vx_err", "y": "vy_err"}.
+    sim_normal_var : str, optional
+        The name of the normal variable in the simulated dataset, by default "velsurf_normal".
+    sim_normal_component_vars : dict, optional
+        The dictionary of normal component variables in the simulated dataset, by default {"x": "uvelsurf", "y": "vvelsurf"}.
+    compute_profile_normal : bool, optional
+        Whether to compute the profile normal, by default False.
+
+    Returns
+    -------
+    xr.Dataset
+        The processed profile as an xarray Dataset.
+
+    Notes
+    -----
+    This function extracts profiles from the observed and simulated datasets along the given profile, merges them, and calculates the specified statistics.
     """
+
     x, y = map(np.asarray, profile["geometry"].xy)
     profile_name = profile["profile_name"]
     profile_id = profile["profile_id"]
@@ -144,7 +221,27 @@ def process_profile(
         ds: xr.Dataset, profile_name: str = profile_name, profile_id: int = profile_id, **kwargs
     ) -> xr.Dataset:
         """
-        Extract from xr.Dataset along (x,y) profile.
+        Extract from xr.Dataset along (x,y) profile and prepare it for further processing.
+
+        Parameters
+        ----------
+        ds : xr.Dataset
+            The input dataset from which to extract the profile.
+        profile_name : str, optional
+            The name of the profile to extract, by default the value of the global variable 'profile_name'.
+        profile_id : int, optional
+            The id of the profile to extract, by default the value of the global variable 'profile_id'.
+        **kwargs
+            Additional keyword arguments to pass to the 'extract_profile' method.
+
+        Returns
+        -------
+        xr.Dataset
+            The extracted profile as an xarray Dataset.
+
+        Notes
+        -----
+        This function uses the 'extract_profile' method of the 'profiles' accessor of the input dataset.
         """
         ds_profile = ds.profiles.extract_profile(
             x, y, profile_name=profile_name, profile_id=profile_id, normal_var=obs_normal_var, **kwargs
@@ -181,6 +278,12 @@ class CustomDatasetMethods:
     Custom methods for xarray Dataset.
 
     This class is used to add custom methods to xarray Dataset objects. The methods can be accessed via the 'profiles' attribute.
+
+    Parameters
+    ----------
+
+    xarray_obj : xr.Dataset
+      The xarray Dataset to which to add the custom methods.
     """
 
     def __init__(self, xarray_obj: xr.Dataset):
@@ -189,6 +292,7 @@ class CustomDatasetMethods:
 
         Parameters
         ----------
+
         xarray_obj : xr.Dataset
             The xarray Dataset to which to add the custom methods.
         """
@@ -228,7 +332,7 @@ class CustomDatasetMethods:
         sim_var: str = "velsurf_mag",
         dim: str = "profile_axis",
         stats: List[str] = ["rmsd", "pearson_r"],
-    ) -> xr.Dataset:
+    ):
         """
         Calculate statistical metrics between observed and simulated data.
 
@@ -269,8 +373,9 @@ class CustomDatasetMethods:
 
             Returns
             -------
+
             float
-                The computed RMSD value.
+              RMSD of sim and obs.
             """
             diff = sim - obs
             return np.sqrt(np.nanmean(diff**2, axis=-1))
@@ -442,6 +547,34 @@ class CustomDatasetMethods:
     ) -> plt.Figure:
         """
         Plot observations and simulations along profile.
+
+        Parameters
+        ----------
+        sigma : float, optional
+            The standard deviation of the observations, by default 1.
+        alpha : float, optional
+            The alpha level for the error bars, by default 0.0.
+        title : str or None, optional
+            The title of the plot, by default None.
+        obs_var : str, optional
+            The variable name for the observations, by default 'v'.
+        obs_error_var : str, optional
+            The variable name for the observation errors, by default 'v_err'.
+        sim_var : str, optional
+            The variable name for the simulations, by default 'velsurf_mag'.
+        palette : str, optional
+            The color palette to use for the plot, by default 'Paired'.
+        obs_kwargs : dict, optional
+            Additional keyword arguments to pass to the plot function for the observations, by default {"color": "0", "lw": 1, "marker": "o", "ms": 2}.
+        obs_error_kwargs : dict, optional
+            Additional keyword arguments to pass to the fill_between function for the observation errors, by default {"color": "0.75"}.
+        sim_kwargs : dict, optional
+            Additional keyword arguments to pass to the plot function for the simulations, by default {"lw": 1, "marker": "o", "ms": 2}.
+
+        Returns
+        -------
+        plt.Figure
+            The created matplotlib Figure object.
         """
         n_exps = self._obj["exp_id"].size
 

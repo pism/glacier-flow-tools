@@ -23,7 +23,13 @@ Module provides utility functions that do not fit anywhere else.
 import contextlib
 import re
 from pathlib import Path
-from typing import Callable, Hashable, Iterable, List, Self, Union
+from typing import (  # pylint: disable=deprecated-class
+    Callable,
+    Hashable,
+    Iterable,
+    List,
+    Union,
+)
 
 import joblib
 import numpy as np
@@ -109,7 +115,7 @@ def preprocess_nc(
     ds: xr.Dataset,
     regexp: str = "id_(.+?)_",
     dim: str = "exp_id",
-    drop_vars: Union[str, Iterable[Hashable], Callable[[Self], str, Iterable[Hashable]]] = ["nv4"],
+    drop_vars: Union[str, Iterable[Hashable], Callable[[xr.Dataset], Union[str, Iterable[Hashable]]]] = ["nv4"],
     drop_dims: List[str] = ["nv4"],
 ) -> xr.Dataset:
     """

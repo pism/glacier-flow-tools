@@ -21,12 +21,11 @@ Module provides functions for interpolation.
 """
 
 import numbers
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
 
 import numpy as np
 import scipy
 from numpy import ndarray
-from shapely import Point
 
 
 class InterpolationMatrix:
@@ -228,153 +227,71 @@ class InterpolationMatrix:
         return self.A.tocsr() * np.ravel(subset)
 
 
-def interpolate_rkf(
-    Vx: ndarray,
-    Vy: ndarray,
-    x: ndarray,
-    y: ndarray,
-    start_pt: Point,
-    delta_time: float = 0.1,
-) -> Tuple[Optional[ndarray], Optional[float]]:
-    """
-    Interpolate point-like object position according to the Runge-Kutta-Fehlberg method.
+# def interpolate_rkf(
+#     Vx: ndarray,
+#     Vy: ndarray,
+#     x: ndarray,
+#     y: ndarray,
+#     start_pt: Union[list, ndarray],
+#     delta_time: float = 0.1,
+# ) -> Tuple[Union[list, ndarray], Union[list, ndarray], float]:
 
-    :param geoarray: the flow field expressed as a GeoArray.
-    :type geoarray: GeoArray.
-    :param delta_time: the flow field expressed as a GeoArray.
-    :type delta_time: GeoArray.
-    :param start_pt: the initial point.
-    :type start_pt: Point.
-    :return: the estimated point-like object position at the incremented time, with the estimation error.
-    :rtype: tuple of optional point and optional float.
+#     def check_nan(val):
+#         if np.any(np.isnan(val)):
+#             return True
+#         return False
 
-    Examples:
-    """
+#     def interpolate_and_check(Vx, Vy, x, y, pt):
+#         v = interpolate_at_point(Vx, Vy, x, y, *pt)
+#         if check_nan(v):
+#             return [np.nan, np.nan]
+#         return v
 
-    if start_pt.is_empty:
-        return None, None
+#     def calculate_k(p, k_values):
+#         factors = [
+#             (0.25, 0),
+#             (3.0 / 32.0, 9.0 / 32.0),
+#             (1932.0 / 2197.0, -7200.0 / 2197.0, 7296.0 / 2197.0),
+#             (439.0 / 216.0, -8.0, 3680.0 / 513.0, -845.0 / 4104.0),
+#             (-8.0 / 27.0, 2.0, -3544.0 / 2565.0, 1859.0 / 4104.0, -11.0 / 40.0),
+#         ]
+#         for i, factor in enumerate(factors):
+#             p += delta_time * sum(f * v for f, v in zip(factor, k_values[: len(factor)]))
+#             v = interpolate_and_check(Vx, Vy, x, y, p)
+#             if check_nan(v):
+#                 return [np.nan, np.nan]
+#             k_values.append(v)
+#         return k_values
 
-    k1_vx, k1_vy = velocity_at_point(Vx, Vy, x, y, start_pt)
+#     if check_nan(start_pt):
+#         return start_pt, [np.nan, np.nan], np.nan
 
-    if k1_vx is None or k1_vy is None:
-        return None, None
+#     k_values = [interpolate_and_check(Vx, Vy, x, y, start_pt)]
+#     if check_nan(k_values[0]):
+#         return [np.nan, np.nan], k_values[0], np.nan
 
-    k2_pt = Point(
-        start_pt.x + (0.25) * delta_time * k1_vx,
-        start_pt.y + (0.25) * delta_time * k1_vy,
-    )
+#     k_values = calculate_k(start_pt, k_values)
 
-    if k2_pt.is_empty:
-        return None, None
+#     rkf_4o_pt = start_pt + delta_time * (
+#         (25.0 / 216.0) * k_values[0]
+#         + (1408.0 / 2565.0) * k_values[2]
+#         + (2197.0 / 4104.0) * k_values[3]
+#         - (1.0 / 5.0) * k_values[4]
+#     )
 
-    k2_vx, k2_vy = velocity_at_point(Vx, Vy, x, y, k2_pt)
+#     interp_pt = start_pt + delta_time * (
+#         (16.0 / 135.0) * k_values[0]
+#         + (6656.0 / 12825.0) * k_values[2]
+#         + (28561.0 / 56430.0) * k_values[3]
+#         - (9.0 / 50.0) * k_values[4]
+#         + (2.0 / 55.0) * k_values[5]
+#     )
 
-    if k2_vx is None or k2_vy is None:
-        return None, None
+#     interp_pt_error_estim = distance(interp_pt, rkf_4o_pt)
 
-    k3_pt = Point(
-        start_pt.x + (3.0 / 32.0) * delta_time * k1_vx + (9.0 / 32.0) * delta_time * k2_vx,
-        start_pt.y + (3.0 / 32.0) * delta_time * k1_vy + (9.0 / 32.0) * delta_time * k2_vy,
-    )
+#     interp_v = interpolate_and_check(Vx, Vy, x, y, interp_pt)
 
-    if k3_pt.is_empty:
-        return None, None
-
-    k3_vx, k3_vy = velocity_at_point(Vx, Vy, x, y, k3_pt)
-
-    if k3_vx is None or k3_vy is None:
-        return None, None
-
-    k4_pt = Point(
-        start_pt.x
-        + (1932.0 / 2197.0) * delta_time * k1_vx
-        - (7200.0 / 2197.0) * delta_time * k2_vx
-        + (7296.0 / 2197.0) * delta_time * k3_vx,
-        start_pt.y
-        + (1932.0 / 2197.0) * delta_time * k1_vy
-        - (7200.0 / 2197.0) * delta_time * k2_vy
-        + (7296.0 / 2197.0) * delta_time * k3_vy,
-    )
-
-    if k4_pt.is_empty:
-        return None, None
-
-    k4_vx, k4_vy = velocity_at_point(Vx, Vy, x, y, k4_pt)
-
-    if k4_vx is None or k4_vy is None:
-        return None, None
-
-    k5_pt = Point(
-        start_pt.x
-        + (439.0 / 216.0) * delta_time * k1_vx
-        - (8.0) * delta_time * k2_vx
-        + (3680.0 / 513.0) * delta_time * k3_vx
-        - (845.0 / 4104.0) * delta_time * k4_vx,
-        start_pt.y
-        + (439.0 / 216.0) * delta_time * k1_vy
-        - (8.0) * delta_time * k2_vy
-        + (3680.0 / 513.0) * delta_time * k3_vy
-        - (845.0 / 4104.0) * delta_time * k4_vy,
-    )
-
-    if k5_pt.is_empty:
-        return None, None
-
-    k5_vx, k5_vy = velocity_at_point(Vx, Vy, x, y, k5_pt)
-
-    if k5_vx is None or k5_vy is None:
-        return None, None
-
-    k6_pt = Point(
-        start_pt.x
-        - (8.0 / 27.0) * delta_time * k1_vx
-        + (2.0) * delta_time * k2_vx
-        - (3544.0 / 2565.0) * delta_time * k3_vx
-        + (1859.0 / 4104.0) * delta_time * k4_vx
-        - (11.0 / 40.0) * delta_time * k5_vx,
-        start_pt.y
-        - (8.0 / 27.0) * delta_time * k1_vy
-        + (2.0) * delta_time * k2_vy
-        - (3544.0 / 2565.0) * delta_time * k3_vy
-        + (1859.0 / 4104.0) * delta_time * k4_vy
-        - (11.0 / 40.0) * delta_time * k5_vy,
-    )
-
-    if k6_pt.is_empty:
-        return None, None
-
-    k6_vx, k6_vy = velocity_at_point(Vx, Vy, x, y, k6_pt)
-
-    if k6_vx is None or k6_vy is None:
-        return None, None
-
-    rkf_4o_x = start_pt.x + delta_time * (
-        (25.0 / 216.0) * k1_vx + (1408.0 / 2565.0) * k3_vx + (2197.0 / 4104.0) * k4_vx - (1.0 / 5.0) * k5_vx
-    )
-    rkf_4o_y = start_pt.y + delta_time * (
-        (25.0 / 216.0) * k1_vy + (1408.0 / 2565.0) * k3_vy + (2197.0 / 4104.0) * k4_vy - (1.0 / 5.0) * k5_vy
-    )
-    temp_pt = Point(rkf_4o_x, rkf_4o_y)
-
-    interp_x = start_pt.x + delta_time * (
-        (16.0 / 135.0) * k1_vx
-        + (6656.0 / 12825.0) * k3_vx
-        + (28561.0 / 56430.0) * k4_vx
-        - (9.0 / 50.0) * k5_vx
-        + (2.0 / 55.0) * k6_vx
-    )
-    interp_y = start_pt.y + delta_time * (
-        (16.0 / 135.0) * k1_vy
-        + (6656.0 / 12825.0) * k3_vy
-        + (28561.0 / 56430.0) * k4_vy
-        - (9.0 / 50.0) * k5_vy
-        + (2.0 / 55.0) * k6_vy
-    )
-    interp_pt = Point(interp_x, interp_y)
-
-    interp_pt_error_estim = interp_pt.distance(temp_pt)
-
-    return interp_pt, interp_pt_error_estim
+#     return interp_pt, interp_v, interp_pt_error_estim
 
 
 def interpolate_rkf_np(
@@ -388,16 +305,42 @@ def interpolate_rkf_np(
     """
     Interpolate point-like object position according to the Runge-Kutta-Fehlberg method.
 
-    :param geoarray: the flow field expressed as a GeoArray.
-    :type geoarray: GeoArray.
-    :param delta_time: the flow field expressed as a GeoArray.
-    :type delta_time: GeoArray.
-    :param start_pt: the initial point.
-    :type start_pt: Point.
-    :return: the estimated point-like object position at the incremented time, with the estimation error.
-    :rtype: tuple of optional point and optional float.
+    This function computes the new position of a point-like object moving in a velocity field (Vx, Vy) over a grid (x, y) using the Runge-Kutta-Fehlberg method. The function also estimates the error of the interpolation.
 
-    Examples:
+    Parameters
+    ----------
+    Vx : ndarray
+        The x-component of the velocity field.
+    Vy : ndarray
+        The y-component of the velocity field.
+    x : ndarray
+        The coordinates in the x direction.
+    y : ndarray
+        The coordinates in the y direction.
+    start_pt : Union[list, ndarray]
+        The initial position of the point-like object. It should be a list or 1D array of length 2, where the first element is the x-coordinate and the second element is the y-coordinate.
+    delta_time : float, optional
+        The time step for the interpolation. The default is 0.1.
+
+    Returns
+    -------
+    interp_pt : Union[list, ndarray]
+        The interpolated position of the point-like object at the incremented time.
+    interp_v : Union[list, ndarray]
+        The interpolated velocity of the point-like object at the incremented time.
+    interp_pt_error_estim : float
+        The estimated error of the interpolated position.
+
+    Examples
+    --------
+    >>> Vx = np.array([[0, 1], [0, 1]])
+    >>> Vy = np.array([[0, 0], [1, 1]])
+    >>> x = np.array([0, 1])
+    >>> y = np.array([0, 1])
+    >>> start_pt = [0, 0]
+    >>> delta_time = 0.1
+    >>> interpolate_rkf_np(Vx, Vy, x, y, start_pt, delta_time)
+    ([0.1, 0.0], [0.1, 0.0], 0.0)
     """
 
     def k2(p, k1_v):
@@ -516,39 +459,32 @@ def interpolate_rkf_np(
     return interp_pt, interp_v, interp_pt_error_estim
 
 
-def distance(p, other):
+def distance(p: ndarray, other: ndarray) -> float:
     """
-    Return distance to other point
+    Calculate the Euclidean distance between two points.
+
+    This function computes the Euclidean distance between point `p` and another point `other`.
+
+    Parameters
+    ----------
+    p : ndarray
+        The coordinates of the first point. It should be a 1D array of length 2, where the first element is the x-coordinate and the second element is the y-coordinate.
+    other : ndarray
+        The coordinates of the second point. It should be a 1D array of length 2, where the first element is the x-coordinate and the second element is the y-coordinate.
+
+    Returns
+    -------
+    float
+        The Euclidean distance between point `p` and point `other`.
+
+    Examples
+    --------
+    >>> p1 = np.array([0, 0])
+    >>> p2 = np.array([1, 1])
+    >>> distance(p1, p2)
+    1.4142135623730951
     """
     return np.sqrt((p[0] - other[0]) ** 2 + (p[1] - other[1]) ** 2)
-
-
-def velocity_at_point(
-    Vx: ndarray,
-    Vy: ndarray,
-    x: ndarray,
-    y: ndarray,
-    p: Union[list[Point], Point, ndarray],
-) -> Tuple:
-    """
-    Return velocity at Point p using bilinear interpolation
-    """
-
-    if isinstance(p, Point):
-        if p.is_empty:
-            return None, None
-        px = np.array([p.x])
-        py = np.array([p.y])
-    else:
-        px = np.array([pt.x for pt in p])
-        py = np.array([pt.y for pt in p])
-    A = InterpolationMatrix(x, y, px, py)
-    vx = A.apply(Vx)
-    vy = A.apply(Vy)
-    if isinstance(p, Point):
-        vx = vx[0]
-        vy = vy[0]
-    return vx, vy
 
 
 def interpolate_at_point(
@@ -560,10 +496,79 @@ def interpolate_at_point(
     py: ndarray,
 ) -> ndarray:
     """
-    Return velocity at Point px,py using bilinear interpolation
-    """
+    Return velocity at a given point using bilinear interpolation.
 
+    This function computes the velocity at a given point (px, py) by performing bilinear interpolation on the velocity field (Vx, Vy) over the grid defined by (x, y).
+
+    Parameters
+    ----------
+    Vx : ndarray
+        The x-component of the velocity field.
+    Vy : ndarray
+        The y-component of the velocity field.
+    x : ndarray
+        The coordinates in the x direction.
+    y : ndarray
+        The coordinates in the y direction.
+    px : ndarray
+        The x-coordinate of the point.
+    py : ndarray
+        The y-coordinate of the point.
+
+    Returns
+    -------
+    ndarray
+        The interpolated velocity at the point (px, py). The first element is the x-component of the velocity, and the second element is the y-component of the velocity.
+
+    Notes
+    -----
+    The function `InterpolationMatrix` is used to generate a matrix that performs bilinear interpolation when applied to a field. The `apply` method of this matrix is then used to compute the interpolated velocity.
+    """
     A = InterpolationMatrix(x, y, px, py)
+    vx = A.apply(Vx)
+    vy = A.apply(Vy)
+    return np.array([vx.item(), vy.item()])
+
+
+# pylint: disable=unused-argument
+def velocity(
+    p: ndarray,
+    t: float,
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
+) -> ndarray:
+    """
+    Return velocity at a given point using bilinear interpolation.
+
+    This function computes the velocity at a given point (px, py) by performing bilinear interpolation on the velocity field (Vx, Vy) over the grid defined by (x, y).
+
+    Parameters
+    ----------
+    p : ndarray
+        The point to interpolate at.
+    t : float
+        The time to interpolate at. This is currently not being used.
+    Vx : ndarray
+        The x-component of the velocity field.
+    Vy : ndarray
+        The y-component of the velocity field.
+    x : ndarray
+        The coordinates in the x direction.
+    y : ndarray
+        The coordinates in the y direction.
+
+    Returns
+    -------
+    ndarray
+        The interpolated velocity at the point (px, py). The first element is the x-component of the velocity, and the second element is the y-component of the velocity.
+
+    Notes
+    -----
+    The function `InterpolationMatrix` is used to generate a matrix that performs bilinear interpolation when applied to a field. The `apply` method of this matrix is then used to compute the interpolated velocity.
+    """
+    A = InterpolationMatrix(x, y, p[0], p[1])
     vx = A.apply(Vx)
     vy = A.apply(Vy)
     return np.array([vx.item(), vy.item()])

@@ -20,11 +20,10 @@
 Module provides functions for calculating pathlines (trajectories).
 """
 
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Tuple, Union
 
 import geopandas as gp
 import numpy as np
-import pandas as pd
 from numpy import ndarray
 from shapely.geometry import Point
 from xarray import DataArray
@@ -52,37 +51,43 @@ def compute_pathline(
     progress_kwargs: Dict = {"leave": False, "position": 0},
 ) -> Tuple[ndarray, ndarray, ndarray]:
     """
-    Compute a pathline.
+    Compute a pathline using Runge-Kutta-Fehlberg integration.
 
-    Computes a pathline using Runge-Kutta-Fehlberg integration. Routine is
-    unit-agnostic, requiring the user to ensure consistency of units. For example
-    if the velocity field is given in m/yr, the `dt` and `total_time` are assumed
-    to be in years.
+    This function computes a pathline, which is a trajectory traced by a particle in a fluid flow. The pathline is computed by integrating the velocity field using the Runge-Kutta-Fehlberg method. The function is unit-agnostic, requiring the user to ensure consistency of units. For example, if the velocity field is given in m/yr, the `dt` and `total_time` are assumed to be in years.
 
     Parameters
     ----------
-    Point : shapely.Point
-        Starting point of the pathline
-    Vx : numpy.ndarray
-        x-component of velocity
-    Vy : numpy.ndarray
-        y-component of velocity
-    x : numpy.ndarray
-        coordinates in x direction
-    y : numpy.ndarray
-        coordinates in y direction
-    dt : float
-        integration time step
-    total_time : float
-        total integration time
+    point : list, ndarray, or shapely.Point
+        Starting point of the pathline.
+    Vx : ndarray
+        The x-component of the velocity field.
+    Vy : ndarray
+        The y-component of the velocity field.
+    x : ndarray
+        The coordinates in the x direction.
+    y : ndarray
+        The coordinates in the y direction.
+    dt : float, optional
+        The integration time step. Default is 0.1.
+    total_time : float, optional
+        The total integration time. Default is 1000.
+    reverse : bool, optional
+        If True, the velocity field is reversed before computing the pathline. Default is False.
+    notebook : bool, optional
+        If True, a progress bar is displayed in a Jupyter notebook. Default is False.
+    progress : bool, optional
+        If True, a progress bar is displayed. Default is False.
+    progress_kwargs : dict, optional
+        Additional keyword arguments for the progress bar. Default is {"leave": False, "position": 0}.
 
     Returns
-    ----------
-    pts: np.ndarray
-        `dt`-spaced points along trajectory from 0 to `total_time`.
-    pts_error_estim: np.ndarray
-        error estimate at `dt`-spaced points along trajectory
-        from 0 to `total_time`.
+    -------
+    pts : ndarray
+        The `dt`-spaced points along the pathline from 0 to `total_time`.
+    velocities : ndarray
+        The velocity at each point along the pathline.
+    pts_error_estimate : ndarray
+        Error estimate at each point along the pathline.
 
     Examples
     ----------
@@ -171,9 +176,38 @@ def get_grf_perturbed_velocities(
     sigma: float = 1.0,
 ) -> Tuple[Union[ndarray, DataArray], Union[ndarray, DataArray]]:
     """
-    Return perturbed velocity field
-    """
+    Return perturbed velocity field using Gaussian Random Fields (GRF).
 
+    This function generates a perturbed velocity field by adding a GRF to the original velocity field. The GRF is generated using a power-law spectrum.
+
+    Parameters
+    ----------
+    VX : ndarray or DataArray
+        Original velocity field in the x-direction.
+    VY : ndarray or DataArray
+        Original velocity field in the y-direction.
+    VX_e : ndarray or DataArray
+        Error estimates for the velocity field in the x-direction.
+    VY_e : ndarray or DataArray
+        Error estimates for the velocity field in the y-direction.
+    pl_exp : float
+        Exponent for the power-law spectrum used to generate the GRF.
+    perturbation : int
+        Seed for the random number generator used to generate the GRF.
+    sigma : float, optional
+        Standard deviation for the normal distribution used to generate the GRF. Default is 1.0.
+
+    Returns
+    -------
+    Vx : ndarray or DataArray
+        Perturbed velocity field in the x-direction.
+    Vy : ndarray or DataArray
+        Perturbed velocity field in the y-direction.
+
+    Notes
+    -----
+    The function `distrib_normal` is used to generate a normal distribution with mean 0 and standard deviation `sigma`. This distribution is used as input to the function `generate_field`, which generates the GRF using a power-law spectrum.
+    """
     d_x, d_y = distrib_normal(VX_e, sigma=sigma, seed=perturbation), distrib_normal(
         VY_e, sigma=sigma, seed=perturbation
     )
@@ -184,9 +218,6 @@ def get_grf_perturbed_velocities(
     Vx = VX + Vx_grf
     Vy = VY + Vy_grf
 
-    Vx = VX
-    Vy = VY
-
     return Vx, Vy
 
 
@@ -194,27 +225,24 @@ def pathline_to_geopandas_dataframe(
     points: Union[list[Point], np.ndarray], attrs: Union[dict, None] = None, crs="EPSG:3413"
 ) -> gp.GeoDataFrame:
     """
-    Convert a list of shapely.Point or np.ndarray to a geopandas.GeoDataFrame
-    Compute trajectory
+    Convert a list of shapely.Point or np.ndarray to a geopandas.GeoDataFrame.
 
-    Computes a trajectory using Runge-Kutta-Fehlberg integration. Routine is
-    unit-agnostic, requiring the user to ensure consistency of units. For example
-    if the velocity field is given in m/yr, the `dt` and `total_time` are assumed
-    to be in years.
+    This function takes a list of points, optionally with associated attributes, and converts it into a GeoDataFrame.
+    The points represent a pathline, which is a trajectory traced by a particle in a fluid flow.
 
     Parameters
     ----------
     points : list[shapely.Point] or np.ndarray
-        Points along pathlines
-    attributes : dict
-        Dictionary of attributes to be added. E.g. {"pathline_id": 0}
-    crs : str
-        Coordinate reference system, e.g. "EPSG:3413:
+        Points along pathlines.
+    attrs : dict, optional
+        Dictionary of attributes to be added to the GeoDataFrame. E.g. {"pathline_id": 0}.
+    crs : str, optional
+        Coordinate reference system to be used for the GeoDataFrame. The default is "EPSG:3413", which represents the WGS 84 / NSIDC Sea Ice Polar Stereographic North coordinate system.
 
     Returns
     ----------
     df: gp.GeoDataFrame
-        Geopandas dataframe of pathline
+        A GeoDataFrame where each row represents a point in the pathline. If attributes are provided, they are added as columns in the GeoDataFrame.
 
     Examples
     ----------
@@ -304,7 +332,6 @@ def pathline_to_geopandas_dataframe(
     >>>    }
     >>>    attributes.update(pathline_data)
 
-
     >>>      {'geometry': {0: <POINT (249.994 -49750.006)>,
     >>>    1: <POINT (499.975 -49500.025)>,
     >>>    2: <POINT (749.943 -49250.057)>,
@@ -382,7 +409,6 @@ def pathline_to_geopandas_dataframe(
     >>>    8: 2827.18124446036,
     >>>    9: 3180.278093578374,
     >>>    10: 3533.2722394025536}}
-
     """
     if isinstance(points, np.ndarray):
         geom = [Point(pt) for pt in points]
@@ -397,21 +423,21 @@ def pathline_to_geopandas_dataframe(
 
 def series_to_pathline_geopandas_dataframe(series: gp.GeoSeries, pathline: Tuple) -> gp.GeoDataFrame:
     """
-    Convert a  pathline tuple and a geopandas.GeoSeries to a geopandas.GeoDataFrame
+    Convert a  pathline tuple and a geopandas.GeoSeries to a geopandas.GeoDataFrame.
 
-    Convert a geopandas.GeoSeries single point and a pathline to a geopandas.GeoDataFrame
+    Convert a geopandas.GeoSeries single point and a pathline to a geopandas.GeoDataFrame.
 
     Parameters
     ----------
     series : geopandas.GeoSeries
-        A series with attributes
+        A series with attributes.
     pathline : Tuple
-        Tuple of (List[Points], List[vx, vy], List[error])
+        Tuple of (List[Points], List[vx, vy], List[error]).
 
     Returns
     ----------
     df: gp.GeoDataFrame
-        Geopandas dataframe of pathline
+        Geopandas dataframe of pathline.
 
     Examples
     ----------

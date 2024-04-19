@@ -166,7 +166,7 @@ def plot_glacier(
     cartopy_crs = ccrs.NorthPolarStereo(central_longitude=-45, true_scale_latitude=70, globe=None)
     # Shade from the northwest, with the sun 45 degrees from horizontal
     light_source = LightSource(azdeg=315, altdeg=45)
-    glacier_overlay = overlay.sel(**extent_slice)
+    glacier_overlay = overlay.sel(extent_slice)
     glacier_surface = surface.interp_like(glacier_overlay)
 
     extent = get_extent(glacier_overlay)

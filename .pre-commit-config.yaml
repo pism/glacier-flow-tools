@@ -32,38 +32,38 @@ repos:
   #   hooks:
   #     - id: numpydoc-validation
 
-  # - repo: local
-  #   hooks:
-  #    - id: pytest # pytest is a pre-commit hook
-  #      name: pytest
-  #      entry: pytest tests
-  #      language: system
-  #      types: [python]
-  #      exclude: ^venv/ ^.git/ ^.vscode/ ^.DS_Store ^uq/ ^hindcasts/
-  #      always_run: true
-  #      pass_filenames: false
+  - repo: local
+    hooks:
+     - id: pytest # pytest is a pre-commit hook
+       name: pytest
+       entry: pytest tests
+       language: system
+       types: [python]
+       exclude: ^venv/ ^.git/ ^.vscode/ ^.DS_Store ^uq/ ^hindcasts/
+       always_run: true
+       pass_filenames: false
 
-  # # Can run individually with `pre-commit run mypy --all-files`
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.9.0
-  #   hooks:
-  #     - id: mypy
-  #       language: system
-  #       pass_filenames: false
-  #       args: ['.']
+  # Can run individually with `pre-commit run mypy --all-files`
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.9.0
+    hooks:
+      - id: mypy
+        language: system
+        pass_filenames: false
+        args: ['.']
 
-  # - repo: local
-  #   hooks:
-  #     - id: pylint
-  #       name: pylint
-  #       entry: pylint
-  #       language: system
-  #       types: [python]
-  #       args:
-  #         [
-  #           "-rn", # Only display messages
-  #           "-sn", # Don't display the score
-  #         ]
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        types: [python]
+        args:
+          [
+            "-rn", # Only display messages
+            "-sn", # Don't display the score
+          ]
 
   - repo: https://github.com/srstevenson/nb-clean
     rev: 3.2.0
