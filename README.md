@@ -23,4 +23,6 @@ Install glacier-flow-tools:
     $ pip install -e .
 
 
+## Examples
+
 ![Pathlines starting from the Jakobshaven Isbræ flux gate.](https://github.com/pism/glacier-flow-tools/blob/main/images/jak_obs_speed.png)
