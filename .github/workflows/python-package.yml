@@ -57,3 +57,6 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: pism/glacier-flow-tools
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install flake8 pytest coverage
