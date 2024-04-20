@@ -30,6 +30,7 @@ import xarray as xr
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
+from glacier_flow_tools.interpolation import velocity
 from glacier_flow_tools.pathlines import (
     compute_pathline,
     series_to_pathline_geopandas_dataframe,
@@ -45,8 +46,14 @@ if __name__ == "__main__":
     parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
     parser.add_argument("--dt", help="""Time step. Default=1.0""", type=float, default=1.0)
     parser.add_argument(
-        "--total_time",
-        help="""Total time. Default=1_000""",
+        "--start_time",
+        help="""Start time. Default=0.0""",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--end_time",
+        help="""End time. Default=1000.0""",
         type=float,
         default=1_000.0,
     )
@@ -68,6 +75,11 @@ if __name__ == "__main__":
     ds = xr.open_dataset(options.raster_url)
     Vx = np.squeeze(ds["vx"].to_numpy())
     Vy = np.squeeze(ds["vy"].to_numpy())
+
+    if options.reverse:
+        Vx = -Vx
+        Vy = -Vy
+
     x = ds["x"].to_numpy()
     y = ds["y"].to_numpy()
 
@@ -79,13 +91,13 @@ if __name__ == "__main__":
         pathlines = Parallel(n_jobs=options.n_jobs)(
             delayed(compute_pathline)(
                 [*df.geometry.coords[0]],
-                Vx,
-                Vy,
-                x,
-                y,
-                dt=options.dt,
-                total_time=options.total_time,
-                reverse=options.reverse,
+                velocity,
+                f_args=(Vx, Vy, x, y),
+                hmin=options.dt,
+                hmax=options.dt,
+                tol=100.0,
+                start_time=options.start_time,
+                end_time=options.end_time,
                 progress=True,
                 progress_kwargs={"leave": False, "position": 1},
             )

@@ -2,9 +2,9 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
-# glacier-flow-tools
+# Glacier Flow Tools
 
-A set of random tools
+Glacier Flow Tools facilitates analysis of glacier flow. It provides modules to compute pathlines (trajectories), compute flow across profiles (flux gates), etc. This tools is currently under development.
 
 ## Installation
 

@@ -28,7 +28,7 @@ from numpy import ndarray
 from numpy.linalg import norm
 from shapely.geometry import Point
 from tqdm import tqdm as tqdm_script
-from tqdm import tqdm_notebook
+from tqdm.notebook import tqdm as tqdm_notebook
 from xarray import DataArray
 
 from glacier_flow_tools.gaussian_random_fields import (
@@ -153,7 +153,7 @@ def compute_pathline(
     >>>     x, y = point
     >>>     return np.array([-y, x])
     >>> point = [1, 0]
-    >>> pts, v, _ = compute_pathline_rfk(point, velocity_field, (), start_time=0, end_time=2*np.pi)
+    >>> pts, v, _ = compute_pathline(point, velocity_field, (), start_time=0, end_time=2*np.pi)
     """
 
     a2 = 2.500000000000000e-01  #  1/4
@@ -234,13 +234,10 @@ def compute_pathline(
                 )
 
             pts = np.append(pts, [x], axis=0)
-            velocities = np.append(velocities, [f(x, start_time, *f_args)])
+            velocities = np.append(velocities, [f(x, start_time, *f_args)], axis=0)
             time = np.append(time, t)
             error_estimate = np.append(error_estimate, r)
             k += 1
-
-            if progress:
-                p_bar.update(t)
 
     return pts, velocities, time, error_estimate
 

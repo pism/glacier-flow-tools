@@ -539,6 +539,62 @@ def interpolate_at_point(
 
 
 # pylint: disable=unused-argument
+def velocity_steady(
+    p: ndarray,
+    Vx: ndarray,
+    Vy: ndarray,
+    x: ndarray,
+    y: ndarray,
+) -> ndarray:
+    """
+    Return velocity at a given point using bilinear interpolation for steady flow.
+
+    This function computes the velocity at a given point (px, py) by performing bilinear interpolation on the velocity field (Vx, Vy) over the grid defined by (x, y).
+
+    Parameters
+    ----------
+    p : ndarray
+        The point to interpolate at.
+    Vx : ndarray
+        The x-component of the velocity field.
+    Vy : ndarray
+        The y-component of the velocity field.
+    x : ndarray
+        The coordinates in the x direction.
+    y : ndarray
+        The coordinates in the y direction.
+
+    Returns
+    -------
+    ndarray
+        The interpolated velocity at the point (px, py). The first element is the x-component of the velocity, and the second element is the y-component of the velocity.
+
+    Notes
+    -----
+    The function `InterpolationMatrix` is used to generate a matrix that performs bilinear interpolation when applied to a field. The `apply` method of this matrix is then used to compute the interpolated velocity.
+
+    Examples
+    --------
+
+    >>> from glacier_flow_tools.interpolation import velocity_steady
+
+    >>> x = np.linspace(-1, 1, 26)
+    >>> y = np.linspace(-1, 1, 26)
+    >>> X, Y = np.meshgrid(x, y)
+
+    >>> # Directional vectors
+    >>> Vx = X
+    >>> Vy = -Y
+
+    >>> point = np.array([0.0, 0.0])
+    >>> velocity_steady(point, Vx, Vy, x, y)
+    array([ 5.26662047e-17, -5.44009282e-17])
+    """
+
+    return velocity(p, 0, Vx, Vy, x, y)
+
+
+# pylint: disable=unused-argument
 def velocity(
     p: ndarray,
     t: float,
