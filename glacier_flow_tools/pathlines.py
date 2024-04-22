@@ -204,6 +204,7 @@ def compute_pathline(
     pts = np.vstack([pts, x])
     velocities = np.vstack([velocities, f(point, start_time, *f_args)])
     time = np.append(time, start_time)
+    error_estimate = np.append(error_estimate, 0.0)
 
     k = 0
     p_bar = tqdm_notebook if notebook else tqdm_script
@@ -673,6 +674,8 @@ def series_to_pathline_geopandas_dataframe(series: gp.GeoSeries, pathline: Tuple
     vx = v[:, 0]
     vy = v[:, 1]
     speed = np.sqrt(vx**2 + vy**2)
+    time = pathline[2]
+    error = pathline[3]
 
     d = distances(points)
     pathline_data = {
@@ -682,6 +685,8 @@ def series_to_pathline_geopandas_dataframe(series: gp.GeoSeries, pathline: Tuple
         "pathline_id": k,
         "distance": d,
         "distance_from_origin": np.cumsum(d),
+        "time": time,
+        "error": error,
     }
     attributes.update(pathline_data)
     return pathline_to_geopandas_dataframe(points, attributes).reset_index(drop=True)
