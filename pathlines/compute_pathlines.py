@@ -44,7 +44,19 @@ if __name__ == "__main__":
     parser.add_argument("--raster_url", help="""Path to raster dataset.""", default=None)
     parser.add_argument("--vector_url", help="""Path to vector dataset.""", default=None)
     parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
-    parser.add_argument("--dt", help="""Time step. Default=1.0""", type=float, default=1.0)
+    parser.add_argument(
+        "--hmin",
+        help="""Minimum time step for adaptive time stepping. Default=0.01. If hmin=hmax then a fixed time step is used""",
+        type=float,
+        default=0.01,
+    )
+    parser.add_argument(
+        "--hmax",
+        help="""Maximum time step for adaptive time stepping. Default=1.0. If hmin=hmax then a fixed time step is used""",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument("--tol", help="""Adaptive time stepping tolerance.""", type=float, default=1.0)
     parser.add_argument(
         "--start_time",
         help="""Start time. Default=0.0""",
@@ -93,22 +105,20 @@ if __name__ == "__main__":
                 [*df.geometry.coords[0]],
                 velocity,
                 f_args=(Vx, Vy, x, y),
-                hmin=options.dt,
-                hmax=options.dt,
-                tol=100.0,
+                hmin=options.hmin,
+                hmax=options.hmax,
+                tol=options.tol,
                 start_time=options.start_time,
                 end_time=options.end_time,
-                progress=True,
-                progress_kwargs={"leave": False, "position": 1},
+                progress=False,
+                progress_kwargs={"leave": False, "position": index},
             )
             for index, df in starting_points_df.iterrows()
         )
     result = pd.concat(
-        list(
-            starting_points_df.reset_index().apply(
-                series_to_pathline_geopandas_dataframe, pathline=next(iter(pathlines)), axis=1
-            )
-        )
+        [
+            series_to_pathline_geopandas_dataframe(s.drop("geometry", errors="ignore"), pathlines[k])
+            for k, s in starting_points_df.iterrows()
+        ]
     ).reset_index(drop=True)
-
     result.to_file(p, mode="w")

@@ -214,11 +214,23 @@ def compute_pathline(
                 h = end_time - t
 
             k1 = h * f(x, t, *f_args)
+            if np.any(np.isnan(k1)):
+                return np.array([[np.nan, np.nan]]), np.array([[np.nan, np.nan]]), np.array([t]), np.array([np.nan])
             k2 = h * f(x + b21 * k1, t + a2 * h, *f_args)
+            if np.any(np.isnan(k2)):
+                return np.array([[np.nan, np.nan]]), np.array([[np.nan, np.nan]]), np.array([t]), np.array([np.nan])
             k3 = h * f(x + b31 * k1 + b32 * k2, t + a3 * h, *f_args)
+            if np.any(np.isnan(k3)):
+                return np.array([[np.nan, np.nan]]), np.array([[np.nan, np.nan]]), np.array([t]), np.array([np.nan])
             k4 = h * f(x + b41 * k1 + b42 * k2 + b43 * k3, t + a4 * h, *f_args)
+            if np.any(np.isnan(k4)):
+                return np.array([[np.nan, np.nan]]), np.array([[np.nan, np.nan]]), np.array([t]), np.array([np.nan])
             k5 = h * f(x + b51 * k1 + b52 * k2 + b53 * k3 + b54 * k4, t + a5 * h, *f_args)
+            if np.any(np.isnan(k5)):
+                return np.array([[np.nan, np.nan]]), np.array([[np.nan, np.nan]]), np.array([t]), np.array([np.nan])
             k6 = h * f(x + b61 * k1 + b62 * k2 + b63 * k3 + b64 * k4 + b65 * k5, t + a6 * h, *f_args)
+            if np.any(np.isnan(k6)):
+                return np.array([[np.nan, np.nan]]), np.array([[np.nan, np.nan]]), np.array([t]), np.array([np.nan])
 
             r = norm(r1 * k1 + r3 * k3 + r4 * k4 + r5 * k5 + r6 * k6) / h
             if r <= tol:
