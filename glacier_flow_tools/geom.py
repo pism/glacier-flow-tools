@@ -26,6 +26,7 @@ import geopandas as gp
 import numpy as np
 import pandas as pd
 from numpy import ndarray
+from shapely import get_coordinates
 from shapely.geometry import LineString, MultiLineString, Point
 
 
@@ -225,6 +226,70 @@ def distances(pts: ndarray) -> ndarray:
     distances_arr[0] = 0.0
 
     return distances_arr
+
+
+def geopandas_dataframe_shorten_lines(
+    df: gp.GeoDataFrame, buffer: float = 200, segmentize: float = 100
+) -> gp.GeoDataFrame:
+    """
+    Shorten all lines in a GeoDataFrame.
+
+    This function shortens all lines in a GeoDataFrame by removing points from both ends until the cumulative distance from each end is greater than a specified buffer distance. The lines are represented by GeoSeries of points, and the function returns a GeoDataFrame that contains the shortened lines.
+
+    Parameters
+    ----------
+    df : gp.GeoDataFrame
+        A GeoDataFrame containing the lines to be shortened. Each line is represented by a GeoSeries of points.
+    buffer : float, optional
+        The buffer distance. Points will be removed from the ends of the lines until the cumulative distance from each end is greater than this buffer distance. The default is 200.
+    segmentize : float, optional
+        The maximum length of line segments. If specified, the lines will be divided into segments of this length before shortening. The default is 100.
+
+    Returns
+    -------
+    gp.GeoDataFrame
+        A GeoDataFrame that contains the shortened lines. Each line is represented by a GeoSeries of points.
+
+    Examples
+    --------
+    >>> df = gp.GeoDataFrame(geometry=[LineString([(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)])])
+    >>> geopandas_dataframe_shorten_lines(df, buffer=1, segmentize=0.5)
+    <geopandas.geodataframe.GeoDataFrame object at 0x7f4c6c3acf40>
+    """
+    g = df.segmentize(segmentize)
+    geom_df = gp.GeoDataFrame(geometry=g)
+    return df.set_geometry(geom_df.apply(shorten_line, buffer=buffer, axis=1)).convert.to_points()
+
+
+def shorten_line(series: gp.GeoSeries, buffer: float = 100):
+    """
+    Shorten a line represented by a GeoSeries.
+
+    This function shortens a line by removing points from both ends until the cumulative distance from each end is greater than a specified buffer distance. The line is represented by a GeoSeries of points, and the function returns a LineString that represents the shortened line.
+
+    Parameters
+    ----------
+    series : gp.GeoSeries
+        A GeoSeries representing the line. Each point in the series is a vertex of the line.
+    buffer : float, optional
+        The buffer distance. Points will be removed from the ends of the line until the cumulative distance from each end is greater than this buffer distance. The default is 100.
+
+    Returns
+    -------
+    shapely.geometry.LineString
+        A LineString that represents the shortened line.
+
+    Examples
+    --------
+    >>> series = gp.GeoSeries([Point(0, 0), Point(1, 1), Point(2, 2), Point(3, 3), Point(4, 4)])
+    >>> shorten_line(series, buffer=1)
+    <shapely.geometry.linestring.LineString object at 0x7f4c6c3acf40>
+    """
+    coords = get_coordinates(series)
+    d = distances(coords)
+    i_min, i_max = np.argmax(d.cumsum() > buffer), np.argmax(np.flip(np.cumsum(np.flip(d))) < buffer) - 1
+    geom = LineString(coords[[i_min, i_max], :])
+    return geom
 
 
 @pd.api.extensions.register_dataframe_accessor("convert")

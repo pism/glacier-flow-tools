@@ -30,6 +30,7 @@ import xarray as xr
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
+from glacier_flow_tools.geom import geopandas_dataframe_shorten_lines
 from glacier_flow_tools.interpolation import velocity
 from glacier_flow_tools.pathlines import (
     compute_pathline,
@@ -82,7 +83,8 @@ if __name__ == "__main__":
     p = Path(options.outfile[-1])
     p.parent.mkdir(parents=True, exist_ok=True)
 
-    starting_points_df = gp.read_file(options.vector_url).convert.to_points()
+    df = gp.read_file(options.vector_url)
+    starting_points_df = geopandas_dataframe_shorten_lines(df).convert.to_points()
 
     ds = xr.open_dataset(options.raster_url)
     Vx = np.squeeze(ds["vx"].to_numpy())
