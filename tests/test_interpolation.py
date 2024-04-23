@@ -64,7 +64,7 @@ def test_masked_missing_interpolation():
     # set the four elements in the corner to nan and mark them as
     # missing
     z[0:2, 0:2] = np.nan
-    mask = np.zeros_like(z, dtype=np.bool_)
+    mask = np.zeros_like(z, dtype=bool)
     mask[0:2, 0:2] = np.nan
 
     z = np.ma.array(z, mask=mask)

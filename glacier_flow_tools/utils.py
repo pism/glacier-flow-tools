@@ -25,6 +25,7 @@ import re
 from pathlib import Path
 from typing import (  # pylint: disable=deprecated-class
     Callable,
+    Dict,
     Hashable,
     Iterable,
     List,
@@ -33,8 +34,8 @@ from typing import (  # pylint: disable=deprecated-class
 
 import joblib
 import numpy as np
-import pandas as pd
 import xarray as xr
+from dask import dataframe as dd
 from matplotlib import colors
 
 
@@ -155,27 +156,73 @@ def preprocess_nc(
     return ds.drop_vars(drop_vars, errors="ignore").drop_dims(drop_dims, errors="ignore")
 
 
-def merge_on_intersection(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+def get_dataarray_extent(ds: xr.DataArray) -> List[float]:
+    """
+    Get the extent of the data array.
+
+    This function returns the extent (the minimum and maximum values) of the 'x' and 'y' dimensions
+    of the input data array.
+
+    Parameters
+    ----------
+    ds : xr.DataArray
+        The input data array.
+
+    Returns
+    -------
+    List[float]
+        The extent of the data array, in the format [xmin, xmax, ymax, ymin].
+    """
+    return [ds["x"].values[0], ds["x"].values[-1], ds["y"].values[-1], ds["y"].values[0]]
+
+
+def figure_extent(x_c: float, y_c: float, x_e: float = 50_000, y_e: float = 50_000) -> Dict[str, slice]:
+    """
+    Calculate bounding box (figure extent) given center coordinates and x,y half-width/height.
+
+    This function calculates the bounding box (figure extent) for a figure given the center coordinates
+    and the half-width and half-height in the x and y directions, respectively.
+
+    Parameters
+    ----------
+    x_c : float
+        The x-coordinate of the center of the figure.
+    y_c : float
+        The y-coordinate of the center of the figure.
+    x_e : float, optional
+        The half-width of the figure in the x direction, by default 50_000.
+    y_e : float, optional
+        The half-height of the figure in the y direction, by default 50_000.
+
+    Returns
+    -------
+    Dict[str, slice]
+        A dictionary with keys 'x' and 'y' and values that are slices representing the extent of the figure.
+    """
+    return {"x": slice(x_c - x_e / 2, x_c + x_e / 2), "y": slice(y_c + y_e / 2, y_c - y_e / 2)}
+
+
+def merge_on_intersection(df1: dd.DataFrame, df2: dd.DataFrame) -> dd.DataFrame:
     """
     Merge two pandas DataFrames on intersection keys.
 
-    This function merges two pandas DataFrames based on the intersection of their columns.
+    This function merges two Dask DataFrames based on the intersection of their columns.
     The intersection of the columns is used as the keys for the merge operation.
 
     Parameters
     ----------
-    df1 : pd.DataFrame
+    df1 : dask.DataFrame
         The first DataFrame to be merged.
-    df2 : pd.DataFrame
+    df2 : dask.DataFrame
         The second DataFrame to be merged.
 
     Returns
     -------
-    pd.DataFrame
+    dd.DataFrame
         The merged DataFrame.
     """
     intersection_keys = list(set(df1.columns) & set(df2.columns))
-    return pd.merge(df1, df2, on=intersection_keys)
+    return dd.merge(df1, df2, on=intersection_keys)
 
 
 def qgis2cmap(filename: Union[Path, str], N: int = 256, name: str = "my colormap") -> colors.LinearSegmentedColormap:

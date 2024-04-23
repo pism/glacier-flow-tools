@@ -387,7 +387,7 @@ class InterpolationMatrix:
         A = self.A.tocsr()
         n_points = A.shape[0]
 
-        output_mask = np.zeros(n_points, dtype=np.bool_)
+        output_mask = np.zeros(n_points, dtype=bool)
 
         for r in range(n_points):
             # for each row, i.e. each point along the profile

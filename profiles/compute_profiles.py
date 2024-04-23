@@ -7,7 +7,7 @@
 # Foundation; either version 3 of the License, or (at your option) any later
 # version.
 #
-# PISM-RAGIS is distributed in the hope that it will be useful, but WITHOUT ANY
+# GLACIER-FLOW-TOOLS is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details.
@@ -22,199 +22,25 @@ Calculate proifles and compute statistics along profiles.
 
 import time
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from functools import partial
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import List
 
-import cartopy.crs as ccrs
 import dask_geopandas
-import fsspec
 import geopandas as gp
-import numpy as np
-import pylab as plt
 import xarray as xr
 from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster, progress
 from joblib import Parallel, delayed
-from matplotlib import cm, colors
-from matplotlib.colors import LightSource
 from tqdm.auto import tqdm
 
-from glacier_flow_tools.profiles import process_profile
+from glacier_flow_tools.profiles import plot_glacier, plot_profile, process_profile
 from glacier_flow_tools.utils import (
-    blend_multiply,
     merge_on_intersection,
     preprocess_nc,
     qgis2cmap,
     tqdm_joblib,
 )
-
-
-def figure_extent(x_c: float, y_c: float, x_e: float = 50_000, y_e: float = 50_000) -> Dict[str, slice]:
-    """
-    Calculate bounding box (figure extent) given center coordinates and x,y half-width/height.
-
-    This function calculates the bounding box (figure extent) for a figure given the center coordinates
-    and the half-width and half-height in the x and y directions, respectively.
-
-    Parameters
-    ----------
-    x_c : float
-        The x-coordinate of the center of the figure.
-    y_c : float
-        The y-coordinate of the center of the figure.
-    x_e : float, optional
-        The half-width of the figure in the x direction, by default 50_000.
-    y_e : float, optional
-        The half-height of the figure in the y direction, by default 50_000.
-
-    Returns
-    -------
-    Dict[str, slice]
-        A dictionary with keys 'x' and 'y' and values that are slices representing the extent of the figure.
-    """
-    return {"x": slice(x_c - x_e / 2, x_c + x_e / 2), "y": slice(y_c + y_e / 2, y_c - y_e / 2)}
-
-
-def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: float = 1.0):
-    """
-    Plot a profile dataset created with ds.profiles.extract_profile.
-
-    This function plots a profile dataset that was created with the `extract_profile` method of the `profiles`
-    attribute of an `xr.Dataset` object. The plot is saved as a PDF file in the specified result directory.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The profile dataset to be plotted.
-    result_dir : Path
-        The directory where the result PDF file will be saved.
-    alpha : float, optional
-        The alpha value to be used for the plot, which determines the transparency of the plot, by default 0.0.
-    sigma : float, optional
-        The sigma value to be used for the plot, which determines the width of the Gaussian kernel, by default 1.0.
-    """
-
-    fig = ds.profiles.plot(palette="Greens", sigma=sigma, alpha=alpha)
-    profile_name = ds["profile_name"].values[0]
-    fig.savefig(result_dir / f"{profile_name}_profile.pdf")
-    plt.close()
-    del fig
-
-
-def get_extent(ds: xr.DataArray) -> List[float]:
-    """
-    Get the extent of the data array.
-
-    This function returns the extent (the minimum and maximum values) of the 'x' and 'y' dimensions
-    of the input data array.
-
-    Parameters
-    ----------
-    ds : xr.DataArray
-        The input data array.
-
-    Returns
-    -------
-    List[float]
-        The extent of the data array, in the format [xmin, xmax, ymax, ymin].
-    """
-    return [ds["x"].values[0], ds["x"].values[-1], ds["y"].values[-1], ds["y"].values[0]]
-
-
-def plot_glacier(
-    profile: gp.GeoDataFrame,
-    surface: xr.DataArray,
-    overlay: xr.DataArray,
-    result_dir: Union[str, Path],
-    cmap="viridis",
-    vmin: float = 10,
-    vmax: float = 1500,
-    ticks: Union[List[float], np.ndarray] = [10, 100, 250, 500, 750, 1500],
-):
-    """
-    Plot a surface over a hillshade, add profile and correlation coefficient.
-
-    This function plots a surface over a hillshade, adds a profile and correlation coefficient.
-    The plot is saved as a PDF file in the specified result directory.
-
-    Parameters
-    ----------
-    profile : gp.GeoDataFrame
-        The profile to be plotted.
-    surface : xr.DataArray
-        The surface to be plotted over the hillshade.
-    overlay : xr.DataArray
-        The overlay to be added to the plot.
-    result_dir : Union[str, Path]
-        The directory where the result PDF file will be saved.
-    cmap : str, optional
-        The colormap to be used for the plot, by default "viridis".
-    vmin : float, optional
-        The minimum value for the colormap, by default 10.
-    vmax : float, optional
-        The maximum value for the colormap, by default 1500.
-    ticks : Union[List[float], np.ndarray], optional
-        The ticks to be used for the colorbar, by default [10, 100, 250, 500, 750, 1500].
-    """
-
-    profile_centroid = gp.GeoDataFrame(profile, geometry=profile.geometry.centroid)
-    glacier_name = profile.iloc[0]["profile_name"]
-    exp_id = profile.iloc[0]["exp_id"]
-    x_c = round(profile_centroid.geometry.x.values[0])
-    y_c = round(profile_centroid.geometry.y.values[0])
-    extent_slice = figure_extent(x_c, y_c)
-    cartopy_crs = ccrs.NorthPolarStereo(central_longitude=-45, true_scale_latitude=70, globe=None)
-    # Shade from the northwest, with the sun 45 degrees from horizontal
-    light_source = LightSource(azdeg=315, altdeg=45)
-    glacier_overlay = overlay.sel(extent_slice)
-    glacier_surface = surface.interp_like(glacier_overlay)
-
-    extent = get_extent(glacier_overlay)
-    norm = colors.Normalize(vmin=vmin, vmax=vmax)
-    mapper = cm.ScalarMappable(norm=norm, cmap=cmap)
-
-    v = mapper.to_rgba(glacier_overlay.to_numpy())
-    z = glacier_surface.to_numpy()
-    fig = plt.figure(figsize=(6.2, 6.2))
-    ax = fig.add_subplot(111, projection=cartopy_crs)
-    rgb = light_source.shade_rgb(v, elevation=z, vert_exag=0.01, blend_mode=blend_multiply)
-    # Use a proxy artist for the colorbar...
-    im = ax.imshow(v, cmap=cmap, vmin=vmin, vmax=vmax)
-    im.remove()
-    corr = ax.imshow(
-        v,
-        vmin=0,
-        vmax=1,
-        cmap="RdYlGn",
-    )
-    corr.remove()
-    ax.imshow(rgb, extent=extent, origin="upper", transform=cartopy_crs)
-    profile.plot(ax=ax, color="k", lw=1)
-    profile_centroid.plot(
-        column="pearson_r", vmin=0, vmax=1, cmap="RdYlGn", markersize=50, legend=False, missing_kwds={}, ax=ax
-    )
-    ax.annotate(f"{glacier_name}", (x_c, y_c), (10, 10), xycoords="data", textcoords="offset points")
-    ax.gridlines(
-        draw_labels={"top": "x", "left": "y"},
-        dms=True,
-        xlocs=np.arange(-50, 0, 1),
-        ylocs=np.arange(50, 88, 1),
-        x_inline=False,
-        y_inline=False,
-        rotate_labels=20,
-        ls="dotted",
-        color="k",
-    )
-
-    ax.set_extent(extent, crs=cartopy_crs)
-    fig.colorbar(im, ax=ax, shrink=0.5, pad=0.025, label=overlay.units, extend="max", ticks=ticks)
-    fig.colorbar(
-        corr, ax=ax, shrink=0.5, pad=0.025, label="Pearson $r$ (1)", orientation="horizontal", location="bottom"
-    )
-    fig.savefig(result_dir / Path(f"{glacier_name}_{exp_id}_speed.pdf"))
-    plt.close()
-    del fig
-
 
 if __name__ == "__main__":
 
@@ -270,24 +96,28 @@ if __name__ == "__main__":
     profiles_gp = gp.GeoDataFrame(profiles_gp, geometry=geom)
     profiles_gp = profiles_gp[["profile_id", "profile_name", "geometry"]]
 
-    fs = fsspec.filesystem("https")
-    if options.velocity_url:
-        is_url = options.velocity_url.split(":")[0] == ("https" or "http")
-        if is_url:
-            velocity_file = fs.open(options.velocity_url)
-        else:
-            velocity_file = Path(options.velocity_url)
-
-        velocity_ds = xr.open_dataset(velocity_file, chunks="auto")
+    velocity_file = Path(options.velocity_url)
+    velocity_ds = xr.open_dataset(velocity_file, chunks="auto", decode_times=False)
 
     if options.thickness_url:
         thickness_file = Path(options.thickness_url)
         thickness_ds = xr.open_dataset(thickness_file, chunks="auto")
 
+    print("Opening experiments")
     exp_files = [Path(x) for x in options.INFILES]
+    start = time.time()
     exp_ds = xr.open_mfdataset(
-        exp_files, preprocess=preprocess_nc, concat_dim="exp_id", combine="nested", chunks="auto", parallel=True
+        exp_files,
+        preprocess=partial(preprocess_nc, drop_dims=["z", "zb"]),
+        concat_dim="exp_id",
+        combine="nested",
+        chunks="auto",
+        engine="h5netcdf",
+        parallel=True,
+        decode_times=False,
     )
+    time_elapsed = time.time() - start
+    print(f"Time elapsed {time_elapsed:.0f}s")
 
     qgis_colormap = Path("../data/speed-colorblind.txt")
     overlay_cmap = qgis2cmap(qgis_colormap, name="speeds")
@@ -299,85 +129,66 @@ if __name__ == "__main__":
     n_jobs = len(client.ncores())
     print(f"Open client in browser: {client.dashboard_link}")
 
-    start = time.time()
-    velocity_ds_scattered = client.scatter(velocity_ds)
-    exp_ds_scattered = client.scatter(exp_ds)
-    futures = []
-    for _, p in profiles_gp.iterrows():
-        future = client.submit(process_profile, p, velocity_ds_scattered, exp_ds_scattered, stats=stats)
-        futures.append(future)
+    with client:
+        start = time.time()
+        velocity_ds_scattered = client.scatter(velocity_ds)
+        exp_ds_scattered = client.scatter(exp_ds)
+        futures = []
+        for _, p in profiles_gp.iterrows():
+            future = client.submit(process_profile, p, velocity_ds_scattered, exp_ds_scattered, stats=stats)
+            futures.append(future)
 
-    futures_computed = client.compute(futures)
-    progress(futures_computed)
-    obs_sims_profiles = client.gather(futures_computed)
+        futures_computed = client.compute(futures)
+        progress(futures_computed)
+        obs_sims_profiles = client.gather(futures_computed)
 
-    time_elapsed = time.time() - start
-    print(f"Time elapsed {time_elapsed:.0f}s")
+        time_elapsed = time.time() - start
+        print(f"Time elapsed {time_elapsed:.0f}s")
 
-    n_partitions = 2
-    profiles = dask_geopandas.from_geopandas(
-        gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=n_partitions
-    )
-
-    def concat(profiles_df, profiles_ds):
-        """
-        Concatenate a merged profiles
-        """
-        return dd.concat(
-            [
-                merge_on_intersection(profiles_df, p.mean(["profile_axis"], skipna=True).to_dask_dataframe())
-                for p in profiles_ds
-            ]
+        n_partitions = 1
+        profiles = dask_geopandas.from_geopandas(
+            gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=n_partitions
         )
 
-    print("Merging dataframes")
-    start = time.time()
-    stats_profiles = (
-        dd.concat(
-            [
-                merge_on_intersection(profiles, p.mean(["profile_axis"], skipna=True).to_dask_dataframe())
-                for p in obs_sims_profiles
-            ]
-        )
-        .compute()
-        .reset_index(drop=True)
-    )
+        def concat(profiles_df, profiles_ds):
+            """
+            Concatenate a merged profiles
+            """
+            return dd.concat(
+                [
+                    merge_on_intersection(profiles_df, p.mean(["profile_axis"], skipna=True).to_dask_dataframe())
+                    for p in profiles_ds
+                ]
+            )
 
-    # profiles_scattered = client.scatter(profiles)
-    # obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
-    # futures = client.submit(concat, profiles_scattered, obs_sims_profiles_scattered)
-    # progress(futures)
-    # stats_profiles = client.gather(futures)
-    # stats_profiles = stats_profiles.compute().reset_index(drop=True)
+        print("Merging dataframes")
+        start = time.time()
 
-    time_elapsed = time.time() - start
-    print(f"Time elapsed {time_elapsed:.0f}s")
+        profiles_scattered = client.scatter(profiles)
+        obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
+        futures = client.submit(concat, profiles_scattered, obs_sims_profiles_scattered)
+        progress(futures)
+        stats_profiles = client.gather(futures).compute().reset_index(drop=True)
+
+        time_elapsed = time.time() - start
+        print(f"Time elapsed {time_elapsed:.0f}s")
 
     gris_ds = xr.open_dataset(Path("/Users/andy/Google Drive/My Drive/data/MCdataset/BedMachineGreenland-v5.nc"))
     surface_da = gris_ds["surface"]
     overlay_da = velocity_ds["v"].where(velocity_ds["ice"])
 
     start = time.time()
-    # print("hi")
-    # for k, s in enumerate(stats_profiles.iterrows()):
-    #     profile = stats_profiles[stats_profiles.index == k]
-    #     plot_glacier(stats_profiles[stats_profiles.index == k],
-    #             surface_da,
-    #             overlay_da,
-    #             profile_result_dir,
-    #             cmap=overlay_cmap,
-    #         )
-
+    print("Plotting glaciers")
     with tqdm_joblib(tqdm(desc="Plotting glaciers", total=len(stats_profiles))) as progress_bar:
         Parallel(n_jobs=n_jobs)(
             delayed(plot_glacier)(
-                stats_profiles[stats_profiles.index == k],
+                p,
                 surface_da,
                 overlay_da,
                 profile_result_dir,
                 cmap=overlay_cmap,
             )
-            for k, _ in enumerate(stats_profiles.iterrows())
+            for _, p in stats_profiles.iterrows()
         )
     time_elapsed = time.time() - start
     print(f"Time elapsed {time_elapsed:.0f}s")
@@ -387,5 +198,3 @@ if __name__ == "__main__":
             delayed(plot_profile)(ds, profile_result_dir, alpha=obs_scale_alpha, sigma=obs_sigma)
             for ds in obs_sims_profiles
         )
-
-    client.close()

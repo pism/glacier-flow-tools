@@ -1,9 +1,12 @@
+bokeh
 Cartopy
+cftime
 dask_geopandas
-fsspec
+distributed
 geopandas
 joblib
 matplotlib
+numpy<2.0
 pandas
 seaborn
 Shapely

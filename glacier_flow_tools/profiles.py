@@ -18,12 +18,145 @@
 """
 Module provides profile functions.
 """
+from pathlib import Path
 from typing import List, Union
 
+import cartopy.crs as ccrs
+import geopandas as gp
 import numpy as np
 import pylab as plt
 import seaborn as sns
 import xarray as xr
+from matplotlib import cm, colors
+from matplotlib.colors import LightSource
+from shapely import get_coordinates
+
+from glacier_flow_tools.utils import blend_multiply, figure_extent, get_dataarray_extent
+
+
+def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: float = 1.0):
+    """
+    Plot a profile dataset created with ds.profiles.extract_profile.
+
+    This function plots a profile dataset that was created with the `extract_profile` method of the `profiles`
+    attribute of an `xr.Dataset` object. The plot is saved as a PDF file in the specified result directory.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The profile dataset to be plotted.
+    result_dir : Path
+        The directory where the result PDF file will be saved.
+    alpha : float, optional
+        The alpha value to be used for the plot, which determines the transparency of the plot, by default 0.0.
+    sigma : float, optional
+        The sigma value to be used for the plot, which determines the width of the Gaussian kernel, by default 1.0.
+    """
+
+    fig = ds.profiles.plot(palette="Greens", sigma=sigma, alpha=alpha)
+    profile_name = ds["profile_name"].values[0]
+    fig.savefig(result_dir / f"{profile_name}_profile.pdf")
+    plt.close()
+    del fig
+
+
+def plot_glacier(
+    profile_series: gp.GeoSeries,
+    surface: xr.DataArray,
+    overlay: xr.DataArray,
+    result_dir: Union[str, Path],
+    cmap="viridis",
+    vmin: float = 10,
+    vmax: float = 1500,
+    ticks: Union[List[float], np.ndarray] = [10, 100, 250, 500, 750, 1500],
+):
+    """
+    Plot a surface over a hillshade, add profile and correlation coefficient.
+
+    This function plots a surface over a hillshade, adds a profile and correlation coefficient.
+    The plot is saved as a PDF file in the specified result directory.
+
+    Parameters
+    ----------
+    profile_series : gp.GeoSeries
+        The profile to be plotted.
+    surface : xr.DataArray
+        The surface to be plotted over the hillshade.
+    overlay : xr.DataArray
+        The overlay to be added to the plot.
+    result_dir : Union[str, Path]
+        The directory where the result PDF file will be saved.
+    cmap : str, optional
+        The colormap to be used for the plot, by default "viridis".
+    vmin : float, optional
+        The minimum value for the colormap, by default 10.
+    vmax : float, optional
+        The maximum value for the colormap, by default 1500.
+    ticks : Union[List[float], np.ndarray], optional
+        The ticks to be used for the colorbar, by default [10, 100, 250, 500, 750, 1500].
+    """
+
+    geom = getattr(profile_series, "geometry")
+    geom_centroid = geom.centroid
+    profile_centroid = gp.GeoDataFrame([profile_series], geometry=[geom_centroid])
+    profile = gp.GeoDataFrame([profile_series], geometry=[geom])
+    glacier_name = getattr(profile, "profile_name").values[0]
+    exp_id = getattr(profile, "exp_id").values[0]
+    geom = getattr(profile, "geometry")
+    x, y = get_coordinates(geom).T
+    x_c, y_c = round(x), round(y)
+    extent_slice = figure_extent(x_c, y_c)
+    cartopy_crs = ccrs.NorthPolarStereo(central_longitude=-45, true_scale_latitude=70, globe=None)
+    # Shade from the northwest, with the sun 45 degrees from horizontal
+    light_source = LightSource(azdeg=315, altdeg=45)
+    glacier_overlay = overlay.sel(extent_slice)
+    glacier_surface = surface.interp_like(glacier_overlay)
+
+    extent = get_dataarray_extent(glacier_overlay)
+    norm = colors.Normalize(vmin=vmin, vmax=vmax)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+
+    v = mapper.to_rgba(glacier_overlay.to_numpy())
+    z = glacier_surface.to_numpy()
+    fig = plt.figure(figsize=(6.2, 6.2))
+    ax = fig.add_subplot(111, projection=cartopy_crs)
+    rgb = light_source.shade_rgb(v, elevation=z, vert_exag=0.01, blend_mode=blend_multiply)
+    # Use a proxy artist for the colorbar...
+    im = ax.imshow(v, cmap=cmap, vmin=vmin, vmax=vmax)
+    im.remove()
+    corr = ax.imshow(
+        v,
+        vmin=0,
+        vmax=1,
+        cmap="RdYlGn",
+    )
+    corr.remove()
+    ax.imshow(rgb, extent=extent, origin="upper", transform=cartopy_crs)
+    profile.plot(ax=ax, color="k", lw=1)
+    profile_centroid.plot(
+        column="pearson_r", vmin=0, vmax=1, cmap="RdYlGn", markersize=50, legend=False, missing_kwds={}, ax=ax
+    )
+    ax.annotate(f"{glacier_name}", (x_c, y_c), (10, 10), xycoords="data", textcoords="offset points")
+    ax.gridlines(
+        draw_labels={"top": "x", "left": "y"},
+        dms=True,
+        xlocs=np.arange(-50, 0, 1),
+        ylocs=np.arange(50, 88, 1),
+        x_inline=False,
+        y_inline=False,
+        rotate_labels=20,
+        ls="dotted",
+        color="k",
+    )
+
+    ax.set_extent(extent, crs=cartopy_crs)
+    fig.colorbar(im, ax=ax, shrink=0.5, pad=0.025, label=overlay.units, extend="both", ticks=ticks)
+    fig.colorbar(
+        corr, ax=ax, shrink=0.5, pad=0.025, label="Pearson $r$ (1)", orientation="horizontal", location="bottom"
+    )
+    fig.savefig(result_dir / Path(f"{glacier_name}_{exp_id}_speed.pdf"))
+    plt.close()
+    del fig
 
 
 def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
@@ -243,15 +376,14 @@ def process_profile(
         -----
         This function uses the 'extract_profile' method of the 'profiles' accessor of the input dataset.
         """
-        ds_profile = ds.profiles.extract_profile(
-            x, y, profile_name=profile_name, profile_id=profile_id, normal_var=obs_normal_var, **kwargs
-        )
+        ds_profile = ds.profiles.extract_profile(x, y, profile_name=profile_name, profile_id=profile_id, **kwargs)
         return ds_profile
 
     obs_profile = extract_and_prepare(
         obs_ds,
         profile_name=profile_name,
         profile_id=profile_id,
+        normal_var=obs_normal_var,
         normal_error_var=obs_normal_error_var,
         normal_component_vars=obs_normal_component_vars,
         normal_component_error_vars=obs_normal_component_error_vars,
@@ -324,7 +456,52 @@ class CustomDatasetMethods:
             The name of the y component variable in the Dataset, by default "vy".
         normal_name : str, optional
             The name of the normal component variable to add to the Dataset, by default "v_normal".
+
+        Returns
+        -------
+        xr.Dataset
+            The xarray Dataset with the normal variables added.
         """
+        assert (x_component and y_component) in self._obj.data_vars
+
+        def func(x, x_n, y, y_n):
+            """
+            Calculate the normal component of a vector.
+
+            This function computes the normal component of a vector by performing a dot product operation.
+            The inputs are the x and y components of the vector and their corresponding normal components.
+
+            Parameters
+            ----------
+            x : float
+                The x-component of the vector.
+            x_n : float
+                The x-component of the normal.
+            y : float
+                The y-component of the vector.
+            y_n : float
+                The y-component of the normal.
+
+            Returns
+            -------
+            float
+                The normal component of the vector.
+
+            Examples
+            --------
+            >>> func(1, 2, 3, 4)
+            14
+            """
+            return x * x_n + y * y_n
+
+        self._obj[normal_name] = xr.apply_ufunc(
+            func,
+            self._obj[x_component],
+            self._obj["nx"],
+            self._obj[y_component],
+            self._obj["ny"],
+        )
+        return self._obj
 
     def calculate_stats(
         self,
@@ -515,21 +692,21 @@ class CustomDatasetMethods:
 
         if compute_profile_normal:
 
-            a = [(v in v.data_vars) for v in normal_component_vars.values()]
-            assert np.alltrue(np.array(a))  # type: ignore[attr-defined]
-            a = [(v in v.data_vars) for v in normal_component_error_vars.values()]
-            assert np.alltrue(np.array(a))  # type: ignore[attr-defined]
+            a = [(v in ds.data_vars) for v in normal_component_vars.values()]
+            if np.all(np.array(a)):
+                ds.profiles.add_normal_component(
+                    x_component=normal_component_vars["x"],
+                    y_component=normal_component_vars["y"],
+                    normal_name=normal_var,
+                )
 
-            ds.profiles.add_normal_component(
-                x_component=normal_component_vars["x"],
-                y_component=normal_component_vars["y"],
-                normal_name=normal_var,
-            )
-            ds.profiles.add_normal_component(
-                x_component=normal_component_error_vars["x"],
-                y_component=normal_component_error_vars["y"],
-                normal_name=normal_error_var,
-            )
+            a = [(v in ds.data_vars) for v in normal_component_error_vars.values()]
+            if np.all(np.array(a)):
+                ds.profiles.add_normal_component(
+                    x_component=normal_component_error_vars["x"],
+                    y_component=normal_component_error_vars["y"],
+                    normal_name=normal_error_var,
+                )
         return ds
 
     def plot(
