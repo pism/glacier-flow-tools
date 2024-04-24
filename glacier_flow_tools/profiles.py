@@ -19,11 +19,13 @@
 Module provides profile functions.
 """
 from pathlib import Path
-from typing import List, Union
+from typing import Dict, List, Union
 
 import cartopy.crs as ccrs
+import cf_xarray.units  # pylint: disable=unused-import
 import geopandas as gp
 import numpy as np
+import pint_xarray  # pylint: disable=unused-import
 import pylab as plt
 import seaborn as sns
 import xarray as xr
@@ -102,9 +104,9 @@ def plot_glacier(
     profile = gp.GeoDataFrame([profile_series], geometry=[geom])
     glacier_name = getattr(profile, "profile_name").values[0]
     exp_id = getattr(profile, "exp_id").values[0]
-    geom = getattr(profile, "geometry")
+    geom = getattr(profile_centroid, "geometry")
     x, y = get_coordinates(geom).T
-    x_c, y_c = round(x), round(y)
+    x_c, y_c = np.round(x[0]), np.round(y[0])
     extent_slice = figure_extent(x_c, y_c)
     cartopy_crs = ccrs.NorthPolarStereo(central_longitude=-45, true_scale_latitude=70, globe=None)
     # Shade from the northwest, with the sun 45 degrees from horizontal
@@ -307,6 +309,7 @@ def process_profile(
     sim_normal_var: str = "velsurf_normal",
     sim_normal_component_vars: dict = {"x": "uvelsurf", "y": "vvelsurf"},
     compute_profile_normal: bool = False,
+    stats_kwargs: Dict = {},
 ) -> xr.Dataset:
     """
     Compute a profile from observed and simulated datasets.
@@ -335,6 +338,8 @@ def process_profile(
         The dictionary of normal component variables in the simulated dataset, by default {"x": "uvelsurf", "y": "vvelsurf"}.
     compute_profile_normal : bool, optional
         Whether to compute the profile normal, by default False.
+    stats_kwargs : Dict
+        A dictionary passed on to `calculate_stats`.
 
     Returns
     -------
@@ -399,15 +404,127 @@ def process_profile(
     )
 
     merged_profile = xr.merge([obs_profile, sims_profile])
-    merged_profile.profiles.calculate_stats(stats=stats)
+    merged_profile.profiles.calculate_stats(stats=stats, **stats_kwargs)
 
     return merged_profile
 
 
-@xr.register_dataset_accessor("profiles")
-class CustomDatasetMethods:
+@xr.register_dataset_accessor("fluxes")
+class FluxMethods:
     """
-    Custom methods for xarray Dataset.
+    Fluxes methods for xarray Dataset.
+
+    This class is used to add custom methods to xarray Dataset objects. The methods can be accessed via the 'fluxes' attribute.
+
+    Parameters
+    ----------
+
+    xarray_obj : xr.Dataset
+      The xarray Dataset to which to add the custom methods.
+    """
+
+    def __init__(self, xarray_obj: xr.Dataset):
+        """
+        Initialize the FluxesMethods class.
+
+        Parameters
+        ----------
+
+        xarray_obj : xr.Dataset
+            The xarray Dataset to which to add the custom methods.
+        """
+        self._obj = xarray_obj
+
+    def init(self):
+        """
+        Do-nothing method.
+
+        This method is needed to work with joblib Parallel.
+        """
+
+    def add_fluxes(
+        self,
+        thickness_ds: xr.Dataset,
+        flux_vars: Dict = {
+            "x": "ice_mass_flux_x",
+            "y": "ice_mass_flux_y",
+            "xe": "ice_mass_flux_err_x",
+            "ye": "ice_mass_flux_err_y",
+        },
+    ):
+        """
+        Add ice mass flux and its error to the velocity dataset.
+
+        This function calculates the ice mass flux and its error in x and y directions and adds them to the velocity dataset.
+        The flux is calculated as the product of velocity, ice thickness, and grid resolution, multiplied by the ice density.
+        The error is calculated using the error propagation formula.
+
+        Parameters
+        ----------
+        thickness_ds : xr.Dataset, optional
+            A Dataset containing the ice thickness data. If not provided, only the velocity data is returned.
+        flux_vars : dict, optional
+            A dictionary mapping the direction to the variable name for the flux and its error. The default is
+            {"x": "ice_mass_flux_x", "y": "ice_mass_flux_y", "xe": "ice_mass_flux_err_x", "ye": "ice_mass_flux_err_y"}.
+
+        Returns
+        -------
+        xr.Dataset
+            The xarray Dataset with the fluxes added.
+
+        Examples
+        --------
+        >>> velocity_ds = xr.Dataset(data_vars={"vx": ("x", [1, 2, 3]), "vy": ("y", [4, 5, 6])})
+        >>> thickness_ds = xr.Dataset(data_vars={"thickness": ("x", [7, 8, 9])})
+        >>> add_fluxes(thickness_ds)
+        <xarray.Dataset>
+        Dimensions:            (x: 3, y: 3)
+        Dimensions without coordinates: x, y
+        Data variables:
+            vx                 (x) int64 1 2 3
+            vy                 (y) int64 4 5 6
+            ice_mass_flux_x    (x) float64 6.917e+03 1.383e+04 2.075e+04
+            ice_mass_flux_y    (y) float64 3.668e+04 4.585e+04 5.502e+04
+            ice_mass_flux_err_x (x) float64 0.0 0.0 0.0
+            ice_mass_flux_err_y (y) float64 0.0 0.0 0.0
+        """
+        # Extract units
+        vx_err_units, vy_err_units = self._obj["vx_err"].attrs["units"], self._obj["vy_err"].attrs["units"]
+        resolution_units = self._obj["x"].attrs["units"]
+
+        # Check if all elements in dx and dy are equal
+        dx, dy = self._obj["x"].diff(dim="x"), self._obj["y"].diff(dim="y")
+        assert np.all(dx == dx[0]) and np.all(dy == dy[0])
+
+        # Quantify datasets and constants
+        self._obj = self._obj.pint.quantify()
+        ice_density = xr.DataArray(917.0).pint.quantify("kg m-3").pint.to("Gt m-3")
+        resolution = xr.DataArray(dx[0]).pint.quantify(resolution_units)
+        vx_e_norm, vy_e_norm = xr.DataArray(1).pint.quantify(vx_err_units), xr.DataArray(1).pint.quantify(vy_err_units)
+        v_e_norms = {"x": vx_e_norm, "y": vy_e_norm}
+
+        das = {}
+        thickness_units = thickness_ds["thickness"].attrs["units"]
+        thickness_ds = thickness_ds.pint.quantify()
+        thickness_norm = xr.DataArray(1).pint.quantify(thickness_units)
+
+        # Calculate flux and its error
+        for direction in ["x", "y"]:
+            flux_da = self._obj[f"v{direction}"] * thickness_ds["thickness"] * resolution * ice_density
+            das[flux_vars[direction]] = flux_da
+            flux_err_da = flux_da * np.sqrt(
+                (self._obj[f"v{direction}_err"] ** 2 / v_e_norms[direction] ** 2)
+                * (thickness_ds["errbed"] ** 2 / thickness_norm**2)
+            )
+            das[flux_vars[f"{direction}e"]] = flux_err_da
+
+        return self._obj.assign(das).pint.dequantify()
+
+
+@xr.register_dataset_accessor("profiles")
+class ProfilesMethods:
+    """
+    Profiles methods for xarray Dataset.
 
     This class is used to add custom methods to xarray Dataset objects. The methods can be accessed via the 'profiles' attribute.
 
@@ -420,7 +537,7 @@ class CustomDatasetMethods:
 
     def __init__(self, xarray_obj: xr.Dataset):
         """
-        Initialize the CustomDatasetMethods class.
+        Initialize the ProfilesMethods class.
 
         Parameters
         ----------
@@ -495,11 +612,7 @@ class CustomDatasetMethods:
             return x * x_n + y * y_n
 
         self._obj[normal_name] = xr.apply_ufunc(
-            func,
-            self._obj[x_component],
-            self._obj["nx"],
-            self._obj[y_component],
-            self._obj["ny"],
+            func, self._obj[x_component], self._obj["nx"], self._obj[y_component], self._obj["ny"], dask="allowed"
         )
         return self._obj
 
@@ -718,9 +831,9 @@ class CustomDatasetMethods:
         obs_error_var: str = "v_err",
         sim_var: str = "velsurf_mag",
         palette: str = "Paired",
-        obs_kwargs: dict = {"color": "0", "lw": 1, "marker": "o", "ms": 2},
+        obs_kwargs: dict = {"color": "0", "lw": 0.75, "marker": "o", "ms": 1.5},
         obs_error_kwargs: dict = {"color": "0.75"},
-        sim_kwargs: dict = {"lw": 1, "marker": "o", "ms": 2},
+        sim_kwargs: dict = {"lw": 0.5, "marker": "o", "ms": 1.5},
     ) -> plt.Figure:
         """
         Plot observations and simulations along profile.

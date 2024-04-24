@@ -1,6 +1,8 @@
 bokeh
 Cartopy
 cftime
+dask
+dask_expr
 dask_geopandas
 distributed
 geopandas

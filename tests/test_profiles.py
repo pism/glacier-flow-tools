@@ -77,6 +77,7 @@ def fixture_create_quadratic_flow() -> xr.Dataset:
     # Directional vectors
     vy = np.zeros_like(X)
     vx = (y_max**2 - Y**2) + rng.random(size=Y.shape)
+    thickness = (y_max**2 - Y**2) + rng.random(size=Y.shape)
 
     coords = {
         "x": (
@@ -103,6 +104,12 @@ def fixture_create_quadratic_flow() -> xr.Dataset:
 
     ds = xr.Dataset(
         {
+            "thickness": xr.DataArray(
+                data=thickness,
+                dims=["y", "x"],
+                coords=coords,
+                attrs={"standard_name": "land_ice_thickness", "units": "m"},
+            ),
             "vx": xr.DataArray(
                 data=vx,
                 dims=["y", "x"],

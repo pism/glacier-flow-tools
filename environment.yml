@@ -1,7 +1,10 @@
 name: glacier-flow-tools
 channels:
+  - bioconda
   - conda-forge
 dependencies:
+  - cytoscape
+  - ipycytoscape
   - pre-commit
   - pytest
   - mypy

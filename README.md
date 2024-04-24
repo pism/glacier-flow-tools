@@ -18,6 +18,12 @@ Optionally create Conda environment named *glacier-flow-tools*:
     $ conda env create -f environment.yml
     $ conda activate glacier-flow-tools
 
+or using Mamba instead:
+
+    $ mamba env create -f environment.yml
+    $ mamba activate glacier-flow-tools
+
+
 Install glacier-flow-tools:
 
     $ pip install -e .

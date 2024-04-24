@@ -77,7 +77,7 @@ if __name__ == "__main__":
         default=1.0,
         type=float,
     )
-    parser.add_argument("--segmentize", help="""Profile resolution in meters Default=200m.""", default=200, type=float)
+    parser.add_argument("--segmentize", help="""Profile resolution in meters Default=100m.""", default=100, type=float)
     parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
     parser.add_argument("INFILES", nargs="*", help="PISM experiment files", default=None)
     parser.add_argument("--profiles_url", help="""Path to profiles.""", default=None, type=str)
@@ -99,9 +99,98 @@ if __name__ == "__main__":
     velocity_file = Path(options.velocity_url)
     velocity_ds = xr.open_dataset(velocity_file, chunks="auto", decode_times=False)
 
+    its_live_units_dict = {
+        "vx": "m/yr",
+        "vy": "m/yr",
+        "v": "m/yr",
+        "vx_err": "m/yr",
+        "vy_err": "m/yr",
+        "v_err": "m/yr",
+        "rock": "1",
+        "count": "1",
+        "ocean": "1",
+        "ice": "1",
+    }
+
+    for k, v in its_live_units_dict.items():
+        velocity_ds[k].attrs["units"] = v
+
+    # def add_fluxes(velocity_ds: xr.Dataset, thickness_ds: Optional[xr.Dataset] = None,
+    #                flux_vars: Dict = {"x": "ice_mass_flux_x", "y": "ice_mass_flux_y",
+    #                                   "xe": "ice_mass_flux_err_x", "ye": "ice_mass_flux_err_y"}
+    #                ) -> xr.Dataset:
+    #     """
+    #     Add ice mass flux and its error to the velocity dataset.
+
+    #     This function calculates the ice mass flux and its error in x and y directions and adds them to the velocity dataset.
+    #     The flux is calculated as the product of velocity, ice thickness, and grid resolution, multiplied by the ice density.
+    #     The error is calculated using the error propagation formula.
+
+    #     Parameters
+    #     ----------
+    #     velocity_ds : xr.Dataset
+    #         A Dataset containing the ice velocity data.
+    #     thickness_ds : xr.Dataset, optional
+    #         A Dataset containing the ice thickness data. If not provided, only the velocity data is returned.
+    #     flux_vars : dict, optional
+    #         A dictionary mapping the direction to the variable name for the flux and its error. The default is
+    #         {"x": "ice_mass_flux_x", "y": "ice_mass_flux_y", "xe": "ice_mass_flux_err_x", "ye": "ice_mass_flux_err_y"}.
+
+    #     Returns
+    #     -------
+    #     xr.Dataset
+    #         The velocity dataset with the added flux and its error.
+
+    #     Examples
+    #     --------
+    #     >>> velocity_ds = xr.Dataset(data_vars={"vx": ("x", [1, 2, 3]), "vy": ("y", [4, 5, 6])})
+    #     >>> thickness_ds = xr.Dataset(data_vars={"thickness": ("x", [7, 8, 9])})
+    #     >>> add_fluxes(velocity_ds, thickness_ds)
+    #     <xarray.Dataset>
+    #     Dimensions:            (x: 3, y: 3)
+    #     Dimensions without coordinates: x, y
+    #     Data variables:
+    #         vx                 (x) int64 1 2 3
+    #         vy                 (y) int64 4 5 6
+    #         ice_mass_flux_x    (x) float64 6.917e+03 1.383e+04 2.075e+04
+    #         ice_mass_flux_y    (y) float64 3.668e+04 4.585e+04 5.502e+04
+    #         ice_mass_flux_err_x (x) float64 0.0 0.0 0.0
+    #         ice_mass_flux_err_y (y) float64 0.0 0.0 0.0
+    #     """
+    #     # Extract units
+    #     vx_units, vy_units = velocity_ds["vx"].attrs["units"], velocity_ds["vy"].attrs["units"]
+    #     vx_err_units, vy_err_units = velocity_ds["vx_err"].attrs["units"], velocity_ds["vy_err"].attrs["units"]
+    #     resolution_units = velocity_ds["x"].attrs["units"]
+
+    #     # Check if all elements in dx and dy are equal
+    #     dx, dy = velocity_ds["x"].diff(dim="x"), velocity_ds["y"].diff(dim="y")
+    #     assert np.all(dx == dx[0]) and np.all(dy == dy[0])
+
+    #     # Quantify datasets and constants
+    #     velocity_ds = velocity_ds.pint.quantify()
+    #     ice_density = xr.DataArray(917.0).pint.quantify("kg m-3").pint.to("Gt m-3")
+    #     resolution = xr.DataArray(dx[0]).pint.quantify(resolution_units)
+    #     vx_e_norm, vy_e_norm = xr.DataArray(1).pint.quantify(vx_err_units), xr.DataArray(1).pint.quantify(vy_err_units)
+
+    #     das = {}
+    #     if thickness_ds:
+    #         thickness_units = thickness_ds["thickness"].attrs["units"]
+    #         thickness_ds = thickness_ds.pint.quantify()
+    #         thickness_norm = xr.DataArray(1).pint.quantify(thickness_units)
+
+    #         # Calculate flux and its error
+    #         for direction in ["x", "y"]:
+    #             flux_da = velocity_ds[f"v{direction}"] * thickness_ds["thickness"] * resolution * ice_density
+    #             das[flux_vars[direction]] = flux_da
+    #             flux_err_da = flux_da * np.sqrt((velocity_ds[f"v{direction}_err"]**2 / vx_e_norm**2)  * (thickness_ds["errbed"]**2 / thickness_norm**2))
+    #             das[flux_vars[f"{direction}e"]] = flux_err_da
+
+    #     return velocity_ds.assign(das).pint.dequantify()
+
     if options.thickness_url:
         thickness_file = Path(options.thickness_url)
-        thickness_ds = xr.open_dataset(thickness_file, chunks="auto")
+        thickness_ds = xr.open_dataset(thickness_file, chunks="auto").interp_like(velocity_ds)
+        velocity_ds = velocity_ds.fluxes.add_fluxes(thickness_ds)
 
     print("Opening experiments")
     exp_files = [Path(x) for x in options.INFILES]
@@ -119,10 +208,11 @@ if __name__ == "__main__":
     time_elapsed = time.time() - start
     print(f"Time elapsed {time_elapsed:.0f}s")
 
+    stats: List[str] = ["rmsd", "pearson_r"]
+    stats_kwargs = {"obs_var": "v_normal", "sim_var": "velsurf_normal"}
+
     qgis_colormap = Path("../data/speed-colorblind.txt")
     overlay_cmap = qgis2cmap(qgis_colormap, name="speeds")
-
-    stats: List[str] = ["rmsd", "pearson_r"]
 
     cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=1)
     client = Client(cluster)
@@ -135,9 +225,16 @@ if __name__ == "__main__":
         exp_ds_scattered = client.scatter(exp_ds)
         futures = []
         for _, p in profiles_gp.iterrows():
-            future = client.submit(process_profile, p, velocity_ds_scattered, exp_ds_scattered, stats=stats)
+            future = client.submit(
+                process_profile,
+                p,
+                velocity_ds_scattered,
+                exp_ds_scattered,
+                stats=stats,
+                compute_profile_normal=True,
+                stats_kwargs=stats_kwargs,
+            )
             futures.append(future)
-
         futures_computed = client.compute(futures)
         progress(futures_computed)
         obs_sims_profiles = client.gather(futures_computed)
