@@ -19,7 +19,7 @@
 Module provides profile functions.
 """
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import cartopy.crs as ccrs
 import cf_xarray.units  # pylint: disable=unused-import
@@ -444,13 +444,19 @@ class FluxMethods:
 
     def add_fluxes(
         self,
-        thickness_ds: xr.Dataset,
+        thickness_var: str = "thickness",
+        velocity_vars: Dict = {
+            "x": "vx",
+            "y": "vy",
+        },
         flux_vars: Dict = {
             "x": "ice_mass_flux_x",
             "y": "ice_mass_flux_y",
             "xe": "ice_mass_flux_err_x",
             "ye": "ice_mass_flux_err_y",
         },
+        error_vars: Optional[Dict] = None,
+        thickness_ds: Optional[xr.Dataset] = None,
     ):
         """
         Add ice mass flux and its error to the velocity dataset.
@@ -461,11 +467,17 @@ class FluxMethods:
 
         Parameters
         ----------
-        thickness_ds : xr.Dataset, optional
-            A Dataset containing the ice thickness data. If not provided, only the velocity data is returned.
+        thickness_var : str, optional
+            The variable name for the ice thickness data. The default is "thickness".
+        velocity_vars : dict, optional
+            A dictionary mapping the direction to the variable name for the velocity. The default is {"x": "vx", "y": "vy"}.
         flux_vars : dict, optional
             A dictionary mapping the direction to the variable name for the flux and its error. The default is
             {"x": "ice_mass_flux_x", "y": "ice_mass_flux_y", "xe": "ice_mass_flux_err_x", "ye": "ice_mass_flux_err_y"}.
+        error_vars : dict, optional
+            A dictionary mapping the direction to the variable name for the velocity error. If not provided, no error is calculated.
+        thickness_ds : xr.Dataset, optional
+            A Dataset containing the ice thickness data. If not provided, only the velocity data is returned.
 
         Returns
         -------
@@ -489,7 +501,6 @@ class FluxMethods:
             ice_mass_flux_err_y (y) float64 0.0 0.0 0.0
         """
         # Extract units
-        vx_err_units, vy_err_units = self._obj["vx_err"].attrs["units"], self._obj["vy_err"].attrs["units"]
         resolution_units = self._obj["x"].attrs["units"]
 
         # Check if all elements in dx and dy are equal
@@ -497,28 +508,42 @@ class FluxMethods:
         assert np.all(dx == dx[0]) and np.all(dy == dy[0])
 
         # Quantify datasets and constants
-        self._obj = self._obj.pint.quantify()
+        ds = self._obj.pint.quantify()
         ice_density = xr.DataArray(917.0).pint.quantify("kg m-3").pint.to("Gt m-3")
         resolution = xr.DataArray(dx[0]).pint.quantify(resolution_units)
-        vx_e_norm, vy_e_norm = xr.DataArray(1).pint.quantify(vx_err_units), xr.DataArray(1).pint.quantify(vy_err_units)
-        v_e_norms = {"x": vx_e_norm, "y": vy_e_norm}
 
         das = {}
-        thickness_units = thickness_ds["thickness"].attrs["units"]
-        thickness_ds = thickness_ds.pint.quantify()
+        if thickness_ds is not None:
+            thickness_units = thickness_ds[thickness_var].attrs["units"]
+        else:
+            thickness_ds = self._obj
+            thickness_units = thickness_ds[thickness_var].attrs["units"]
+        thickness_ds_pint = thickness_ds.pint.quantify()
         thickness_norm = xr.DataArray(1).pint.quantify(thickness_units)
 
         # Calculate flux and its error
+        # Use velocity_vars instead.
         for direction in ["x", "y"]:
-            flux_da = self._obj[f"v{direction}"] * thickness_ds["thickness"] * resolution * ice_density
-            das[flux_vars[direction]] = flux_da
-            flux_err_da = flux_da * np.sqrt(
-                (self._obj[f"v{direction}_err"] ** 2 / v_e_norms[direction] ** 2)
-                * (thickness_ds["errbed"] ** 2 / thickness_norm**2)
-            )
-            das[flux_vars[f"{direction}e"]] = flux_err_da
+            flux_da = ds[velocity_vars[direction]] * thickness_ds_pint[thickness_var] * resolution * ice_density
+            if error_vars:
+                vx_err_units, vy_err_units = (
+                    self._obj[error_vars["x"]].attrs["units"],
+                    self._obj[error_vars["y"]].attrs["units"],
+                )
+                vx_e_norm, vy_e_norm = xr.DataArray(1).pint.quantify(vx_err_units), xr.DataArray(1).pint.quantify(
+                    vy_err_units
+                )
+                v_e_norms = {"x": vx_e_norm, "y": vy_e_norm}
 
-        return self._obj.assign(das).pint.dequantify()
+                das[flux_vars[direction]] = flux_da
+                flux_err_da = flux_da * np.sqrt(
+                    (ds[error_vars[direction]] ** 2 / v_e_norms[direction] ** 2)
+                    * (thickness_ds_pint["errbed"] ** 2 / thickness_norm**2)
+                )
+                das[flux_vars[f"{direction}e"]] = flux_err_da
+
+        self._obj = ds.assign(das).pint.dequantify()
+        return self._obj
 
 
 @xr.register_dataset_accessor("profiles")

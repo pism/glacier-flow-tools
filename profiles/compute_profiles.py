@@ -21,7 +21,7 @@ Calculate proifles and compute statistics along profiles.
 """
 
 import time
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
 from functools import partial
 from pathlib import Path
 from typing import List
@@ -42,47 +42,93 @@ from glacier_flow_tools.utils import (
     tqdm_joblib,
 )
 
+
+class ParseKwargs(Action):
+    """
+    Custom action for parsing keyword arguments from the command line.
+
+    This class is used as an action within argparse to parse keyword arguments from the command line and store them in a dictionary.
+
+    Methods
+    -------
+    __call__(parser, namespace, values, option_string=None):
+        The method called when the action is triggered.
+
+    Examples
+    --------
+    >>> parser = argparse.ArgumentParser()
+    >>> parser.add_argument('--kwargs', nargs='*', action=ParseKwargs)
+    >>> args = parser.parse_args('--kwargs key1=value1 key2=value2'.split())
+    >>> print(args.kwargs)
+    {'key1': 'value1', 'key2': 'value2'}
+    """
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        """
+        Called when the action is triggered.
+
+        This method is called when the action is triggered. It parses the keyword arguments from the command line and stores them in a dictionary.
+
+        Parameters
+        ----------
+        parser : argparse.ArgumentParser
+            The argument parser object.
+        namespace : argparse.Namespace
+            The namespace object that will be updated with the parsed values.
+        values : list
+            The command-line arguments to be parsed.
+        option_string : str, optional
+            The option string that was used to invoke this action.
+        """
+        setattr(namespace, self.dest, {})
+        for value in values:
+            key, value = value.split("=")
+            getattr(namespace, self.dest)[key] = value
+
+
 if __name__ == "__main__":
 
     # set up the option parser
-    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.description = "Compute pathlines (forward/backward) given a velocity field (xr.Dataset) and starting points (geopandas.GeoDataFrame)."
-    parser.add_argument(
+    profiles_parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+    profiles_parser.description = "Compute pathlines (forward/backward) given a velocity field (xr.Dataset) and starting points (geopandas.GeoDataFrame)."
+    profiles_parser.add_argument(
         "--crs", help="""Coordinate reference system. Default is EPSG:3413.""", type=str, default="EPSG:3413"
     )
-    parser.add_argument(
+    profiles_parser.add_argument(
         "--result_dir",
         help="""Path to where output is saved. Directory will be created if needed.""",
         default=Path("./results"),
     )
-    parser.add_argument(
+    profiles_parser.add_argument(
         "--velocity_url",
         help="""Path to velocity dataset.""",
         default=None,
     )
-    parser.add_argument(
+    profiles_parser.add_argument(
         "--thickness_url",
         help="""Path to thickness dataset.""",
         default=None,
     )
-    parser.add_argument(
+    profiles_parser.add_argument(
         "--alpha",
         help="""Scale observational error. Use 0.05 to reproduce 'Commplex Outlet Glacier Flow Captured'. Default=0.""",
         default=0.0,
         type=float,
     )
-    parser.add_argument(
+    profiles_parser.add_argument(
         "--sigma",
         help="""Sigma multiplier observational error. Default=1. (i.e. error is 1 standard deviation""",
         default=1.0,
         type=float,
     )
-    parser.add_argument("--segmentize", help="""Profile resolution in meters Default=100m.""", default=100, type=float)
-    parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
-    parser.add_argument("INFILES", nargs="*", help="PISM experiment files", default=None)
-    parser.add_argument("--profiles_url", help="""Path to profiles.""", default=None, type=str)
+    profiles_parser.add_argument(
+        "--segmentize", help="""Profile resolution in meters Default=100m.""", default=100, type=float
+    )
+    profiles_parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
+    profiles_parser.add_argument("INFILES", nargs="*", help="PISM experiment files", default=None)
+    profiles_parser.add_argument("--profiles_url", help="""Path to profiles.""", default=None, type=str)
 
-    options = parser.parse_args()
+    options = profiles_parser.parse_args()
     profile_result_dir = Path(options.result_dir)
     profile_result_dir.mkdir(parents=True, exist_ok=True)
     obs_scale_alpha = options.alpha
@@ -115,89 +161,16 @@ if __name__ == "__main__":
     for k, v in its_live_units_dict.items():
         velocity_ds[k].attrs["units"] = v
 
-    # def add_fluxes(velocity_ds: xr.Dataset, thickness_ds: Optional[xr.Dataset] = None,
-    #                flux_vars: Dict = {"x": "ice_mass_flux_x", "y": "ice_mass_flux_y",
-    #                                   "xe": "ice_mass_flux_err_x", "ye": "ice_mass_flux_err_y"}
-    #                ) -> xr.Dataset:
-    #     """
-    #     Add ice mass flux and its error to the velocity dataset.
-
-    #     This function calculates the ice mass flux and its error in x and y directions and adds them to the velocity dataset.
-    #     The flux is calculated as the product of velocity, ice thickness, and grid resolution, multiplied by the ice density.
-    #     The error is calculated using the error propagation formula.
-
-    #     Parameters
-    #     ----------
-    #     velocity_ds : xr.Dataset
-    #         A Dataset containing the ice velocity data.
-    #     thickness_ds : xr.Dataset, optional
-    #         A Dataset containing the ice thickness data. If not provided, only the velocity data is returned.
-    #     flux_vars : dict, optional
-    #         A dictionary mapping the direction to the variable name for the flux and its error. The default is
-    #         {"x": "ice_mass_flux_x", "y": "ice_mass_flux_y", "xe": "ice_mass_flux_err_x", "ye": "ice_mass_flux_err_y"}.
-
-    #     Returns
-    #     -------
-    #     xr.Dataset
-    #         The velocity dataset with the added flux and its error.
-
-    #     Examples
-    #     --------
-    #     >>> velocity_ds = xr.Dataset(data_vars={"vx": ("x", [1, 2, 3]), "vy": ("y", [4, 5, 6])})
-    #     >>> thickness_ds = xr.Dataset(data_vars={"thickness": ("x", [7, 8, 9])})
-    #     >>> add_fluxes(velocity_ds, thickness_ds)
-    #     <xarray.Dataset>
-    #     Dimensions:            (x: 3, y: 3)
-    #     Dimensions without coordinates: x, y
-    #     Data variables:
-    #         vx                 (x) int64 1 2 3
-    #         vy                 (y) int64 4 5 6
-    #         ice_mass_flux_x    (x) float64 6.917e+03 1.383e+04 2.075e+04
-    #         ice_mass_flux_y    (y) float64 3.668e+04 4.585e+04 5.502e+04
-    #         ice_mass_flux_err_x (x) float64 0.0 0.0 0.0
-    #         ice_mass_flux_err_y (y) float64 0.0 0.0 0.0
-    #     """
-    #     # Extract units
-    #     vx_units, vy_units = velocity_ds["vx"].attrs["units"], velocity_ds["vy"].attrs["units"]
-    #     vx_err_units, vy_err_units = velocity_ds["vx_err"].attrs["units"], velocity_ds["vy_err"].attrs["units"]
-    #     resolution_units = velocity_ds["x"].attrs["units"]
-
-    #     # Check if all elements in dx and dy are equal
-    #     dx, dy = velocity_ds["x"].diff(dim="x"), velocity_ds["y"].diff(dim="y")
-    #     assert np.all(dx == dx[0]) and np.all(dy == dy[0])
-
-    #     # Quantify datasets and constants
-    #     velocity_ds = velocity_ds.pint.quantify()
-    #     ice_density = xr.DataArray(917.0).pint.quantify("kg m-3").pint.to("Gt m-3")
-    #     resolution = xr.DataArray(dx[0]).pint.quantify(resolution_units)
-    #     vx_e_norm, vy_e_norm = xr.DataArray(1).pint.quantify(vx_err_units), xr.DataArray(1).pint.quantify(vy_err_units)
-
-    #     das = {}
-    #     if thickness_ds:
-    #         thickness_units = thickness_ds["thickness"].attrs["units"]
-    #         thickness_ds = thickness_ds.pint.quantify()
-    #         thickness_norm = xr.DataArray(1).pint.quantify(thickness_units)
-
-    #         # Calculate flux and its error
-    #         for direction in ["x", "y"]:
-    #             flux_da = velocity_ds[f"v{direction}"] * thickness_ds["thickness"] * resolution * ice_density
-    #             das[flux_vars[direction]] = flux_da
-    #             flux_err_da = flux_da * np.sqrt((velocity_ds[f"v{direction}_err"]**2 / vx_e_norm**2)  * (thickness_ds["errbed"]**2 / thickness_norm**2))
-    #             das[flux_vars[f"{direction}e"]] = flux_err_da
-
-    #     return velocity_ds.assign(das).pint.dequantify()
-
-    if options.thickness_url:
-        thickness_file = Path(options.thickness_url)
-        thickness_ds = xr.open_dataset(thickness_file, chunks="auto").interp_like(velocity_ds)
-        velocity_ds = velocity_ds.fluxes.add_fluxes(thickness_ds)
-
     print("Opening experiments")
     exp_files = [Path(x) for x in options.INFILES]
     start = time.time()
     exp_ds = xr.open_mfdataset(
         exp_files,
-        preprocess=partial(preprocess_nc, drop_dims=["z", "zb"]),
+        preprocess=partial(
+            preprocess_nc,
+            drop_dims=["z", "zb"],
+            drop_vars=["timestamp", "shelfbtemp", "effective_ice_surface_temp", "ice_surface_temp", "hardav"],
+        ),
         concat_dim="exp_id",
         combine="nested",
         chunks="auto",
@@ -207,6 +180,16 @@ if __name__ == "__main__":
     )
     time_elapsed = time.time() - start
     print(f"Time elapsed {time_elapsed:.0f}s")
+
+    if options.thickness_url:
+        thickness_file = Path(options.thickness_url)
+        thickness_ds = xr.open_dataset(thickness_file, chunks="auto").interp_like(velocity_ds)
+        velocity_ds = velocity_ds.fluxes.add_fluxes(thickness_ds=thickness_ds)
+        exp_ds = exp_ds.fluxes.add_fluxes(
+            thickness_var="thk",
+            velocity_vars={"x": "uvelsurf", "y": "vvelsurf"},
+            flux_vars={"x": "sim_ice_mass_flux_x", "y": "sim_ice_mass_flux_y"},
+        )
 
     stats: List[str] = ["rmsd", "pearson_r"]
     stats_kwargs = {"obs_var": "v_normal", "sim_var": "velsurf_normal"}
