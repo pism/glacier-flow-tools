@@ -92,28 +92,20 @@ if __name__ == "__main__":
     profiles_parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     profiles_parser.description = "Compute pathlines (forward/backward) given a velocity field (xr.Dataset) and starting points (geopandas.GeoDataFrame)."
     profiles_parser.add_argument(
-        "--crs", help="""Coordinate reference system. Default is EPSG:3413.""", type=str, default="EPSG:3413"
-    )
-    profiles_parser.add_argument(
-        "--result_dir",
-        help="""Path to where output is saved. Directory will be created if needed.""",
-        default=Path("./results"),
-    )
-    profiles_parser.add_argument(
-        "--velocity_url",
-        help="""Path to velocity dataset.""",
-        default=None,
-    )
-    profiles_parser.add_argument(
-        "--thickness_url",
-        help="""Path to thickness dataset.""",
-        default=None,
-    )
-    profiles_parser.add_argument(
         "--alpha",
         help="""Scale observational error. Use 0.05 to reproduce 'Commplex Outlet Glacier Flow Captured'. Default=0.""",
         default=0.0,
         type=float,
+    )
+    profiles_parser.add_argument(
+        "--crs", help="""Coordinate reference system. Default is EPSG:3413.""", type=str, default="EPSG:3413"
+    )
+    profiles_parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
+    profiles_parser.add_argument("--profiles_url", help="""Path to profiles.""", default=None, type=str)
+    profiles_parser.add_argument(
+        "--result_dir",
+        help="""Path to where output is saved. Directory will be created if needed.""",
+        default=Path("./results"),
     )
     profiles_parser.add_argument(
         "--sigma",
@@ -124,26 +116,41 @@ if __name__ == "__main__":
     profiles_parser.add_argument(
         "--segmentize", help="""Profile resolution in meters Default=100m.""", default=100, type=float
     )
-    profiles_parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
+    profiles_parser.add_argument(
+        "--thickness_url",
+        help="""Path to thickness dataset.""",
+        default=None,
+    )
+    profiles_parser.add_argument(
+        "--velocity_url",
+        help="""Path to velocity dataset.""",
+        default=None,
+    )
+    profiles_parser.add_argument(
+        "--velocity_cmap",
+        help="""Matplotlib colormap used for overlay. Default: 'speeds-colorblind', a custome colormaps.""",
+        type=str,
+        default="speeds-colorblind",
+    )
     profiles_parser.add_argument("INFILES", nargs="*", help="PISM experiment files", default=None)
-    profiles_parser.add_argument("--profiles_url", help="""Path to profiles.""", default=None, type=str)
 
     options = profiles_parser.parse_args()
+
     profile_result_dir = Path(options.result_dir)
     profile_result_dir.mkdir(parents=True, exist_ok=True)
-    obs_scale_alpha = options.alpha
     crs = options.crs
     obs_sigma = options.sigma
+    obs_scale_alpha = options.alpha
     profile_resolution = options.segmentize
-
     profiles_path = Path(options.profiles_url)
+    velcocity_cmap = options.velocity_cmap
     profiles_gp = gp.read_file(profiles_path).rename(columns={"id": "profile_id", "name": "profile_name"})
     geom = profiles_gp.segmentize(profile_resolution)
     profiles_gp = gp.GeoDataFrame(profiles_gp, geometry=geom)
     profiles_gp = profiles_gp[["profile_id", "profile_name", "geometry"]]
 
     velocity_file = Path(options.velocity_url)
-    velocity_ds = xr.open_dataset(velocity_file, chunks="auto", decode_times=False)
+    velocity_ds = xr.open_dataset(velocity_file, chunks="auto")
 
     its_live_units_dict = {
         "vx": "m/yr",
@@ -176,7 +183,6 @@ if __name__ == "__main__":
         chunks="auto",
         engine="h5netcdf",
         parallel=True,
-        decode_times=False,
     )
     time_elapsed = time.time() - start
     print(f"Time elapsed {time_elapsed:.0f}s")
@@ -194,8 +200,8 @@ if __name__ == "__main__":
     stats: List[str] = ["rmsd", "pearson_r"]
     stats_kwargs = {"obs_var": "v_normal", "sim_var": "velsurf_normal"}
 
-    qgis_colormap = Path("../data/speed-colorblind.txt")
-    overlay_cmap = qgis2cmap(qgis_colormap, name="speeds")
+    qgis_colormap = Path("data/speed-colorblind.txt")
+    overlay_cmap = qgis2cmap(qgis_colormap, name="speeds-colorblind")
 
     cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=1)
     client = Client(cluster)

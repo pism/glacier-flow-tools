@@ -22,6 +22,7 @@ Module provides utility functions that do not fit anywhere else.
 
 import contextlib
 import re
+from importlib.resources import files
 from pathlib import Path
 from typing import (  # pylint: disable=deprecated-class
     Callable,
@@ -29,11 +30,13 @@ from typing import (  # pylint: disable=deprecated-class
     Hashable,
     Iterable,
     List,
+    Optional,
     Union,
 )
 
 import joblib
 import numpy as np
+import pylab as plt
 import xarray as xr
 from dask import dataframe as dd
 from matplotlib import colors
@@ -110,6 +113,35 @@ def blend_multiply(rgb: np.ndarray, intensity: np.ndarray) -> np.ndarray:
     alpha = rgb[..., -1, np.newaxis]
     img_scaled = np.clip(rgb[..., :3] * intensity, 0.0, 1.0)
     return img_scaled * alpha + intensity * (1.0 - alpha)
+
+
+def register_colormaps(path: Optional[Union[str, Path]] = None):
+    """
+    Register colormaps from text files in a specified directory or in the 'glacier_flow_tools.data' directory.
+
+    This function reads all text files in the specified directory or in the 'glacier_flow_tools.data' directory if no directory is specified, converts each file to a colormap using the `qgis2cmap` function, and then registers the colormap using `plt.colormaps.register`.
+
+    Each text file should define a colormap and its name should be the name of the colormap. The '.txt' extension is removed to get the name of the colormap.
+
+    Parameters
+    ----------
+    path : str or Path, optional
+        The directory where the colormap text files are located. If not provided, the 'glacier_flow_tools.data' directory is used.
+
+    Examples
+    --------
+    >>> register_colormaps()
+    >>> register_colormaps('/path/to/colormap/files')
+    """
+    if path is not None:
+        cmap_files = Path(path).glob("*.txt")
+    else:
+        cmap_files = Path(str(files("glacier_flow_tools.data").joinpath("*.txt"))).parent.glob("*.txt")
+    for cmap_file in cmap_files:
+        print(cmap_file)
+        name = cmap_file.name.removesuffix(".txt")
+        cmap = qgis2cmap(cmap_file, name=name)
+        plt.colormaps.register(cmap)
 
 
 def preprocess_nc(

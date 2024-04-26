@@ -26,7 +26,7 @@ or using Mamba instead:
 
 Install glacier-flow-tools:
 
-    $ pip install -e .
+    $ pip install .
 
 
 ## Examples

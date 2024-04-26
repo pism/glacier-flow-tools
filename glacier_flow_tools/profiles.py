@@ -136,9 +136,18 @@ def plot_glacier(
     ax.imshow(rgb, extent=extent, origin="upper", transform=cartopy_crs)
     profile.plot(ax=ax, color="k", lw=1)
     profile_centroid.plot(
-        column="pearson_r", vmin=0, vmax=1, cmap="RdYlGn", markersize=50, legend=False, missing_kwds={}, ax=ax
+        column="pearson_r",
+        vmin=0,
+        vmax=1,
+        cmap="RdYlGn",
+        markersize=50,
+        legend=False,
+        missing_kwds={},
+        ax=ax,
+        edgecolors="k",
+        linewidths=0.1,
     )
-    ax.annotate(f"{glacier_name}", (x_c, y_c), (10, 10), xycoords="data", textcoords="offset points")
+    ax.set_title(glacier_name)
     ax.gridlines(
         draw_labels={"top": "x", "left": "y"},
         dms=True,
@@ -156,6 +165,7 @@ def plot_glacier(
     fig.colorbar(
         corr, ax=ax, shrink=0.5, pad=0.025, label="Pearson $r$ (1)", orientation="horizontal", location="bottom"
     )
+    fig.tight_layout()
     fig.savefig(result_dir / Path(f"{glacier_name}_{exp_id}_speed.pdf"))
     plt.close()
     del fig

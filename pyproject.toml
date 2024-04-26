@@ -17,21 +17,27 @@ classifiers = [
         ]
 dynamic = ["dependencies"]
 
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
 [project.scripts]
-compute_pathlines = "glacier_flow_tools:compute_pathlines"
+compute_pathlines = "glacier_flow_tools.pathlines:compute_pathlines"
+compute_profiles = "glacier_flow_tools.profiles:compute_profiles"
 
 [tool.setuptools.packages.find]
 include = ["glacier_flow_tools"]
 
+[tool.setuptools.package-data]
+"glacier_flow_tools" = ['data/*.txt', 'data/*.gpkg']
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
 [tool.setuptools]
 py-modules = ["glacier_flow_tools"]
+
+
 
 [tool.isort]
 multi_line_output = 3
