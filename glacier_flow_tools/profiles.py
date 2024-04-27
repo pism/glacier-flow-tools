@@ -18,6 +18,9 @@
 """
 Module provides profile functions.
 """
+
+# pylint: disable=too-many-lines
+
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -43,9 +46,22 @@ from glacier_flow_tools.utils import (
 register_colormaps()
 
 
-def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: float = 1.0):
+def plot_profile(
+    ds: xr.Dataset,
+    result_dir: Path,
+    alpha: float = 0.0,
+    sigma: float = 1.0,
+    obs_var: str = "v",
+    obs_error_var: str = "v_err",
+    sim_var: str = "velsurf_mag",
+    palette: str = "Paired",
+    obs_kwargs: dict = {"color": "0", "lw": 0.75, "marker": "o", "ms": 1.5},
+    obs_error_kwargs: dict = {"color": "0.75"},
+    sim_kwargs: dict = {"lw": 0.5, "marker": "o", "ms": 1.5},
+    figsize=[3.2, 3.2],
+):
     """
-    Plot a profile dataset created with ds.profiles.extract_profile.
+    Plot a profile dataset created with ds.profiles.extract_profile and save it as a PDF.
 
     This function plots a profile dataset that was created with the `extract_profile` method of the `profiles`
     attribute of an `xr.Dataset` object. The plot is saved as a PDF file in the specified result directory.
@@ -60,9 +76,40 @@ def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: fl
         The alpha value to be used for the plot, which determines the transparency of the plot, by default 0.0.
     sigma : float, optional
         The sigma value to be used for the plot, which determines the width of the Gaussian kernel, by default 1.0.
-    """
+    obs_var : str, optional
+        The variable name for the observations, by default 'v'.
+    obs_error_var : str, optional
+        The variable name for the observation errors, by default 'v_err'.
+    sim_var : str, optional
+        The variable name for the simulations, by default 'velsurf_mag'.
+    palette : str, optional
+        The color palette to use for the plot, by default 'Paired'.
+    obs_kwargs : dict, optional
+        Additional keyword arguments to pass to the plot function for the observations, by default {"color": "0", "lw": 0.75, "marker": "o", "ms": 1.5}.
+    obs_error_kwargs : dict, optional
+        Additional keyword arguments to pass to the fill_between function for the observation errors, by default {"color": "0.75"}.
+    sim_kwargs : dict, optional
+        Additional keyword arguments to pass to the plot function for the simulations, by default {"lw": 0.5, "marker": "o", "ms": 1.5}.
+    figsize : list, optional
+        The size of the figure in inches, by default [3.2, 3.2].
 
-    fig = ds.profiles.plot(palette="Greens", sigma=sigma, alpha=alpha)
+    Examples
+    --------
+    >>> plot_profile(ds, result_dir, alpha=0.0, sigma=1.0, obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
+    """
+    fig = ds.profiles.plot(
+        palette="Greens",
+        sigma=sigma,
+        alpha=alpha,
+        obs_var=obs_var,
+        obs_error_var=obs_error_var,
+        sim_var=sim_var,
+        sim_kwargs=sim_kwargs,
+        palette=palette,
+        obs_kwargs=obs_kwargs,
+        obs_error_kwargs=obs_error_kwargs,
+        figsize=figsize,
+    )
     profile_name = ds["profile_name"].values[0]
     fig.savefig(result_dir / f"{profile_name}_profile.pdf")
     plt.close()
@@ -898,9 +945,13 @@ class ProfilesMethods:
         obs_kwargs: dict = {"color": "0", "lw": 0.75, "marker": "o", "ms": 1.5},
         obs_error_kwargs: dict = {"color": "0.75"},
         sim_kwargs: dict = {"lw": 0.5, "marker": "o", "ms": 1.5},
+        figsize=[3.2, 3.2],
     ) -> plt.Figure:
         """
-        Plot observations and simulations along profile.
+        Plot observations and simulations along a profile.
+
+        This function plots observations and simulations along a profile. The observations are plotted with error bars,
+        and the simulations are plotted with different colors for each experiment.
 
         Parameters
         ----------
@@ -919,20 +970,26 @@ class ProfilesMethods:
         palette : str, optional
             The color palette to use for the plot, by default 'Paired'.
         obs_kwargs : dict, optional
-            Additional keyword arguments to pass to the plot function for the observations, by default {"color": "0", "lw": 1, "marker": "o", "ms": 2}.
+            Additional keyword arguments to pass to the plot function for the observations, by default {"color": "0", "lw": 0.75, "marker": "o", "ms": 1.5}.
         obs_error_kwargs : dict, optional
             Additional keyword arguments to pass to the fill_between function for the observation errors, by default {"color": "0.75"}.
         sim_kwargs : dict, optional
-            Additional keyword arguments to pass to the plot function for the simulations, by default {"lw": 1, "marker": "o", "ms": 2}.
+            Additional keyword arguments to pass to the plot function for the simulations, by default {"lw": 0.5, "marker": "o", "ms": 1.5}.
+        figsize : list, optional
+            The size of the figure in inches, by default [3.2, 3.2].
 
         Returns
         -------
         plt.Figure
             The created matplotlib Figure object.
-        """
-        n_exps = self._obj["exp_id"].size
 
-        fig = plt.figure()
+        Examples
+        --------
+        >>> plot(sigma=1, alpha=0.0, title='My Plot', obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
+        """
+        # function body...
+        n_exps = self._obj["exp_id"].size
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
         ax.fill_between(
             self._obj["profile_axis"],
