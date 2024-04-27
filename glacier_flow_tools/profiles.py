@@ -33,7 +33,14 @@ from matplotlib import cm, colors
 from matplotlib.colors import LightSource
 from shapely import get_coordinates
 
-from glacier_flow_tools.utils import blend_multiply, figure_extent, get_dataarray_extent
+from glacier_flow_tools.utils import (
+    blend_multiply,
+    figure_extent,
+    get_dataarray_extent,
+    register_colormaps,
+)
+
+register_colormaps()
 
 
 def plot_profile(ds: xr.Dataset, result_dir: Path, alpha: float = 0.0, sigma: float = 1.0):
@@ -67,10 +74,12 @@ def plot_glacier(
     surface: xr.DataArray,
     overlay: xr.DataArray,
     result_dir: Union[str, Path],
-    cmap="viridis",
+    cmap: str = "viridis",
     vmin: float = 10,
     vmax: float = 1500,
     ticks: Union[List[float], np.ndarray] = [10, 100, 250, 500, 750, 1500],
+    font_size: float = 6,
+    fig_width: float = 3.2,
 ):
     """
     Plot a surface over a hillshade, add profile and correlation coefficient.
@@ -96,8 +105,16 @@ def plot_glacier(
         The maximum value for the colormap, by default 1500.
     ticks : Union[List[float], np.ndarray], optional
         The ticks to be used for the colorbar, by default [10, 100, 250, 500, 750, 1500].
-    """
+    font_size : float, optional
+        The font size to be used for the plot, by default 6.
+    fig_width : float, optional
+        The width of the figure in inches, by default 3.2.
 
+    Examples
+    --------
+    >>> plot_glacier(profile_series, surface, overlay, '/path/to/result_dir')
+    """
+    plt.rcParams["font.size"] = font_size
     geom = getattr(profile_series, "geometry")
     geom_centroid = geom.centroid
     profile_centroid = gp.GeoDataFrame([profile_series], geometry=[geom_centroid])
@@ -120,7 +137,12 @@ def plot_glacier(
 
     v = mapper.to_rgba(glacier_overlay.to_numpy())
     z = glacier_surface.to_numpy()
-    fig = plt.figure(figsize=(6.2, 6.2))
+
+    ar = 1.0  # initial aspect ratio for first trial
+    wi = fig_width  # width in inches
+    hi = wi * ar  # height in inches
+
+    fig = plt.figure(figsize=(wi, hi))
     ax = fig.add_subplot(111, projection=cartopy_crs)
     rgb = light_source.shade_rgb(v, elevation=z, vert_exag=0.01, blend_mode=blend_multiply)
     # Use a proxy artist for the colorbar...
@@ -145,7 +167,7 @@ def plot_glacier(
         missing_kwds={},
         ax=ax,
         edgecolors="k",
-        linewidths=0.1,
+        linewidths=0.2,
     )
     ax.set_title(glacier_name)
     ax.gridlines(
@@ -165,6 +187,13 @@ def plot_glacier(
     fig.colorbar(
         corr, ax=ax, shrink=0.5, pad=0.025, label="Pearson $r$ (1)", orientation="horizontal", location="bottom"
     )
+    plt.draw()
+
+    # Get proper ratio here
+    xmin, xmax = ax.get_xbound()
+    ymin, ymax = ax.get_ybound()
+    y2x_ratio = (ymax - ymin) / (xmax - xmin)
+    fig.set_figheight(wi * y2x_ratio)
     fig.tight_layout()
     fig.savefig(result_dir / Path(f"{glacier_name}_{exp_id}_speed.pdf"))
     plt.close()

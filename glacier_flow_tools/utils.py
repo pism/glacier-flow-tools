@@ -138,7 +138,6 @@ def register_colormaps(path: Optional[Union[str, Path]] = None):
     else:
         cmap_files = Path(str(files("glacier_flow_tools.data").joinpath("*.txt"))).parent.glob("*.txt")
     for cmap_file in cmap_files:
-        print(cmap_file)
         name = cmap_file.name.removesuffix(".txt")
         cmap = qgis2cmap(cmap_file, name=name)
         plt.colormaps.register(cmap)

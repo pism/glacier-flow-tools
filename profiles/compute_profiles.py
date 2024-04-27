@@ -35,12 +35,7 @@ from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
 from glacier_flow_tools.profiles import plot_glacier, plot_profile, process_profile
-from glacier_flow_tools.utils import (
-    merge_on_intersection,
-    preprocess_nc,
-    qgis2cmap,
-    tqdm_joblib,
-)
+from glacier_flow_tools.utils import merge_on_intersection, preprocess_nc, tqdm_joblib
 
 
 class ParseKwargs(Action):
@@ -130,7 +125,7 @@ if __name__ == "__main__":
         "--velocity_cmap",
         help="""Matplotlib colormap used for overlay. Default: 'speeds-colorblind', a custome colormaps.""",
         type=str,
-        default="speeds-colorblind",
+        default="speed_colorblind",
     )
     profiles_parser.add_argument("INFILES", nargs="*", help="PISM experiment files", default=None)
 
@@ -138,12 +133,16 @@ if __name__ == "__main__":
 
     profile_result_dir = Path(options.result_dir)
     profile_result_dir.mkdir(parents=True, exist_ok=True)
+    profile_figure_dir = profile_result_dir / Path("figures")
+    profile_figure_dir.mkdir(parents=True, exist_ok=True)
+    profile_output_dir = profile_result_dir / Path("files")
+    profile_output_dir.mkdir(parents=True, exist_ok=True)
     crs = options.crs
     obs_sigma = options.sigma
     obs_scale_alpha = options.alpha
     profile_resolution = options.segmentize
     profiles_path = Path(options.profiles_url)
-    velcocity_cmap = options.velocity_cmap
+    velocity_cmap = options.velocity_cmap
     profiles_gp = gp.read_file(profiles_path).rename(columns={"id": "profile_id", "name": "profile_name"})
     geom = profiles_gp.segmentize(profile_resolution)
     profiles_gp = gp.GeoDataFrame(profiles_gp, geometry=geom)
@@ -199,9 +198,6 @@ if __name__ == "__main__":
 
     stats: List[str] = ["rmsd", "pearson_r"]
     stats_kwargs = {"obs_var": "v_normal", "sim_var": "velsurf_normal"}
-
-    qgis_colormap = Path("data/speed-colorblind.txt")
-    overlay_cmap = qgis2cmap(qgis_colormap, name="speeds-colorblind")
 
     cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=1)
     client = Client(cluster)
@@ -271,8 +267,8 @@ if __name__ == "__main__":
                 p,
                 surface_da,
                 overlay_da,
-                profile_result_dir,
-                cmap=overlay_cmap,
+                profile_figure_dir,
+                cmap=velocity_cmap,
             )
             for _, p in stats_profiles.iterrows()
         )
@@ -281,6 +277,6 @@ if __name__ == "__main__":
 
     with tqdm_joblib(tqdm(desc="Plotting profiles", total=len(profiles_gp))) as progress_bar:
         Parallel(n_jobs=n_jobs)(
-            delayed(plot_profile)(ds, profile_result_dir, alpha=obs_scale_alpha, sigma=obs_sigma)
+            delayed(plot_profile)(ds, profile_figure_dir, alpha=obs_scale_alpha, sigma=obs_sigma)
             for ds in obs_sims_profiles
         )
