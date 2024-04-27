@@ -4,7 +4,7 @@ version = "0.1.1"
 maintainers = [{name = "Andy Aschwanden", email = "andy.aschwanden@gmail.com"}]
 description = """Tools for analysing glacier flow."""
 readme = "README.md"
-requires-python = ">3.8"
+requires-python = ">=3.10"
 license = {text = "GPL 3.0"}
 classifiers = [
         "License :: OSI Approved :: Apache Software License",
@@ -12,7 +12,7 @@ classifiers = [
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX :: Linux",
-        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Postprocessing",
         ]
 dynamic = ["dependencies"]
