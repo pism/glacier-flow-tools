@@ -29,7 +29,7 @@ compute_profiles = "glacier_flow_tools.profiles:compute_profiles"
 include = ["glacier_flow_tools"]
 
 [tool.setuptools.package-data]
-"glacier_flow_tools" = ['data/*.txt', 'data/*.gpkg']
+"glacier_flow_tools" = ['data/*.txt', 'data/*.gpkg', 'data/*.toml']
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

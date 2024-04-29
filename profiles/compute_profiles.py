@@ -23,11 +23,12 @@ Calculate proifles and compute statistics along profiles.
 import time
 from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
 from functools import partial
+from importlib.resources import files
 from pathlib import Path
-from typing import List
 
 import dask_geopandas
 import geopandas as gp
+import toml
 import xarray as xr
 from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster, progress
@@ -36,6 +37,11 @@ from tqdm.auto import tqdm
 
 from glacier_flow_tools.profiles import plot_glacier, plot_profile, process_profile
 from glacier_flow_tools.utils import merge_on_intersection, preprocess_nc, tqdm_joblib
+
+# from typing import Dict, List, Union
+
+
+default_project_file_url = files("glacier_flow_tools.data").joinpath("default.toml")
 
 
 class ParseKwargs(Action):
@@ -103,6 +109,12 @@ if __name__ == "__main__":
         default=Path("./results"),
     )
     profiles_parser.add_argument(
+        "--project_file",
+        nargs=1,
+        help=f"Project files in toml. Default={default_project_file_url}",
+        default=default_project_file_url,
+    )
+    profiles_parser.add_argument(
         "--sigma",
         help="""Sigma multiplier observational error. Default=1. (i.e. error is 1 standard deviation""",
         default=1.0,
@@ -130,6 +142,7 @@ if __name__ == "__main__":
     profiles_parser.add_argument("INFILES", nargs="*", help="PISM experiment files", default=None)
 
     options = profiles_parser.parse_args()
+    project = toml.load(options.project_file)
 
     profile_result_dir = Path(options.result_dir)
     profile_result_dir.mkdir(parents=True, exist_ok=True)
@@ -151,20 +164,7 @@ if __name__ == "__main__":
     velocity_file = Path(options.velocity_url)
     velocity_ds = xr.open_dataset(velocity_file, chunks="auto")
 
-    its_live_units_dict = {
-        "vx": "m/yr",
-        "vy": "m/yr",
-        "v": "m/yr",
-        "vx_err": "m/yr",
-        "vy_err": "m/yr",
-        "v_err": "m/yr",
-        "rock": "1",
-        "count": "1",
-        "ocean": "1",
-        "ice": "1",
-    }
-
-    for k, v in its_live_units_dict.items():
+    for k, v in project["ITS_LIVE"]["units"].items():
         velocity_ds[k].attrs["units"] = v
 
     print("Opening experiments")
@@ -189,20 +189,86 @@ if __name__ == "__main__":
     if options.thickness_url:
         thickness_file = Path(options.thickness_url)
         thickness_ds = xr.open_dataset(thickness_file, chunks="auto").interp_like(velocity_ds)
-        velocity_ds = velocity_ds.fluxes.add_fluxes(thickness_ds=thickness_ds)
+        velocity_ds = velocity_ds.fluxes.add_fluxes(
+            thickness_ds=thickness_ds,
+            thickness_var=project["Observations"]["thickness_var"],
+            velocity_var=project["Observations"]["normal_component_vars"],
+            error_vars=project["Observations"]["normal_component_error_vars"],
+        )
         exp_ds = exp_ds.fluxes.add_fluxes(
-            thickness_var="thk",
-            velocity_vars={"x": "uvelsurf", "y": "vvelsurf"},
+            thickness_var=project["Simulations"]["thickness_var"],
+            velocity_var=project["Simulations"]["normal_component_vars"],
             flux_vars={"x": "sim_ice_mass_flux_x", "y": "sim_ice_mass_flux_y"},
         )
 
-    stats: List[str] = ["rmsd", "pearson_r"]
-    stats_kwargs = {"obs_var": "v_normal", "sim_var": "velsurf_normal"}
+    stats = project["Statistics"]["metrics"]
+    stats_kwargs = project["Statistics"]["metrics_vars"]
+
+    n_partitions = 1
+    profiles = dask_geopandas.from_geopandas(
+        gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=n_partitions
+    )
 
     cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=1)
     client = Client(cluster)
     n_jobs = len(client.ncores())
     print(f"Open client in browser: {client.dashboard_link}")
+
+    start = time.time()
+    velocity_ds_scattered = client.scatter(velocity_ds)
+    exp_ds_scattered = client.scatter(exp_ds)
+
+    # def combine(profile,
+    #             profiles_df,
+    #             obs_ds: xr.Dataset,
+    #             sim_ds: xr.Dataset,
+    #             stats: List[str] = ["rmsd", "pearson_r"],
+    #             result_dir : Union[str, Path] = ".",
+    #             obs_normal_var: str = "obs_v_normal",
+    #             obs_normal_error_var: str = "obs_v_err_normal",
+    #             obs_normal_component_vars: dict = {"x": "vx", "y": "vy"},
+    #             obs_normal_component_error_vars: dict = {"x": "vx_err", "y": "vy_err"},
+    #             sim_normal_var: str = "sim_v_normal",
+    #             sim_normal_component_vars: dict = {"x": "uvelsurf", "y": "vvelsurf"},
+    #             compute_profile_normal: bool = True,
+    #             stats_kwargs: Dict = {},
+    #             ) -> xr.Dataset:
+    #     os_profile = process_profile(profile,
+    #                     obs_ds=obs_ds,
+    #                     sim_ds=sim_ds,
+    #                     stats=stats,
+    #                     compute_profile_normal=compute_profile_normal,
+    #                     obs_normal_var=obs_normal_var,
+    #                     obs_normal_error_var=obs_normal_error_var,
+    #                     obs_normal_component_vars=obs_normal_component_vars,
+    #                     obs_normal_component_error_vars=obs_normal_component_error_vars,
+    #                     sim_normal_var=sim_normal_var,
+    #                     sim_normal_component_vars=sim_normal_component_vars,
+    #                     stats_kwargs=stats_kwargs).compute()
+
+    #     os_file = f"""{profile["profile_name"]}_profile.nc"""
+    #     #os_profile.to_netcdf(os_file, engine="h5netcdf")
+    #     return os_profile, merge_on_intersection(profiles_df, os_profile.mean(["profile_axis"], skipna=True).to_dask_dataframe())
+
+    # futures = client.map(combine,
+    #                      [p for _, p in profiles_gp.iterrows()],
+    #                      profiles_df=profiles,
+    #                      obs_ds=velocity_ds_scattered,
+    #                      sim_ds=exp_ds_scattered,
+    #                      stats=stats,
+    #                      result_dir=profile_output_dir,
+    #                      compute_profile_normal=project["Profiles"]["compute_profile_normal"],
+    #                      obs_normal_var=project["Observations"]["profile_var"],
+    #                      obs_normal_error_var=project["Observations"]["profile_error_var"],
+    #                      obs_normal_component_vars=project["Observations"]["normal_component_vars"],
+    #                      obs_normal_component_error_vars=project["Observations"]["normal_component_error_vars"],
+    #                      sim_normal_var=project["Simulations"]["profile_var"],
+    #                      sim_normal_component_vars=project["Simulations"]["normal_component_vars"],
+    #                      stats_kwargs=stats_kwargs)
+
+    # futures_computed = client.compute(futures)
+    # progress(futures_computed)
+    # obs_sims_profiles, stats_profiles = [p[0] for p in futures_computed], dd.concat([p[1] for p in client.gather(futures_computed]))
 
     with client:
         start = time.time()
@@ -213,11 +279,18 @@ if __name__ == "__main__":
             future = client.submit(
                 process_profile,
                 p,
-                velocity_ds_scattered,
-                exp_ds_scattered,
+                obs_ds=velocity_ds_scattered,
+                sim_ds=exp_ds_scattered,
                 stats=stats,
-                compute_profile_normal=True,
                 stats_kwargs=stats_kwargs,
+                compute_profile_normal=project["Profiles"]["compute_profile_normal"],
+                obs_normal_var=project["Observations"]["profile_var"],
+                obs_normal_error_var=project["Observations"]["profile_error_var"],
+                obs_normal_component_vars=project["Observations"]["normal_component_vars"],
+                obs_normal_component_error_vars=project["Observations"]["normal_component_error_vars"],
+                sim_normal_var=project["Simulations"]["profile_var"],
+                sim_normal_component_vars=project["Simulations"]["normal_component_vars"],
+                pure=False,
             )
             futures.append(future)
         futures_computed = client.compute(futures)
@@ -226,11 +299,6 @@ if __name__ == "__main__":
 
         time_elapsed = time.time() - start
         print(f"Time elapsed {time_elapsed:.0f}s")
-
-        n_partitions = 1
-        profiles = dask_geopandas.from_geopandas(
-            gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=n_partitions
-        )
 
         def concat(profiles_df, profiles_ds):
             """
@@ -248,9 +316,11 @@ if __name__ == "__main__":
 
         profiles_scattered = client.scatter(profiles)
         obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
-        futures = client.submit(concat, profiles_scattered, obs_sims_profiles_scattered)
+        futures = client.submit(concat, profiles_scattered, obs_sims_profiles_scattered, pure=False)
         progress(futures)
+        print("hi")
         stats_profiles = client.gather(futures).compute().reset_index(drop=True)
+        # stats_profiles.to_parquet(profile_output_dir / "profile_stats.parquet")
 
         time_elapsed = time.time() - start
         print(f"Time elapsed {time_elapsed:.0f}s")

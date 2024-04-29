@@ -19,5 +19,7 @@ pandas
 pint_xarray
 seaborn
 Shapely
+toml
+types-toml
 tqdm
 xarray

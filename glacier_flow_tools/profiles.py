@@ -54,11 +54,12 @@ def plot_profile(
     obs_var: str = "v",
     obs_error_var: str = "v_err",
     sim_var: str = "velsurf_mag",
-    palette: str = "Paired",
+    palette: str = "Greens",
     obs_kwargs: dict = {"color": "0", "lw": 0.75, "marker": "o", "ms": 1.5},
     obs_error_kwargs: dict = {"color": "0.75"},
     sim_kwargs: dict = {"lw": 0.5, "marker": "o", "ms": 1.5},
     figsize=[3.2, 3.2],
+    fontsize: float = 6,
 ):
     """
     Plot a profile dataset created with ds.profiles.extract_profile and save it as a PDF.
@@ -92,13 +93,14 @@ def plot_profile(
         Additional keyword arguments to pass to the plot function for the simulations, by default {"lw": 0.5, "marker": "o", "ms": 1.5}.
     figsize : list, optional
         The size of the figure in inches, by default [3.2, 3.2].
+    fontsize : float, optional
+        The font size to be used for the plot, by default 6.
 
     Examples
     --------
     >>> plot_profile(ds, result_dir, alpha=0.0, sigma=1.0, obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
     """
     fig = ds.profiles.plot(
-        palette="Greens",
         sigma=sigma,
         alpha=alpha,
         obs_var=obs_var,
@@ -109,6 +111,7 @@ def plot_profile(
         obs_kwargs=obs_kwargs,
         obs_error_kwargs=obs_error_kwargs,
         figsize=figsize,
+        fontsize=fontsize,
     )
     profile_name = ds["profile_name"].values[0]
     fig.savefig(result_dir / f"{profile_name}_profile.pdf")
@@ -125,8 +128,8 @@ def plot_glacier(
     vmin: float = 10,
     vmax: float = 1500,
     ticks: Union[List[float], np.ndarray] = [10, 100, 250, 500, 750, 1500],
-    font_size: float = 6,
-    fig_width: float = 3.2,
+    fontsize: float = 6,
+    figwidth: float = 3.2,
 ):
     """
     Plot a surface over a hillshade, add profile and correlation coefficient.
@@ -152,16 +155,16 @@ def plot_glacier(
         The maximum value for the colormap, by default 1500.
     ticks : Union[List[float], np.ndarray], optional
         The ticks to be used for the colorbar, by default [10, 100, 250, 500, 750, 1500].
-    font_size : float, optional
+    fontsize : float, optional
         The font size to be used for the plot, by default 6.
-    fig_width : float, optional
+    figwidth : float, optional
         The width of the figure in inches, by default 3.2.
 
     Examples
     --------
     >>> plot_glacier(profile_series, surface, overlay, '/path/to/result_dir')
     """
-    plt.rcParams["font.size"] = font_size
+    plt.rcParams["font.size"] = fontsize
     geom = getattr(profile_series, "geometry")
     geom_centroid = geom.centroid
     profile_centroid = gp.GeoDataFrame([profile_series], geometry=[geom_centroid])
@@ -186,7 +189,7 @@ def plot_glacier(
     z = glacier_surface.to_numpy()
 
     ar = 1.0  # initial aspect ratio for first trial
-    wi = fig_width  # width in inches
+    wi = figwidth  # width in inches
     hi = wi * ar  # height in inches
 
     fig = plt.figure(figsize=(wi, hi))
@@ -440,6 +443,10 @@ def process_profile(
     x, y = map(np.asarray, profile["geometry"].xy)
     profile_name = profile["profile_name"]
     profile_id = profile["profile_id"]
+    stats_obs_var = stats_kwargs["obs_var"]
+    del stats_kwargs["obs_var"]
+    stats_sim_var = stats_kwargs["sim_var"]
+    del stats_kwargs["sim_var"]
 
     def extract_and_prepare(
         ds: xr.Dataset, profile_name: str = profile_name, profile_id: int = profile_id, **kwargs
@@ -488,9 +495,8 @@ def process_profile(
         normal_component_vars=sim_normal_component_vars,
         compute_profile_normal=compute_profile_normal,
     )
-
     merged_profile = xr.merge([obs_profile, sims_profile])
-    merged_profile.profiles.calculate_stats(stats=stats, **stats_kwargs)
+    merged_profile.profiles.calculate_stats(obs_var=stats_obs_var, sim_var=stats_sim_var, stats=stats, **stats_kwargs)
 
     return merged_profile
 
@@ -729,8 +735,8 @@ class ProfilesMethods:
 
     def calculate_stats(
         self,
-        obs_var: str = "v",
-        sim_var: str = "velsurf_mag",
+        obs_var: str = "obs_v_normal",
+        sim_var: str = "sim_v_normal",
         dim: str = "profile_axis",
         stats: List[str] = ["rmsd", "pearson_r"],
     ):
@@ -756,7 +762,9 @@ class ProfilesMethods:
         xr.Dataset
             The xarray Dataset with the calculated statistical metrics added as new data variables.
         """
-        assert (obs_var and sim_var) in self._obj.data_vars
+        assert (
+            obs_var and sim_var
+        ) in self._obj.data_vars, f"{obs_var} or {sim_var} not in {list(self._obj.data_vars)}."
 
         def rmsd(sim: xr.DataArray, obs: xr.DataArray) -> float:
             """
@@ -946,6 +954,7 @@ class ProfilesMethods:
         obs_error_kwargs: dict = {"color": "0.75"},
         sim_kwargs: dict = {"lw": 0.5, "marker": "o", "ms": 1.5},
         figsize=[3.2, 3.2],
+        fontsize: float = 6,
     ) -> plt.Figure:
         """
         Plot observations and simulations along a profile.
@@ -977,6 +986,8 @@ class ProfilesMethods:
             Additional keyword arguments to pass to the plot function for the simulations, by default {"lw": 0.5, "marker": "o", "ms": 1.5}.
         figsize : list, optional
             The size of the figure in inches, by default [3.2, 3.2].
+        fontsize : float, optional
+            The font size to be used for the plot, by default 6.
 
         Returns
         -------
@@ -987,7 +998,8 @@ class ProfilesMethods:
         --------
         >>> plot(sigma=1, alpha=0.0, title='My Plot', obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
         """
-        # function body...
+
+        plt.rcParams["font.size"] = fontsize
         n_exps = self._obj["exp_id"].size
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
