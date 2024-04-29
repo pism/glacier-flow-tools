@@ -27,6 +27,7 @@ from typing import Dict, List, Optional, Union
 import cartopy.crs as ccrs
 import cf_xarray.units  # pylint: disable=unused-import
 import geopandas as gp
+import matplotlib
 import numpy as np
 import pint_xarray  # pylint: disable=unused-import
 import pylab as plt
@@ -44,6 +45,8 @@ from glacier_flow_tools.utils import (
 )
 
 register_colormaps()
+# The standard backend is not thread-safe, but 'agg' works with the dask client.
+matplotlib.use("agg")
 
 
 def plot_profile(
