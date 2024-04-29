@@ -1,0 +1,26 @@
+[Profiles]
+
+compute_profile_normal = false
+
+[ITS_LIVE]
+
+units = {vx = "m/yr", vy = "m/yr", v = "m/yr", vx_err = "m/yr", vy_err = "m/yr", v_err = "m/yr", rock = "1", count = "1", ocean = "1", ice = "1"}
+
+[Observations]
+
+thickness_var = "thickness"
+profile_var = "v"
+profile_error_var = "v_err"
+normal_component_vars = {x = "vx", y = "vy"}
+normal_component_error_vars = {x = "vx_err", y = "vy_err"}
+
+[Simulations]
+
+thickness_var = "thk"
+profile_var = "velsurf_mag"
+normal_component_vars = {x = "uvelsurf", y = "vvelsurf"}
+
+["Statistics"]
+
+metrics = ["rmsd", "pearson_r"]
+metrics_vars =  {obs_var = "v", sim_var = "velsurf_mag"}
