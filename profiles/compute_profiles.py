@@ -20,6 +20,7 @@
 Calculate proifles and compute statistics along profiles.
 """
 
+import logging
 import time
 from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
 from functools import partial
@@ -33,6 +34,7 @@ import toml
 import xarray as xr
 from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster, progress
+from distributed.utils import silence_logging_cmgr
 
 from glacier_flow_tools.profiles import plot_glacier, plot_profile, process_profile
 from glacier_flow_tools.utils import merge_on_intersection, preprocess_nc
@@ -201,7 +203,7 @@ if __name__ == "__main__":
         type=float,
     )
     profiles_parser.add_argument(
-        "--segmentize", help="""Profile resolution in meters Default=100m.""", default=100, type=float
+        "--segmentize", help="""Profile resolution in meters Default=200m.""", default=200, type=float
     )
     profiles_parser.add_argument(
         "--thickness_url",
@@ -259,6 +261,7 @@ if __name__ == "__main__":
         exp_files,
         preprocess=partial(
             preprocess_nc,
+            regexp=project["Preprocess"]["regexp"],
             drop_dims=["z", "zb", "nv4"],
             drop_vars=["timestamp", "shelfbtemp", "effective_ice_surface_temp", "ice_surface_temp", "hardav", "nv4"],
         ),
@@ -268,6 +271,7 @@ if __name__ == "__main__":
         engine="h5netcdf",
         parallel=True,
     )
+
     time_elapsed = time.time() - start
     print(f"Time elapsed {time_elapsed:.0f}s")
 
@@ -289,26 +293,27 @@ if __name__ == "__main__":
     profile_stats = project["Statistics"]["metrics"]
     profile_stats_kwargs = project["Statistics"]["metrics_vars"]
 
-    n_partitions = 1
+    npartitions = 5
     profiles = dask_geopandas.from_geopandas(
-        gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=n_partitions
+        gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=npartitions
     )
 
-    cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=1)
-    client = Client(cluster)
-    n_jobs = len(client.ncores())
-    print(f"Open client in browser: {client.dashboard_link}")
+    with silence_logging_cmgr(logging.CRITICAL):
 
-    start = time.time()
+        cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=1)
+        client = Client(cluster)
+        n_jobs = len(client.ncores())
+        print(f"Open client in browser: {client.dashboard_link}")
 
-    with client:
+        start = time.time()
         velocity_ds_scattered = client.scatter(velocity_ds)
         exp_ds_scattered = client.scatter(exp_ds)
         profiles_scattered = client.scatter(profiles)
+        profiles_gp_scattered = client.scatter([p for _, p in profiles_gp.iterrows()])
 
         futures = client.map(
             extract_profiles,
-            [p for _, p in profiles_gp.iterrows()],
+            profiles_gp_scattered,
             profiles_df=profiles_scattered,
             obs_ds=velocity_ds_scattered,
             sim_ds=exp_ds_scattered,
@@ -329,11 +334,23 @@ if __name__ == "__main__":
         futures_gathered = client.gather(futures_computed)
         obs_sims_profiles, stats_profiles = [p[0] for p in futures_gathered], dd.concat(
             [p[1] for p in futures_gathered]
-        ).compute().reset_index(drop=True)
+        ).reset_index(drop=True)
 
         obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
         overlay_da_scattered = client.scatter(overlay_da)
         surface_da_scattered = client.scatter(surface_da)
+
+        print("Plotting profiles")
+        futures = client.map(
+            plot_profile,
+            obs_sims_profiles_scattered,
+            result_dir=profile_figure_dir,
+            alpha=obs_scale_alpha,
+            sigma=obs_sigma,
+        )
+        futures_computed = client.compute(futures)
+        progress(futures_computed)
+        futures_gathered = client.gather(futures_computed)
 
         print("Plotting glaciers")
         futures = client.map(
@@ -348,17 +365,8 @@ if __name__ == "__main__":
         progress(futures_computed)
         futures_gathered = client.gather(futures_computed)
 
-        print("Plotting profiles")
-        futures = client.map(
-            plot_profile,
-            obs_sims_profiles_scattered,
-            result_dir=profile_figure_dir,
-            alpha=obs_scale_alpha,
-            sigma=obs_sigma,
-        )
-        futures_computed = client.compute(futures)
-        progress(futures_computed)
-        futures_gathered = client.gather(futures_computed)
+        time_elapsed = time.time() - start
+        print(f"Time elapsed {time_elapsed:.0f}s")
 
-    time_elapsed = time.time() - start
-    print(f"Time elapsed {time_elapsed:.0f}s")
+        client.shutdown()
+        del client

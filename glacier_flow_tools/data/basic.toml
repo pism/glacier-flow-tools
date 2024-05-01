@@ -20,7 +20,11 @@ thickness_var = "thk"
 profile_var = "velsurf_mag"
 normal_component_vars = {x = "uvelsurf", y = "vvelsurf"}
 
-["Statistics"]
+[Statistics]
 
 metrics = ["rmsd", "pearson_r"]
 metrics_vars =  {obs_var = "v", sim_var = "velsurf_mag"}
+
+[Preprocess]
+
+regexp = "id_(.+?)_"
