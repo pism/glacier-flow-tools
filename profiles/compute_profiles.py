@@ -26,7 +26,7 @@ from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
 from functools import partial
 from importlib.resources import files
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Union
 
 import dask_geopandas
 import geopandas as gp
@@ -37,7 +37,7 @@ from dask.distributed import Client, LocalCluster, progress
 from distributed.utils import silence_logging_cmgr
 
 from glacier_flow_tools.profiles import plot_glacier, plot_profile, process_profile
-from glacier_flow_tools.utils import merge_on_intersection, preprocess_nc
+from glacier_flow_tools.utils import preprocess_nc
 
 default_project_file_url = files("glacier_flow_tools.data").joinpath("default.toml")
 
@@ -85,9 +85,8 @@ class ParseKwargs(Action):
             getattr(namespace, self.dest)[key] = value
 
 
-def extract_profiles(
+def extract_profile(
     profile,
-    profiles_df,
     obs_ds: xr.Dataset,
     sim_ds: xr.Dataset,
     result_dir: Union[str, Path, None] = None,
@@ -100,7 +99,7 @@ def extract_profiles(
     compute_profile_normal: bool = True,
     stats: List[str] = ["rmsd", "pearson_r"],
     stats_kwargs: Dict = {},
-) -> Tuple[xr.Dataset, gp.GeoDataFrame]:
+) -> xr.Dataset:
     """
     Extract and process profiles from observation and simulation datasets.
 
@@ -110,8 +109,6 @@ def extract_profiles(
     ----------
     profile : dict
         The profile to be processed.
-    profiles_df : GeoDataFrame
-        The GeoDataFrame to be merged with the processed profile.
     obs_ds : xr.Dataset
         The observation dataset.
     sim_ds : xr.Dataset
@@ -164,9 +161,7 @@ def extract_profiles(
     if result_dir is not None:
         os_file = Path(result_dir) / f"""{profile["profile_name"]}_profile.nc"""
         os_profile.to_netcdf(os_file, engine="h5netcdf")
-    return os_profile, merge_on_intersection(
-        profiles_df, os_profile.mean(["profile_axis"], skipna=True).to_dask_dataframe()
-    )
+    return os_profile
 
 
 if __name__ == "__main__":
@@ -203,7 +198,7 @@ if __name__ == "__main__":
         type=float,
     )
     profiles_parser.add_argument(
-        "--segmentize", help="""Profile resolution in meters Default=200m.""", default=200, type=float
+        "--segmentize", help="""Profile resolution in meters Default=250m.""", default=250, type=float
     )
     profiles_parser.add_argument(
         "--thickness_url",
@@ -254,6 +249,7 @@ if __name__ == "__main__":
     for k, v in project["ITS_LIVE"]["units"].items():
         velocity_ds[k].attrs["units"] = v
 
+    sim_vars_to_keep = list(project["Simulations"]["normal_component_vars"].values())
     print("Opening experiments")
     exp_files = [Path(x) for x in options.INFILES]
     start = time.time()
@@ -270,7 +266,7 @@ if __name__ == "__main__":
         chunks="auto",
         engine="h5netcdf",
         parallel=True,
-    )
+    )[sim_vars_to_keep]
 
     time_elapsed = time.time() - start
     print(f"Time elapsed {time_elapsed:.0f}s")
@@ -293,7 +289,7 @@ if __name__ == "__main__":
     profile_stats = project["Statistics"]["metrics"]
     profile_stats_kwargs = project["Statistics"]["metrics_vars"]
 
-    npartitions = 5
+    npartitions = 1
     profiles = dask_geopandas.from_geopandas(
         gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=npartitions
     )
@@ -308,16 +304,14 @@ if __name__ == "__main__":
         start = time.time()
         velocity_ds_scattered = client.scatter(velocity_ds)
         exp_ds_scattered = client.scatter(exp_ds)
-        profiles_scattered = client.scatter(profiles)
-        profiles_gp_scattered = client.scatter([p for _, p in profiles_gp.iterrows()])
+        profiles_scattered = client.scatter([p for _, p in profiles.iterrows()])
+        profiles_df_scattered = client.scatter(profiles)
 
         futures = client.map(
-            extract_profiles,
-            profiles_gp_scattered,
-            profiles_df=profiles_scattered,
+            extract_profile,
+            profiles_scattered,
             obs_ds=velocity_ds_scattered,
             sim_ds=exp_ds_scattered,
-            result_dir=profile_output_dir,
             compute_profile_normal=project["Profiles"]["compute_profile_normal"],
             obs_normal_var=project["Observations"]["profile_var"],
             obs_normal_error_var=project["Observations"]["profile_error_var"],
@@ -331,10 +325,46 @@ if __name__ == "__main__":
 
         futures_computed = client.compute(futures)
         progress(futures_computed)
-        futures_gathered = client.gather(futures_computed)
-        obs_sims_profiles, stats_profiles = [p[0] for p in futures_gathered], dd.concat(
-            [p[1] for p in futures_gathered]
-        ).reset_index(drop=True)
+        obs_sims_profiles = [p.compute() for p in client.gather(futures_computed)]
+
+        futures = []
+        for p in obs_sims_profiles:
+            future = client.submit(
+                dd.merge,
+                p[["profile_id", "rmsd", "pearson_r"]].to_dataframe().reset_index(),
+                profiles_gp,
+                on="profile_id",
+            )
+            futures.append(future)
+
+        futures_computed = client.compute(futures)
+        progress(futures_computed)
+        stats_profiles = dd.concat(client.gather(futures_computed)).reset_index(drop=True)
+
+        # futures = client.map(
+        #     extract_profiles,
+        #     profiles_scattered,
+        #     profiles_df=profiles_df_scattered,
+        #     obs_ds=velocity_ds_scattered,
+        #     sim_ds=exp_ds_scattered,
+        #     result_dir=profile_output_dir,
+        #     compute_profile_normal=project["Profiles"]["compute_profile_normal"],
+        #     obs_normal_var=project["Observations"]["profile_var"],
+        #     obs_normal_error_var=project["Observations"]["profile_error_var"],
+        #     obs_normal_component_vars=project["Observations"]["normal_component_vars"],
+        #     obs_normal_component_error_vars=project["Observations"]["normal_component_error_vars"],
+        #     sim_normal_var=project["Simulations"]["profile_var"],
+        #     sim_normal_component_vars=project["Simulations"]["normal_component_vars"],
+        #     stats=profile_stats,
+        #     stats_kwargs=profile_stats_kwargs,
+        # )
+
+        # futures_computed = client.compute(futures)
+        # progress(futures_computed)
+        # futures_gathered = client.gather(futures_computed)
+        # obs_sims_profiles, stats_profiles = [p[0] for p in futures_gathered], dd.concat(
+        #     [p[1] for p in futures_gathered]
+        # ).reset_index(drop=True)
 
         obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
         overlay_da_scattered = client.scatter(overlay_da)
@@ -344,6 +374,9 @@ if __name__ == "__main__":
         futures = client.map(
             plot_profile,
             obs_sims_profiles_scattered,
+            obs_var=project["Observations"]["profile_var"],
+            obs_error_var=project["Observations"]["profile_error_var"],
+            sim_var=project["Simulations"]["profile_var"],
             result_dir=profile_figure_dir,
             alpha=obs_scale_alpha,
             sigma=obs_sigma,

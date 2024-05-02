@@ -36,6 +36,7 @@ from typing import (  # pylint: disable=deprecated-class
 
 import joblib
 import numpy as np
+import pandas as pd
 import pylab as plt
 import xarray as xr
 from dask import dataframe as dd
@@ -233,7 +234,7 @@ def figure_extent(x_c: float, y_c: float, x_e: float = 50_000, y_e: float = 50_0
     return {"x": slice(x_c - x_e / 2, x_c + x_e / 2), "y": slice(y_c + y_e / 2, y_c - y_e / 2)}
 
 
-def merge_on_intersection(df1: dd.DataFrame, df2: dd.DataFrame) -> dd.DataFrame:
+def merge_on_intersection_dask(df1: dd.DataFrame, df2: dd.DataFrame) -> dd.DataFrame:
     """
     Merge two pandas DataFrames on intersection keys.
 
@@ -254,6 +255,29 @@ def merge_on_intersection(df1: dd.DataFrame, df2: dd.DataFrame) -> dd.DataFrame:
     """
     intersection_keys = list(set(df1.columns) & set(df2.columns))
     return dd.merge(df1, df2, on=intersection_keys)
+
+
+def merge_on_intersection_pandas(df1: dd.DataFrame, df2: dd.DataFrame) -> dd.DataFrame:
+    """
+    Merge two pandas DataFrames on intersection keys.
+
+    This function merges two Dask DataFrames based on the intersection of their columns.
+    The intersection of the columns is used as the keys for the merge operation.
+
+    Parameters
+    ----------
+    df1 : pandas.DataFrame
+        The first DataFrame to be merged.
+    df2 : pandas.DataFrame
+        The second DataFrame to be merged.
+
+    Returns
+    -------
+    dd.DataFrame
+        The merged DataFrame.
+    """
+    intersection_keys = list(set(df1.columns) & set(df2.columns))
+    return pd.merge(df1, df2, on=intersection_keys)
 
 
 def qgis2cmap(filename: Union[Path, str], N: int = 256, name: str = "my colormap") -> colors.LinearSegmentedColormap:

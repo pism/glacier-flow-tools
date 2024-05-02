@@ -281,9 +281,8 @@ def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
     n = n / np.linalg.norm(n)  # normalize
 
     # flip direction if needed:
-    if np.dot(a, n) < 0:
-        n = -n
-
+    if np.cross(a, n) < 0:
+        n = -1.0 * n
     return n
 
 
@@ -446,10 +445,11 @@ def process_profile(
     x, y = map(np.asarray, profile["geometry"].xy)
     profile_name = profile["profile_name"]
     profile_id = profile["profile_id"]
-    stats_obs_var = stats_kwargs["obs_var"]
-    del stats_kwargs["obs_var"]
-    stats_sim_var = stats_kwargs["sim_var"]
-    del stats_kwargs["sim_var"]
+    stats_kwargs_copy = stats_kwargs.copy()
+    stats_obs_var = stats_kwargs_copy["obs_var"]
+    del stats_kwargs_copy["obs_var"]
+    stats_sim_var = stats_kwargs_copy["sim_var"]
+    del stats_kwargs_copy["sim_var"]
 
     def extract_and_prepare(
         ds: xr.Dataset, profile_name: str = profile_name, profile_id: int = profile_id, **kwargs
@@ -499,7 +499,9 @@ def process_profile(
         compute_profile_normal=compute_profile_normal,
     )
     merged_profile = xr.merge([obs_profile, sims_profile])
-    merged_profile.profiles.calculate_stats(obs_var=stats_obs_var, sim_var=stats_sim_var, stats=stats, **stats_kwargs)
+    merged_profile.profiles.calculate_stats(
+        obs_var=stats_obs_var, sim_var=stats_sim_var, stats=stats, **stats_kwargs_copy
+    )
 
     return merged_profile
 
