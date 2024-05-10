@@ -99,7 +99,8 @@ disable = """
     too-many-lines,
     no-else-return,
     bare-except,
-    import-outside-toplevel
+    import-outside-toplevel,
+    redefined-outer-name
 """
 
 [tool.pylint.format]

@@ -41,6 +41,8 @@ from glacier_flow_tools.utils import preprocess_nc
 
 default_project_file_url = files("glacier_flow_tools.data").joinpath("default.toml")
 
+# pylint: disable=redefined-outer-name
+
 
 class ParseKwargs(Action):
     """
@@ -247,6 +249,8 @@ if __name__ == "__main__":
 
     if project["Profiles"]["compute_profile_normal"]:
         sim_vars_to_keep = list(project["Simulations"]["normal_component_vars"].values())
+        if project["Profiles"]["compute_flux"]:
+            sim_vars_to_keep += [project["Simulations"]["thickness_var"]]
     else:
         sim_vars_to_keep = [project["Simulations"]["profile_var"]] + ["time_bnds"]
 
@@ -277,13 +281,21 @@ if __name__ == "__main__":
         velocity_ds = velocity_ds.fluxes.add_fluxes(
             thickness_ds=thickness_ds,
             thickness_var=project["Observations"]["thickness_var"],
-            velocity_var=project["Observations"]["normal_component_vars"],
+            velocity_vars=project["Observations"]["normal_component_vars"],
             error_vars=project["Observations"]["normal_component_error_vars"],
+            flux_vars={
+                "x": "obs_ice_mass_flux_x",
+                "y": "obs_ice_mass_flux_y",
+                "x_err": "obs_ice_mass_flux_err_x",
+                "y_err": "obs_ice_mass_flux_err_y",
+                "magnitude": "obs_ice_mass_flux_normal",
+                "magnitude_err": "obs_ice_mass_flux_normal_err",
+            },
         )
         exp_ds = exp_ds.fluxes.add_fluxes(
             thickness_var=project["Simulations"]["thickness_var"],
-            velocity_var=project["Simulations"]["normal_component_vars"],
-            flux_vars={"x": "sim_ice_mass_flux_x", "y": "sim_ice_mass_flux_y"},
+            velocity_vars=project["Simulations"]["normal_component_vars"],
+            flux_vars={"x": "sim_ice_mass_flux_x", "y": "sim_ice_mass_flux_y", "magnitude": "sim_ice_mass_flux_normal"},
         )
 
     profile_stats = project["Statistics"]["metrics"]
@@ -293,6 +305,21 @@ if __name__ == "__main__":
     profiles = dask_geopandas.from_geopandas(
         gp.GeoDataFrame(profiles_gp, geometry=profiles_gp.geometry), npartitions=npartitions
     )
+
+    if project["Profiles"]["compute_flux"]:
+        obs_normal_var = project["Observations"]["profile_var"]
+        obs_normal_error_var = project["Observations"]["profile_error_var"]
+        obs_normal_component_vars = project["Observations"]["normal_component_flux_vars"]
+        obs_normal_component_error_vars = project["Observations"]["normal_component_flux_error_vars"]
+        sim_normal_var = project["Simulations"]["profile_var"]
+        sim_normal_component_vars = project["Simulations"]["normal_component_flux_vars"]
+    else:
+        obs_normal_var = project["Observations"]["profile_var"]
+        obs_normal_error_var = project["Observations"]["profile_error_var"]
+        obs_normal_component_vars = project["Observations"]["normal_component_vars"]
+        obs_normal_component_error_vars = project["Observations"]["normal_component_error_vars"]
+        sim_normal_var = project["Simulations"]["profile_var"]
+        sim_normal_component_vars = project["Simulations"]["normal_component_vars"]
 
     with silence_logging_cmgr(logging.CRITICAL):
 
@@ -313,12 +340,12 @@ if __name__ == "__main__":
                 obs_ds=velocity_ds_scattered,
                 sim_ds=exp_ds_scattered,
                 compute_profile_normal=project["Profiles"]["compute_profile_normal"],
-                obs_normal_var=project["Observations"]["profile_var"],
-                obs_normal_error_var=project["Observations"]["profile_error_var"],
-                obs_normal_component_vars=project["Observations"]["normal_component_vars"],
-                obs_normal_component_error_vars=project["Observations"]["normal_component_error_vars"],
-                sim_normal_var=project["Simulations"]["profile_var"],
-                sim_normal_component_vars=project["Simulations"]["normal_component_vars"],
+                obs_normal_var=obs_normal_var,
+                obs_normal_error_var=obs_normal_error_var,
+                obs_normal_component_vars=obs_normal_component_vars,
+                obs_normal_component_error_vars=obs_normal_component_error_vars,
+                sim_normal_var=sim_normal_var,
+                sim_normal_component_vars=sim_normal_component_vars,
                 stats=profile_stats,
                 stats_kwargs=profile_stats_kwargs,
             )

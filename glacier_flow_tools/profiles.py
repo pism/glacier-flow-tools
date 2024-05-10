@@ -452,7 +452,14 @@ def process_profile(
     del stats_kwargs_copy["sim_var"]
 
     def extract_and_prepare(
-        ds: xr.Dataset, profile_name: str = profile_name, profile_id: int = profile_id, **kwargs
+        ds: xr.Dataset,
+        profile_name: str = profile_name,
+        profile_id: int = profile_id,
+        normal_var: str = "v_normal",
+        normal_error_var: str = "v_normal_err",
+        normal_component_vars: Dict[str, str] = {"x": "vx", "y": "vy"},
+        normal_component_error_vars: Dict[str, str] = {"x": "vx_err", "y": "vy_err"},
+        compute_profile_normal: bool = False,
     ) -> xr.Dataset:
         """
         Extract from xr.Dataset along (x,y) profile and prepare it for further processing.
@@ -465,8 +472,16 @@ def process_profile(
             The name of the profile to extract, by default the value of the global variable 'profile_name'.
         profile_id : int, optional
             The id of the profile to extract, by default the value of the global variable 'profile_id'.
-        **kwargs
-            Additional keyword arguments to pass to the 'extract_profile' method.
+        normal_var : str, optional
+            The name of the variable representing the normal velocity, by default 'v_normal'.
+        normal_error_var : str, optional
+            The name of the variable representing the error in the normal velocity, by default 'v_normal_err'.
+        normal_component_vars : dict, optional
+            A dictionary mapping the x and y components to their variable names, by default {"x": "vx", "y": "vy"}.
+        normal_component_error_vars : dict, optional
+            A dictionary mapping the x and y components to their error variable names, by default {"x": "vx_err", "y": "vy_err"}.
+        compute_profile_normal : bool, optional
+            Whether to compute the normal of the profile, by default False.
 
         Returns
         -------
@@ -477,7 +492,17 @@ def process_profile(
         -----
         This function uses the 'extract_profile' method of the 'profiles' accessor of the input dataset.
         """
-        ds_profile = ds.profiles.extract_profile(x, y, profile_name=profile_name, profile_id=profile_id, **kwargs)
+        ds_profile = ds.profiles.extract_profile(
+            x,
+            y,
+            profile_name=profile_name,
+            profile_id=profile_id,
+            normal_var=normal_var,
+            normal_error_var=normal_error_var,
+            normal_component_vars=normal_component_vars,
+            normal_component_error_vars=normal_component_error_vars,
+            compute_profile_normal=compute_profile_normal,
+        )
         return ds_profile
 
     obs_profile = extract_and_prepare(
@@ -539,9 +564,26 @@ class FluxMethods:
         This method is needed to work with joblib Parallel.
         """
 
+    def __repr__(self):
+        """
+        Flux methods.
+        """
+        return """
+Fluxes methods for xarray Dataset.
+
+This class is used to add custom methods to xarray Dataset objects. The methods can be accessed via the 'fluxes' attribute.
+
+Parameters
+----------
+
+xarray_obj : xr.Dataset
+  The xarray Dataset to which to add the custom methods.
+      """
+
     def add_fluxes(
         self,
         thickness_var: str = "thickness",
+        thickness_err_var: str = "errbed",
         velocity_vars: Dict = {
             "x": "vx",
             "y": "vy",
@@ -549,8 +591,10 @@ class FluxMethods:
         flux_vars: Dict = {
             "x": "ice_mass_flux_x",
             "y": "ice_mass_flux_y",
-            "xe": "ice_mass_flux_err_x",
-            "ye": "ice_mass_flux_err_y",
+            "x_err": "ice_mass_flux_err_x",
+            "y_err": "ice_mass_flux_err_y",
+            "magnitude": "ice_mass_flux_normal",
+            "magnitude_err": "ice_mass_flux_normal_err",
         },
         error_vars: Optional[Dict] = None,
         thickness_ds: Optional[xr.Dataset] = None,
@@ -566,6 +610,8 @@ class FluxMethods:
         ----------
         thickness_var : str, optional
             The variable name for the ice thickness data. The default is "thickness".
+        thickness_err_var : str, optional
+            The variable name for the ice thickness error data. The default is "errbed".
         velocity_vars : dict, optional
             A dictionary mapping the direction to the variable name for the velocity. The default is {"x": "vx", "y": "vy"}.
         flux_vars : dict, optional
@@ -608,10 +654,12 @@ class FluxMethods:
         ds = self._obj.pint.quantify()
         ice_density = xr.DataArray(917.0).pint.quantify("kg m-3").pint.to("Gt m-3")
         resolution = xr.DataArray(dx[0]).pint.quantify(resolution_units)
-
         das = {}
         if thickness_ds is not None:
             thickness_units = thickness_ds[thickness_var].attrs["units"]
+            das[thickness_var] = thickness_ds[thickness_var]
+            if error_vars:
+                das[thickness_err_var] = thickness_ds[thickness_err_var]
         else:
             thickness_ds = self._obj
             thickness_units = thickness_ds[thickness_var].attrs["units"]
@@ -622,6 +670,7 @@ class FluxMethods:
         # Use velocity_vars instead.
         for direction in ["x", "y"]:
             flux_da = ds[velocity_vars[direction]] * thickness_ds_pint[thickness_var] * resolution * ice_density
+            das[flux_vars[direction]] = flux_da
             if error_vars:
                 vx_err_units, vy_err_units = (
                     self._obj[error_vars["x"]].attrs["units"],
@@ -632,12 +681,11 @@ class FluxMethods:
                 )
                 v_e_norms = {"x": vx_e_norm, "y": vy_e_norm}
 
-                das[flux_vars[direction]] = flux_da
                 flux_err_da = flux_da * np.sqrt(
                     (ds[error_vars[direction]] ** 2 / v_e_norms[direction] ** 2)
-                    * (thickness_ds_pint["errbed"] ** 2 / thickness_norm**2)
+                    * (thickness_ds_pint[thickness_err_var] ** 2 / thickness_norm**2)
                 )
-                das[flux_vars[f"{direction}e"]] = flux_err_da
+                das[flux_vars[f"{direction}_err"]] = flux_err_da
 
         self._obj = ds.assign(das).pint.dequantify()
         return self._obj
@@ -928,7 +976,6 @@ class ProfilesMethods:
         ds["profile_id"] = [profile_id]
 
         if compute_profile_normal:
-
             a = [(v in ds.data_vars) for v in normal_component_vars.values()]
             if np.all(np.array(a)):
                 ds.profiles.add_normal_component(
@@ -936,6 +983,9 @@ class ProfilesMethods:
                     y_component=normal_component_vars["y"],
                     normal_name=normal_var,
                 )
+                assert ds[normal_component_vars["x"]].units == ds[normal_component_vars["y"]].units
+                profile_units = ds[normal_component_vars["x"]].units
+                ds[normal_var]["units"] = profile_units
 
             a = [(v in ds.data_vars) for v in normal_component_error_vars.values()]
             if np.all(np.array(a)):
@@ -944,6 +994,11 @@ class ProfilesMethods:
                     y_component=normal_component_error_vars["y"],
                     normal_name=normal_error_var,
                 )
+                if (normal_component_error_vars["x"] and normal_component_error_vars["y"]) in ds.data_vars:
+                    assert ds[normal_component_error_vars["x"]].units == ds[normal_component_error_vars["y"]].units
+                    profile_error_units = ds[normal_component_error_vars["x"]].units
+                    ds[normal_error_var]["units"] = profile_error_units
+
         return ds
 
     def plot(
