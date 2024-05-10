@@ -28,3 +28,10 @@ metrics_vars =  {obs_var = "obs_v_normal", sim_var = "sim_v_normal"}
 [Preprocess]
 
 regexp = "id_(.+?)_"
+
+["Plotting"]
+
+x_axis_label = "Distance (m)"
+y_axis_label = "Speed (m/yr)"
+rmsd_units = "m/yr"
+rmsd_formatting = ".0f"

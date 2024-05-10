@@ -63,6 +63,12 @@ def plot_profile(
     sim_kwargs: dict = {"lw": 0.5, "marker": "o", "ms": 1.5},
     figsize=[3.2, 3.2],
     fontsize: float = 6,
+    plot_kwargs: dict = {
+        "x_axis_label": "Distance (m)",
+        "y_axis_label": "Speed (m/yr)",
+        "rmsd_units": "m/yr",
+        "rmsd_formatting": ".0f",
+    },
 ):
     """
     Plot a profile dataset created with ds.profiles.extract_profile and save it as a PDF.
@@ -98,6 +104,9 @@ def plot_profile(
         The size of the figure in inches, by default [3.2, 3.2].
     fontsize : float, optional
         The font size to be used for the plot, by default 6.
+    plot_kwargs : dict, optional
+        Additional keyword arguments to pass to the plot function for the figure and axis, by default {"x_axis_label": "Distance (m)",
+          "y_axis_label": "Speed (m/yr)"}.
 
     Examples
     --------
@@ -115,6 +124,7 @@ def plot_profile(
         obs_error_kwargs=obs_error_kwargs,
         figsize=figsize,
         fontsize=fontsize,
+        plot_kwargs=plot_kwargs,
     )
     profile_name = ds["profile_name"].values[0]
     fig.savefig(result_dir / f"{profile_name}_profile.pdf")
@@ -681,12 +691,14 @@ xarray_obj : xr.Dataset
                 )
                 v_e_norms = {"x": vx_e_norm, "y": vy_e_norm}
 
-                flux_err_da = flux_da * np.sqrt(
+                flux_err_da = np.abs(flux_da) * np.sqrt(
                     (ds[error_vars[direction]] ** 2 / v_e_norms[direction] ** 2)
-                    * (thickness_ds_pint[thickness_err_var] ** 2 / thickness_norm**2)
+                    + (thickness_ds_pint[thickness_err_var] ** 2 / thickness_norm**2)
                 )
                 das[flux_vars[f"{direction}_err"]] = flux_err_da
-
+        das[flux_vars["magnitude"]] = (das[flux_vars["x"]] ** 2 + das[flux_vars["y"]] ** 2) ** (1.0 / 2)
+        if error_vars:
+            ds[flux_vars["magnitude_err"]] = (das[flux_vars["x_err"]] ** 2 + das[flux_vars["y_err"]] ** 2) ** (1.0 / 2)
         self._obj = ds.assign(das).pint.dequantify()
         return self._obj
 
@@ -1015,6 +1027,12 @@ class ProfilesMethods:
         sim_kwargs: dict = {"lw": 0.5, "marker": "o", "ms": 1.5},
         figsize=[3.2, 3.2],
         fontsize: float = 6,
+        plot_kwargs: dict = {
+            "x_axis_label": "Distance (m)",
+            "y_axis_label": "Speed (m/yr)",
+            "rmsd_units": "m/yr",
+            "rmsd_formatting": ".0f",
+        },
     ) -> plt.Figure:
         """
         Plot observations and simulations along a profile.
@@ -1048,6 +1066,9 @@ class ProfilesMethods:
             The size of the figure in inches, by default [3.2, 3.2].
         fontsize : float, optional
             The font size to be used for the plot, by default 6.
+        plot_kwargs : dict, optional
+            Additional keyword arguments to pass to the plot function for the figure and axis, by default {"x_axis_label": "Distance (m)",
+              "y_axis_label": "Speed (m/yr)", "rmsd_units": "m/yr", "rmsd_formatting": ".0f"}.
 
         Returns
         -------
@@ -1066,9 +1087,11 @@ class ProfilesMethods:
         ax.fill_between(
             self._obj["profile_axis"],
             self._obj[obs_var]
-            - self._obj[obs_var] * np.sqrt((sigma * self._obj[obs_error_var] / self._obj[obs_var]) ** 2 + alpha**2),
+            - np.abs(self._obj[obs_var])
+            * np.sqrt((sigma * self._obj[obs_error_var] / self._obj[obs_var]) ** 2 + alpha**2),
             self._obj[obs_var]
-            + self._obj[obs_var] * np.sqrt((sigma * self._obj[obs_error_var] / self._obj[obs_var]) ** 2 + alpha**2),
+            + np.abs(self._obj[obs_var])
+            * np.sqrt((sigma * self._obj[obs_error_var] / self._obj[obs_var]) ** 2 + alpha**2),
             **obs_error_kwargs,
         )
         ax.plot(
@@ -1081,7 +1104,7 @@ class ProfilesMethods:
         # Loop over the data and plot each line with a different color
         if n_exps > 1:
             for i in range(n_exps):
-                exp_label = f"""{self._obj["exp_id"].values[i].item()} $r$={self._obj["pearson_r"].values[i][0]:.2f} rmsd={self._obj["rmsd"].values[i][0]:.0f}m/yr"""
+                exp_label = f"""{self._obj["exp_id"].values[i].item()} $r$={self._obj["pearson_r"].values[i][0]:.2f} rmsd={self._obj["rmsd"].values[i][0]:{plot_kwargs["rmsd_formatting"]}}{plot_kwargs["rmsd_units"]}"""
                 ax.plot(
                     self._obj["profile_axis"],
                     np.squeeze(self._obj[sim_var].isel(exp_id=i).T),
@@ -1090,7 +1113,7 @@ class ProfilesMethods:
                     **sim_kwargs,
                 )
         else:
-            exp_label = f"""{self._obj["exp_id"].values.item()} $r$={self._obj["pearson_r"].values.item():.2f} rmsd={self._obj["rmsd"].values.item():.0f}m/yr"""
+            exp_label = f"""{self._obj["exp_id"].values.item()} $r$={self._obj["pearson_r"].values.item():.2f} rmsd={self._obj["rmsd"].values.item():{plot_kwargs["rmsd_formatting"]}}{plot_kwargs["rmsd_units"]}"""
             ax.plot(
                 self._obj["profile_axis"],
                 np.squeeze(self._obj[sim_var].T),
@@ -1099,7 +1122,7 @@ class ProfilesMethods:
                 **sim_kwargs,
             )
         ax.set_xlabel("Distance along profile (m)")
-        ax.set_ylabel("Speed (m/yr)")
+        ax.set_ylabel(plot_kwargs["y_axis_label"])
         legend = ax.legend(loc="upper left")
         legend.get_frame().set_linewidth(0.0)
         legend.get_frame().set_alpha(0.0)

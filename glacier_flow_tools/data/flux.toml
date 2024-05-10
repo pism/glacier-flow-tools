@@ -1,0 +1,41 @@
+[Profiles]
+
+compute_profile_normal = true
+compute_flux = true
+
+[ITS_LIVE]
+
+units = {vx = "m/yr", vy = "m/yr", v = "m/yr", vx_err = "m/yr", vy_err = "m/yr", v_err = "m/yr", rock = "1", count = "1", ocean = "1", ice = "1"}
+
+[Observations]
+
+thickness_var = "thickness"
+profile_var = "obs_ice_mass_flux_normal"
+profile_error_var = "obs_ice_mass_flux_normal_err"
+normal_component_vars = {x = "vx", y = "vy"}
+normal_component_error_vars = {x = "vx_err", y = "vy_err"}
+normal_component_flux_vars = {x = "obs_ice_mass_flux_x", y = "obs_ice_mass_flux_y"}
+normal_component_flux_error_vars = {x = "obs_ice_mass_flux_err_x", y = "obs_ice_mass_flux_err_y"}
+
+[Simulations]
+
+thickness_var = "thk"
+profile_var = "sim_ice_mass_flux_normal"
+normal_component_vars = {x = "uvelsurf", y = "vvelsurf"}
+normal_component_flux_vars = {x = "sim_ice_mass_flux_x", y = "sim_ice_mass_flux_y"}
+
+[Statistics]
+
+metrics = ["rmsd", "pearson_r"]
+metrics_vars =  {obs_var = "obs_ice_mass_flux_normal", sim_var = "sim_ice_mass_flux_normal"}
+
+[Preprocess]
+
+regexp = "id_(.+?)_"
+
+["Plotting"]
+
+x_axis_label = "Distance (m)"
+y_axis_label = "Flux (Gt/yr)"
+rmsd_units = "Gt/yr"
+rmsd_formatting = ".2f"

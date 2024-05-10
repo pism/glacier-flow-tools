@@ -382,6 +382,7 @@ if __name__ == "__main__":
                 result_dir=profile_figure_dir,
                 alpha=obs_scale_alpha,
                 sigma=obs_sigma,
+                plot_kwargs=project["Plotting"],
             )
             futures_computed = client.compute(futures)
             progress(futures_computed)
