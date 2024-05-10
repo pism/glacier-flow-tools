@@ -1,3 +1,4 @@
+bokeh
 Cartopy
 cftime
 cf_xarray
