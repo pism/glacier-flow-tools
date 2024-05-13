@@ -52,7 +52,6 @@ matplotlib.use("agg")
 def plot_profile(
     ds: xr.Dataset,
     result_dir: Path,
-    alpha: float = 0.0,
     sigma: float = 1.0,
     obs_var: str = "v",
     obs_error_var: str = "v_err",
@@ -82,8 +81,6 @@ def plot_profile(
         The profile dataset to be plotted.
     result_dir : Path
         The directory where the result PDF file will be saved.
-    alpha : float, optional
-        The alpha value to be used for the plot, which determines the transparency of the plot, by default 0.0.
     sigma : float, optional
         The sigma value to be used for the plot, which determines the width of the Gaussian kernel, by default 1.0.
     obs_var : str, optional
@@ -110,11 +107,10 @@ def plot_profile(
 
     Examples
     --------
-    >>> plot_profile(ds, result_dir, alpha=0.0, sigma=1.0, obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
+    >>> plot_profile(ds, result_dir, sigma=1.0, obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
     """
     fig = ds.profiles.plot(
         sigma=sigma,
-        alpha=alpha,
         obs_var=obs_var,
         obs_error_var=obs_error_var,
         sim_var=sim_var,
@@ -861,12 +857,47 @@ class ProfilesMethods:
             """
             return xr.corr(sim, obs, dim="profile_axis")
 
-        func = {"rmsd": {"func": rmsd, "ufunc": True}, "pearson_r": {"func": pearson_r, "ufunc": False}}
+        def flux(dy: xr.DataArray, dx: xr.DataArray) -> xr.DataArray:
+            """
+            Compute the numerical integration of a given DataArray over another DataArray using the trapezoidal rule.
+
+            Parameters
+            ----------
+            dy : xr.DataArray
+                The input DataArray to be integrated.
+            dx : xr.DataArray
+                The input DataArray over which to integrate.
+
+            Returns
+            -------
+            xr.DataArray
+                The result of the integration as a DataArray.
+
+            Examples
+            --------
+            >>> dy = xr.DataArray([1, 2, 3])
+            >>> dx = xr.DataArray([4, 5, 6])
+            >>> flux(dy, dx)
+            """
+            return np.trapz(dy, dx)
+
+        stats_func = {"rmsd": {"func": rmsd, "ufunc": True}, "pearson_r": {"func": pearson_r, "ufunc": False}}
+        fluxes = {obs_var: "obs_flux", sim_var: "sim_flux"}
+
+        for k, v in fluxes.items():
+            self._obj[v] = xr.apply_ufunc(
+                flux,
+                self._obj[k],
+                self._obj["profile_axis"],
+                dask="allowed",
+                input_core_dims=[[dim], [dim]],
+                output_core_dims=[[]],
+            )
 
         for stat in stats:
-            if func[stat]["ufunc"]:
+            if stats_func[stat]["ufunc"]:
                 self._obj[stat] = xr.apply_ufunc(
-                    func[stat]["func"],  # type: ignore[arg-type]
+                    stats_func[stat]["func"],  # type: ignore[arg-type]
                     self._obj[obs_var],
                     self._obj[sim_var],
                     dask="allowed",
@@ -875,6 +906,7 @@ class ProfilesMethods:
                 )
             else:
                 self._obj[stat] = pearson_r(self._obj[obs_var], self._obj[sim_var])
+
         return self._obj
 
     def extract_profile(
@@ -1061,7 +1093,7 @@ class ProfilesMethods:
 
         Examples
         --------
-        >>> plot(sigma=1, alpha=0.0, title='My Plot', obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
+        >>> plot(sigma=1, title='My Plot', obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
         """
 
         plt.rcParams["font.size"] = fontsize

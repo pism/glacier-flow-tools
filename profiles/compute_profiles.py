@@ -375,7 +375,7 @@ if __name__ == "__main__":
             for p in obs_sims_profiles:
                 future = client.submit(
                     dd.merge,
-                    p[["profile_id", "rmsd", "pearson_r"]].to_dataframe().reset_index(),
+                    p[["profile_id", "rmsd", "pearson_r", "obs_flux", "sim_flux"]].to_dataframe().reset_index(),
                     profiles_gp,
                     on="profile_id",
                 )
