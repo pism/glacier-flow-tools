@@ -30,6 +30,7 @@ from typing import Dict, List, Union
 
 import dask_geopandas
 import geopandas as gp
+import numpy as np
 import toml
 import xarray as xr
 from dask import dataframe as dd
@@ -254,6 +255,9 @@ if __name__ == "__main__":
     else:
         sim_vars_to_keep = [project["Simulations"]["profile_var"]] + ["time_bnds"]
 
+    if project["Profiles"]["compute_flux"]:
+        sim_vars_to_keep += ["thk"]
+
     print("Opening experiments")
     exp_files = [Path(x) for x in options.INFILES]
     start = time.time()
@@ -321,6 +325,20 @@ if __name__ == "__main__":
         sim_normal_var = project["Simulations"]["profile_var"]
         sim_normal_component_vars = project["Simulations"]["normal_component_vars"]
 
+    # Add alpha to errors. Alpha is a tuning factor that can be used, e.g., to adjust for annual vs winter velocities.
+    velocity_ds[obs_normal_component_error_vars["x"]].values = np.abs(
+        velocity_ds[obs_normal_component_vars["x"]]
+    ) * np.sqrt(
+        velocity_ds[obs_normal_component_error_vars["x"]] ** 2 / velocity_ds[obs_normal_component_vars["x"]] ** 2
+        + obs_scale_alpha**2
+    )
+    velocity_ds[obs_normal_component_error_vars["y"]].values = np.abs(
+        velocity_ds[obs_normal_component_vars["y"]]
+    ) * np.sqrt(
+        velocity_ds[obs_normal_component_error_vars["y"]] ** 2 / velocity_ds[obs_normal_component_vars["y"]] ** 2
+        + obs_scale_alpha**2
+    )
+
     with silence_logging_cmgr(logging.CRITICAL):
 
         cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=1)
@@ -380,7 +398,6 @@ if __name__ == "__main__":
                 obs_error_var=project["Observations"]["profile_error_var"],
                 sim_var=project["Simulations"]["profile_var"],
                 result_dir=profile_figure_dir,
-                alpha=obs_scale_alpha,
                 sigma=obs_sigma,
                 plot_kwargs=project["Plotting"],
             )

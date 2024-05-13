@@ -1,6 +1,7 @@
 [Profiles]
 
 compute_profile_normal = true
+compute_flux = false
 
 [ITS_LIVE]
 

@@ -666,34 +666,21 @@ xarray_obj : xr.Dataset
         resolution = xr.DataArray(dx[0]).pint.quantify(resolution_units)
         das = {}
         if thickness_ds is not None:
-            thickness_units = thickness_ds[thickness_var].attrs["units"]
             das[thickness_var] = thickness_ds[thickness_var]
             if error_vars:
                 das[thickness_err_var] = thickness_ds[thickness_err_var]
         else:
             thickness_ds = self._obj
-            thickness_units = thickness_ds[thickness_var].attrs["units"]
         thickness_ds_pint = thickness_ds.pint.quantify()
-        thickness_norm = xr.DataArray(1).pint.quantify(thickness_units)
 
         # Calculate flux and its error
-        # Use velocity_vars instead.
         for direction in ["x", "y"]:
             flux_da = ds[velocity_vars[direction]] * thickness_ds_pint[thickness_var] * resolution * ice_density
             das[flux_vars[direction]] = flux_da
             if error_vars:
-                vx_err_units, vy_err_units = (
-                    self._obj[error_vars["x"]].attrs["units"],
-                    self._obj[error_vars["y"]].attrs["units"],
-                )
-                vx_e_norm, vy_e_norm = xr.DataArray(1).pint.quantify(vx_err_units), xr.DataArray(1).pint.quantify(
-                    vy_err_units
-                )
-                v_e_norms = {"x": vx_e_norm, "y": vy_e_norm}
-
                 flux_err_da = np.abs(flux_da) * np.sqrt(
-                    (ds[error_vars[direction]] ** 2 / v_e_norms[direction] ** 2)
-                    + (thickness_ds_pint[thickness_err_var] ** 2 / thickness_norm**2)
+                    (ds[error_vars[direction]] ** 2 / ds[velocity_vars[direction]] ** 2)
+                    + (thickness_ds_pint[thickness_err_var] ** 2 / thickness_ds_pint[thickness_var] ** 2)
                 )
                 das[flux_vars[f"{direction}_err"]] = flux_err_da
         das[flux_vars["magnitude"]] = (das[flux_vars["x"]] ** 2 + das[flux_vars["y"]] ** 2) ** (1.0 / 2)
@@ -1016,7 +1003,6 @@ class ProfilesMethods:
     def plot(
         self,
         sigma: float = 1,
-        alpha: float = 0.0,
         title: Union[str, None] = None,
         obs_var: str = "v",
         obs_error_var: str = "v_err",
@@ -1044,8 +1030,6 @@ class ProfilesMethods:
         ----------
         sigma : float, optional
             The standard deviation of the observations, by default 1.
-        alpha : float, optional
-            The alpha level for the error bars, by default 0.0.
         title : str or None, optional
             The title of the plot, by default None.
         obs_var : str, optional
@@ -1086,12 +1070,8 @@ class ProfilesMethods:
         ax = fig.add_subplot(111)
         ax.fill_between(
             self._obj["profile_axis"],
-            self._obj[obs_var]
-            - np.abs(self._obj[obs_var])
-            * np.sqrt((sigma * self._obj[obs_error_var] / self._obj[obs_var]) ** 2 + alpha**2),
-            self._obj[obs_var]
-            + np.abs(self._obj[obs_var])
-            * np.sqrt((sigma * self._obj[obs_error_var] / self._obj[obs_var]) ** 2 + alpha**2),
+            self._obj[obs_var] - sigma * self._obj[obs_error_var],
+            self._obj[obs_var] + sigma * self._obj[obs_error_var],
             **obs_error_kwargs,
         )
         ax.plot(
