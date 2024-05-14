@@ -341,7 +341,7 @@ if __name__ == "__main__":
 
     with silence_logging_cmgr(logging.CRITICAL):
 
-        cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=1)
+        cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=2)
         with Client(cluster, asynchronous=True) as client:
             n_jobs = len(client.ncores())
             print(f"Open client in browser: {client.dashboard_link}")

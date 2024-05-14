@@ -857,42 +857,11 @@ class ProfilesMethods:
             """
             return xr.corr(sim, obs, dim="profile_axis")
 
-        def flux(dy: xr.DataArray, dx: xr.DataArray) -> xr.DataArray:
-            """
-            Compute the numerical integration of a given DataArray over another DataArray using the trapezoidal rule.
-
-            Parameters
-            ----------
-            dy : xr.DataArray
-                The input DataArray to be integrated.
-            dx : xr.DataArray
-                The input DataArray over which to integrate.
-
-            Returns
-            -------
-            xr.DataArray
-                The result of the integration as a DataArray.
-
-            Examples
-            --------
-            >>> dy = xr.DataArray([1, 2, 3])
-            >>> dx = xr.DataArray([4, 5, 6])
-            >>> flux(dy, dx)
-            """
-            return np.trapz(dy, dx)
-
         stats_func = {"rmsd": {"func": rmsd, "ufunc": True}, "pearson_r": {"func": pearson_r, "ufunc": False}}
         fluxes = {obs_var: "obs_flux", sim_var: "sim_flux"}
 
         for k, v in fluxes.items():
-            self._obj[v] = xr.apply_ufunc(
-                flux,
-                self._obj[k],
-                self._obj["profile_axis"],
-                dask="allowed",
-                input_core_dims=[[dim], [dim]],
-                output_core_dims=[[]],
-            )
+            self._obj[v] = self._obj[k].integrate(coord="profile_axis")
 
         for stat in stats:
             if stats_func[stat]["ufunc"]:
