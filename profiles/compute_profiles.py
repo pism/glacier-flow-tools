@@ -1,6 +1,6 @@
 # Copyright (C) 2024 Andy Aschwanden, Constantine Khroulev
 #
-# This file is part of pypism.
+# This file is part of glacier-flow-tools.
 #
 # GLACIER-FLOW-TOOLS is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Calculate proifles and compute statistics along profiles.
+Extract along profiles and compute statistics.
 """
 
 import logging
