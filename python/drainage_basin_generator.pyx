@@ -6,7 +6,7 @@
 cimport numpy as np
 import numpy as np
 
-cimport pism_dbg_c
+cimport drainage_basin_generator_c
 
 ctypedef np.float64_t double_t
 ctypedef np.int32_t int_t
@@ -23,7 +23,7 @@ def initialize_mask(np.ndarray[dtype=double_t, ndim=2, mode="c"] thk):
 
     mask = np.zeros((thk.shape[0], thk.shape[1]), dtype=np.int32)
 
-    pism_dbg_c.initialize_mask(Mx, My, <double*>thk.data, <int*> mask.data)
+    drainage_basin_generator_c.initialize_mask(Mx, My, <double*>thk.data, <int*> mask.data)
 
     return mask
 
@@ -68,7 +68,7 @@ def upslope_area(np.ndarray[dtype=double_t, ndim=1] x,
     else:
         output = mask
 
-    pism_dbg_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,
+    drainage_basin_generator_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,
                             <double*>z.data, <int*>output.data,
                             print_output)
 
@@ -99,7 +99,7 @@ def accumulated_flow(np.ndarray[dtype=double_t, ndim=1] x,
     else:
         output = mask
 
-    pism_dbg_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,
+    drainage_basin_generator_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,
                                 <double*>z.data, <double*>output.data, n_samples)
 
     return output

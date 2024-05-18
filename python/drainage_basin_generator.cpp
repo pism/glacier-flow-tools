@@ -27,16 +27,16 @@
             "gslcblas",
             "gomp"
         ],
-        "name": "pism_dbg",
+        "name": "drainage_basin_generator",
         "sources": [
-            "python/pism_dbg.pyx",
+            "python/drainage_basin_generator.pyx",
             "src/upslope_area.cc",
             "src/accumulated_flow.cc",
             "src/initialize_mask.cc",
             "src/DEM.cc"
         ]
     },
-    "module_name": "pism_dbg"
+    "module_name": "drainage_basin_generator"
 }
 END: Cython Metadata */
 
@@ -1268,8 +1268,8 @@ static CYTHON_INLINE float __PYX_NAN() {
     #define __PYX_EXTERN_C extern "C++"
 #endif
 
-#define __PYX_HAVE__pism_dbg
-#define __PYX_HAVE_API__pism_dbg
+#define __PYX_HAVE__drainage_basin_generator
+#define __PYX_HAVE_API__drainage_basin_generator
 /* Early includes */
 #include <string.h>
 #include <stdio.h>
@@ -1552,7 +1552,7 @@ static const char *__pyx_filename;
 /* #### Code section: filename_table ### */
 
 static const char *__pyx_f[] = {
-  "python/pism_dbg.pyx",
+  "python/drainage_basin_generator.pyx",
   "__init__.cython-30.pxd",
   "type.pxd",
 };
@@ -1770,23 +1770,23 @@ typedef npy_double __pyx_t_5numpy_double_t;
  */
 typedef npy_longdouble __pyx_t_5numpy_longdouble_t;
 
-/* "pism_dbg.pyx":11
- * cimport pism_dbg_c
+/* "drainage_basin_generator.pyx":11
+ * cimport drainage_basin_generator_c
  *
  * ctypedef np.float64_t double_t             # <<<<<<<<<<<<<<
  * ctypedef np.int32_t int_t
  *
  */
-typedef __pyx_t_5numpy_float64_t __pyx_t_8pism_dbg_double_t;
+typedef __pyx_t_5numpy_float64_t __pyx_t_8drainage_basin_generator_double_t;
 
-/* "pism_dbg.pyx":12
+/* "drainage_basin_generator.pyx":12
  *
  * ctypedef np.float64_t double_t
  * ctypedef np.int32_t int_t             # <<<<<<<<<<<<<<
  *
  * def initialize_mask(np.ndarray[dtype=double_t, ndim=2, mode="c"] thk):
  */
-typedef __pyx_t_5numpy_int32_t __pyx_t_8pism_dbg_int_t;
+typedef __pyx_t_5numpy_int32_t __pyx_t_8drainage_basin_generator_int_t;
 /* #### Code section: complex_type_declarations ### */
 /* Declarations.proto */
 #if CYTHON_CCOMPLEX && (1) && (!0 || __cplusplus)
@@ -2663,19 +2663,19 @@ static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__p
 
 /* Module declarations from "numpy" */
 
-/* Module declarations from "pism_dbg_c" */
+/* Module declarations from "drainage_basin_generator_c" */
 
-/* Module declarations from "pism_dbg" */
-static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *, PyObject *, PyObject *, PyObject *); /*proto*/
+/* Module declarations from "drainage_basin_generator" */
+static PyObject *__pyx_f_8drainage_basin_generator_check_dimensions(PyObject *, PyObject *, PyObject *, PyObject *); /*proto*/
 /* #### Code section: typeinfo ### */
-static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t = { "double_t", NULL, sizeof(__pyx_t_8pism_dbg_double_t), { 0 }, 0, 'R', 0, 0 };
-static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_8pism_dbg_int_t = { "int_t", NULL, sizeof(__pyx_t_8pism_dbg_int_t), { 0 }, 0, __PYX_IS_UNSIGNED(__pyx_t_8pism_dbg_int_t) ? 'U' : 'I', __PYX_IS_UNSIGNED(__pyx_t_8pism_dbg_int_t), 0 };
+static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t = { "double_t", NULL, sizeof(__pyx_t_8drainage_basin_generator_double_t), { 0 }, 0, 'R', 0, 0 };
+static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_int_t = { "int_t", NULL, sizeof(__pyx_t_8drainage_basin_generator_int_t), { 0 }, 0, __PYX_IS_UNSIGNED(__pyx_t_8drainage_basin_generator_int_t) ? 'U' : 'I', __PYX_IS_UNSIGNED(__pyx_t_8drainage_basin_generator_int_t), 0 };
 /* #### Code section: before_global_var ### */
-#define __Pyx_MODULE_NAME "pism_dbg"
-extern int __pyx_module_is_main_pism_dbg;
-int __pyx_module_is_main_pism_dbg = 0;
+#define __Pyx_MODULE_NAME "drainage_basin_generator"
+extern int __pyx_module_is_main_drainage_basin_generator;
+int __pyx_module_is_main_drainage_basin_generator = 0;
 
-/* Implementation of "pism_dbg" */
+/* Implementation of "drainage_basin_generator" */
 /* #### Code section: global_var ### */
 static PyObject *__pyx_builtin_ValueError;
 static PyObject *__pyx_builtin_ImportError;
@@ -2703,7 +2703,7 @@ static const char __pyx_k_shape[] = "shape";
 static const char __pyx_k_zeros[] = "zeros";
 static const char __pyx_k_import[] = "__import__";
 static const char __pyx_k_output[] = "output";
-static const char __pyx_k_pism_dbg[] = "pism_dbg";
+static const char __pyx_k_drainage_basin_generator[] = "drainage_basin_generator";
 static const char __pyx_k_n_samples[] = "n_samples";
 static const char __pyx_k_ValueError[] = "ValueError";
 static const char __pyx_k_ImportError[] = "ImportError";
@@ -2715,16 +2715,16 @@ static const char __pyx_k_initialize_mask[] = "initialize_mask";
 static const char __pyx_k_accumulated_flow[] = "accumulated_flow";
 static const char __pyx_k_asyncio_coroutines[] = "asyncio.coroutines";
 static const char __pyx_k_cline_in_traceback[] = "cline_in_traceback";
-static const char __pyx_k_python_pism_dbg_pyx[] = "python/pism_dbg.pyx";
+static const char __pyx_k_python_drainage_basin_generator_pyx[] = "python/drainage_basin_generator.pyx";
 static const char __pyx_k_numpy_core_multiarray_failed_to[] = "numpy.core.multiarray failed to import";
 static const char __pyx_k_arguments_z_and_mask_have_to_hav[] = "arguments z and mask have to have the same shape: got (%d,%d) and (%d,%d)";
 static const char __pyx_k_numpy_core_umath_failed_to_impor[] = "numpy.core.umath failed to import";
 static const char __pyx_k_the_size_of_x_has_to_match_the_n[] = "the size of x has to match the number of columns in z";
 static const char __pyx_k_the_size_of_y_has_to_match_the_n[] = "the size of y has to match the number of rows in z";
 /* #### Code section: decls ### */
-static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_thk); /* proto */
-static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_mask, PyObject *__pyx_v_copy, PyObject *__pyx_v_print_output); /* proto */
-static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_mask, PyObject *__pyx_v_copy, PyObject *__pyx_v_n_samples); /* proto */
+static PyObject *__pyx_pf_8drainage_basin_generator_initialize_mask(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_thk); /* proto */
+static PyObject *__pyx_pf_8drainage_basin_generator_2upslope_area(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_mask, PyObject *__pyx_v_copy, PyObject *__pyx_v_print_output); /* proto */
+static PyObject *__pyx_pf_8drainage_basin_generator_4accumulated_flow(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_mask, PyObject *__pyx_v_copy, PyObject *__pyx_v_n_samples); /* proto */
 /* #### Code section: late_includes ### */
 /* #### Code section: module_state ### */
 typedef struct {
@@ -2816,9 +2816,9 @@ typedef struct {
   PyObject *__pyx_kp_s_numpy_core_multiarray_failed_to;
   PyObject *__pyx_kp_s_numpy_core_umath_failed_to_impor;
   PyObject *__pyx_n_s_output;
-  PyObject *__pyx_n_s_pism_dbg;
+  PyObject *__pyx_n_s_drainage_basin_generator;
   PyObject *__pyx_n_s_print_output;
-  PyObject *__pyx_kp_s_python_pism_dbg_pyx;
+  PyObject *__pyx_kp_s_python_drainage_basin_generator_pyx;
   PyObject *__pyx_n_s_shape;
   PyObject *__pyx_n_s_size;
   PyObject *__pyx_n_s_spec;
@@ -2928,9 +2928,9 @@ static int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_kp_s_numpy_core_multiarray_failed_to);
   Py_CLEAR(clear_module_state->__pyx_kp_s_numpy_core_umath_failed_to_impor);
   Py_CLEAR(clear_module_state->__pyx_n_s_output);
-  Py_CLEAR(clear_module_state->__pyx_n_s_pism_dbg);
+  Py_CLEAR(clear_module_state->__pyx_n_s_drainage_basin_generator);
   Py_CLEAR(clear_module_state->__pyx_n_s_print_output);
-  Py_CLEAR(clear_module_state->__pyx_kp_s_python_pism_dbg_pyx);
+  Py_CLEAR(clear_module_state->__pyx_kp_s_python_drainage_basin_generator_pyx);
   Py_CLEAR(clear_module_state->__pyx_n_s_shape);
   Py_CLEAR(clear_module_state->__pyx_n_s_size);
   Py_CLEAR(clear_module_state->__pyx_n_s_spec);
@@ -3018,9 +3018,9 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
   Py_VISIT(traverse_module_state->__pyx_kp_s_numpy_core_multiarray_failed_to);
   Py_VISIT(traverse_module_state->__pyx_kp_s_numpy_core_umath_failed_to_impor);
   Py_VISIT(traverse_module_state->__pyx_n_s_output);
-  Py_VISIT(traverse_module_state->__pyx_n_s_pism_dbg);
+  Py_VISIT(traverse_module_state->__pyx_n_s_drainage_basin_generator);
   Py_VISIT(traverse_module_state->__pyx_n_s_print_output);
-  Py_VISIT(traverse_module_state->__pyx_kp_s_python_pism_dbg_pyx);
+  Py_VISIT(traverse_module_state->__pyx_kp_s_python_drainage_basin_generator_pyx);
   Py_VISIT(traverse_module_state->__pyx_n_s_shape);
   Py_VISIT(traverse_module_state->__pyx_n_s_size);
   Py_VISIT(traverse_module_state->__pyx_n_s_spec);
@@ -3138,9 +3138,9 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_kp_s_numpy_core_multiarray_failed_to __pyx_mstate_global->__pyx_kp_s_numpy_core_multiarray_failed_to
 #define __pyx_kp_s_numpy_core_umath_failed_to_impor __pyx_mstate_global->__pyx_kp_s_numpy_core_umath_failed_to_impor
 #define __pyx_n_s_output __pyx_mstate_global->__pyx_n_s_output
-#define __pyx_n_s_pism_dbg __pyx_mstate_global->__pyx_n_s_pism_dbg
+#define __pyx_n_s_drainage_basin_generator __pyx_mstate_global->__pyx_n_s_drainage_basin_generator
 #define __pyx_n_s_print_output __pyx_mstate_global->__pyx_n_s_print_output
-#define __pyx_kp_s_python_pism_dbg_pyx __pyx_mstate_global->__pyx_kp_s_python_pism_dbg_pyx
+#define __pyx_kp_s_python_drainage_basin_generator_pyx __pyx_mstate_global->__pyx_kp_s_python_drainage_basin_generator_pyx
 #define __pyx_n_s_shape __pyx_mstate_global->__pyx_n_s_shape
 #define __pyx_n_s_size __pyx_mstate_global->__pyx_n_s_size
 #define __pyx_n_s_spec __pyx_mstate_global->__pyx_n_s_spec
@@ -4430,7 +4430,7 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
   return __pyx_r;
 }
 
-/* "pism_dbg.pyx":14
+/* "drainage_basin_generator.pyx":14
  * ctypedef np.int32_t int_t
  *
  * def initialize_mask(np.ndarray[dtype=double_t, ndim=2, mode="c"] thk):             # <<<<<<<<<<<<<<
@@ -4439,16 +4439,16 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pism_dbg_1initialize_mask(PyObject *__pyx_self,
+static PyObject *__pyx_pw_8drainage_basin_generator_1initialize_mask(PyObject *__pyx_self,
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_8pism_dbg_initialize_mask, "\n    Use ice thickness to initialize the mask.\n    ");
-static PyMethodDef __pyx_mdef_8pism_dbg_1initialize_mask = {"initialize_mask", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8pism_dbg_1initialize_mask, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8pism_dbg_initialize_mask};
-static PyObject *__pyx_pw_8pism_dbg_1initialize_mask(PyObject *__pyx_self,
+PyDoc_STRVAR(__pyx_doc_8drainage_basin_generator_initialize_mask, "\n    Use ice thickness to initialize the mask.\n    ");
+static PyMethodDef __pyx_mdef_8drainage_basin_generator_1initialize_mask = {"initialize_mask", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8drainage_basin_generator_1initialize_mask, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8drainage_basin_generator_initialize_mask};
+static PyObject *__pyx_pw_8drainage_basin_generator_1initialize_mask(PyObject *__pyx_self,
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4518,12 +4518,12 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
       __Pyx_Arg_XDECREF_FASTCALL(values[__pyx_temp]);
     }
   }
-  __Pyx_AddTraceback("pism_dbg.initialize_mask", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("drainage_basin_generator.initialize_mask", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_thk), __pyx_ptype_5numpy_ndarray, 1, "thk", 0))) __PYX_ERR(0, 14, __pyx_L1_error)
-  __pyx_r = __pyx_pf_8pism_dbg_initialize_mask(__pyx_self, __pyx_v_thk);
+  __pyx_r = __pyx_pf_8drainage_basin_generator_initialize_mask(__pyx_self, __pyx_v_thk);
 
   /* function exit code */
   goto __pyx_L0;
@@ -4540,7 +4540,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_thk) {
+static PyObject *__pyx_pf_8drainage_basin_generator_initialize_mask(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_thk) {
   PyArrayObject *__pyx_v_mask = 0;
   int __pyx_v_Mx;
   int __pyx_v_My;
@@ -4577,11 +4577,11 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
   __pyx_pybuffernd_thk.rcbuffer = &__pyx_pybuffer_thk;
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_thk.rcbuffer->pybuffer, (PyObject*)__pyx_v_thk, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 14, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_thk.rcbuffer->pybuffer, (PyObject*)__pyx_v_thk, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 14, __pyx_L1_error)
   }
   __pyx_pybuffernd_thk.diminfo[0].strides = __pyx_pybuffernd_thk.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_thk.diminfo[0].shape = __pyx_pybuffernd_thk.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_thk.diminfo[1].strides = __pyx_pybuffernd_thk.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_thk.diminfo[1].shape = __pyx_pybuffernd_thk.rcbuffer->pybuffer.shape[1];
 
-  /* "pism_dbg.pyx":21
+  /* "drainage_basin_generator.pyx":21
  *     cdef int Mx, My
  *
  *     Mx = thk.shape[1]             # <<<<<<<<<<<<<<
@@ -4591,7 +4591,7 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
   __pyx_t_1 = __pyx_f_5numpy_7ndarray_5shape_shape(((PyArrayObject *)__pyx_v_thk)); if (unlikely(__pyx_t_1 == ((npy_intp *)NULL) && PyErr_Occurred())) __PYX_ERR(0, 21, __pyx_L1_error)
   __pyx_v_Mx = (__pyx_t_1[1]);
 
-  /* "pism_dbg.pyx":22
+  /* "drainage_basin_generator.pyx":22
  *
  *     Mx = thk.shape[1]
  *     My = thk.shape[0]             # <<<<<<<<<<<<<<
@@ -4601,12 +4601,12 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
   __pyx_t_1 = __pyx_f_5numpy_7ndarray_5shape_shape(((PyArrayObject *)__pyx_v_thk)); if (unlikely(__pyx_t_1 == ((npy_intp *)NULL) && PyErr_Occurred())) __PYX_ERR(0, 22, __pyx_L1_error)
   __pyx_v_My = (__pyx_t_1[0]);
 
-  /* "pism_dbg.pyx":24
+  /* "drainage_basin_generator.pyx":24
  *     My = thk.shape[0]
  *
  *     mask = np.zeros((thk.shape[0], thk.shape[1]), dtype=np.int32)             # <<<<<<<<<<<<<<
  *
- *     pism_dbg_c.initialize_mask(Mx, My, <double*>thk.data, <int*> mask.data)
+ *     drainage_basin_generator_c.initialize_mask(Mx, My, <double*>thk.data, <int*> mask.data)
  */
   __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
@@ -4651,10 +4651,10 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mask.rcbuffer->pybuffer);
-    __pyx_t_8 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_mask.rcbuffer->pybuffer, (PyObject*)__pyx_t_7, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
+    __pyx_t_8 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_mask.rcbuffer->pybuffer, (PyObject*)__pyx_t_7, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
     if (unlikely(__pyx_t_8 < 0)) {
       PyErr_Fetch(&__pyx_t_9, &__pyx_t_10, &__pyx_t_11);
-      if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_mask.rcbuffer->pybuffer, (PyObject*)__pyx_v_mask, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
+      if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_mask.rcbuffer->pybuffer, (PyObject*)__pyx_v_mask, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
         Py_XDECREF(__pyx_t_9); Py_XDECREF(__pyx_t_10); Py_XDECREF(__pyx_t_11);
         __Pyx_RaiseBufferFallbackError();
       } else {
@@ -4669,10 +4669,10 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
   __pyx_v_mask = ((PyArrayObject *)__pyx_t_6);
   __pyx_t_6 = 0;
 
-  /* "pism_dbg.pyx":26
+  /* "drainage_basin_generator.pyx":26
  *     mask = np.zeros((thk.shape[0], thk.shape[1]), dtype=np.int32)
  *
- *     pism_dbg_c.initialize_mask(Mx, My, <double*>thk.data, <int*> mask.data)             # <<<<<<<<<<<<<<
+ *     drainage_basin_generator_c.initialize_mask(Mx, My, <double*>thk.data, <int*> mask.data)             # <<<<<<<<<<<<<<
  *
  *     return mask
  */
@@ -4680,8 +4680,8 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
   __pyx_t_13 = __pyx_f_5numpy_7ndarray_4data_data(((PyArrayObject *)__pyx_v_mask)); if (unlikely(__pyx_t_13 == ((char *)NULL) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L1_error)
   (void)(initialize_mask(__pyx_v_Mx, __pyx_v_My, ((double *)__pyx_t_12), ((int *)__pyx_t_13)));
 
-  /* "pism_dbg.pyx":28
- *     pism_dbg_c.initialize_mask(Mx, My, <double*>thk.data, <int*> mask.data)
+  /* "drainage_basin_generator.pyx":28
+ *     drainage_basin_generator_c.initialize_mask(Mx, My, <double*>thk.data, <int*> mask.data)
  *
  *     return mask             # <<<<<<<<<<<<<<
  *
@@ -4692,7 +4692,7 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
   __pyx_r = ((PyObject *)__pyx_v_mask);
   goto __pyx_L0;
 
-  /* "pism_dbg.pyx":14
+  /* "drainage_basin_generator.pyx":14
  * ctypedef np.int32_t int_t
  *
  * def initialize_mask(np.ndarray[dtype=double_t, ndim=2, mode="c"] thk):             # <<<<<<<<<<<<<<
@@ -4714,7 +4714,7 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mask.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_thk.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("pism_dbg.initialize_mask", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("drainage_basin_generator.initialize_mask", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -4727,7 +4727,7 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
   return __pyx_r;
 }
 
-/* "pism_dbg.pyx":30
+/* "drainage_basin_generator.pyx":30
  *     return mask
  *
  * cdef check_dimensions(x, y, z, mask):             # <<<<<<<<<<<<<<
@@ -4735,7 +4735,7 @@ static PyObject *__pyx_pf_8pism_dbg_initialize_mask(CYTHON_UNUSED PyObject *__py
  *     # This means that we have to compare z.shape[0,1] to mask.shape[0,1] 'by hand'.
  */
 
-static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObject *__pyx_v_y, PyObject *__pyx_v_z, PyObject *__pyx_v_mask) {
+static PyObject *__pyx_f_8drainage_basin_generator_check_dimensions(PyObject *__pyx_v_x, PyObject *__pyx_v_y, PyObject *__pyx_v_z, PyObject *__pyx_v_mask) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
@@ -4750,7 +4750,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("check_dimensions", 1);
 
-  /* "pism_dbg.pyx":33
+  /* "drainage_basin_generator.pyx":33
  *     # z and mask are typed, so z.shape is not a Python object.
  *     # This means that we have to compare z.shape[0,1] to mask.shape[0,1] 'by hand'.
  *     if not (z.shape[0] == mask.shape[0] and z.shape[1] == mask.shape[1]):             # <<<<<<<<<<<<<<
@@ -4797,7 +4797,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
   __pyx_t_5 = (!__pyx_t_1);
   if (unlikely(__pyx_t_5)) {
 
-    /* "pism_dbg.pyx":35
+    /* "drainage_basin_generator.pyx":35
  *     if not (z.shape[0] == mask.shape[0] and z.shape[1] == mask.shape[1]):
  *         raise ValueError("arguments z and mask have to have the same shape: got (%d,%d) and (%d,%d)" %
  *                          (z.shape[0], z.shape[1], mask.shape[0], mask.shape[1]))             # <<<<<<<<<<<<<<
@@ -4839,7 +4839,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
     __pyx_t_6 = 0;
     __pyx_t_7 = 0;
 
-    /* "pism_dbg.pyx":34
+    /* "drainage_basin_generator.pyx":34
  *     # This means that we have to compare z.shape[0,1] to mask.shape[0,1] 'by hand'.
  *     if not (z.shape[0] == mask.shape[0] and z.shape[1] == mask.shape[1]):
  *         raise ValueError("arguments z and mask have to have the same shape: got (%d,%d) and (%d,%d)" %             # <<<<<<<<<<<<<<
@@ -4856,7 +4856,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __PYX_ERR(0, 34, __pyx_L1_error)
 
-    /* "pism_dbg.pyx":33
+    /* "drainage_basin_generator.pyx":33
  *     # z and mask are typed, so z.shape is not a Python object.
  *     # This means that we have to compare z.shape[0,1] to mask.shape[0,1] 'by hand'.
  *     if not (z.shape[0] == mask.shape[0] and z.shape[1] == mask.shape[1]):             # <<<<<<<<<<<<<<
@@ -4865,7 +4865,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
  */
   }
 
-  /* "pism_dbg.pyx":37
+  /* "drainage_basin_generator.pyx":37
  *                          (z.shape[0], z.shape[1], mask.shape[0], mask.shape[1]))
  *
  *     if y.size != z.shape[0]:             # <<<<<<<<<<<<<<
@@ -4886,7 +4886,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   if (unlikely(__pyx_t_5)) {
 
-    /* "pism_dbg.pyx":38
+    /* "drainage_basin_generator.pyx":38
  *
  *     if y.size != z.shape[0]:
  *         raise ValueError("the size of y has to match the number of rows in z")             # <<<<<<<<<<<<<<
@@ -4899,7 +4899,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __PYX_ERR(0, 38, __pyx_L1_error)
 
-    /* "pism_dbg.pyx":37
+    /* "drainage_basin_generator.pyx":37
  *                          (z.shape[0], z.shape[1], mask.shape[0], mask.shape[1]))
  *
  *     if y.size != z.shape[0]:             # <<<<<<<<<<<<<<
@@ -4908,7 +4908,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
  */
   }
 
-  /* "pism_dbg.pyx":40
+  /* "drainage_basin_generator.pyx":40
  *         raise ValueError("the size of y has to match the number of rows in z")
  *
  *     if x.size != z.shape[1]:             # <<<<<<<<<<<<<<
@@ -4929,7 +4929,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (unlikely(__pyx_t_5)) {
 
-    /* "pism_dbg.pyx":41
+    /* "drainage_basin_generator.pyx":41
  *
  *     if x.size != z.shape[1]:
  *         raise ValueError("the size of x has to match the number of columns in z")             # <<<<<<<<<<<<<<
@@ -4942,7 +4942,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __PYX_ERR(0, 41, __pyx_L1_error)
 
-    /* "pism_dbg.pyx":40
+    /* "drainage_basin_generator.pyx":40
  *         raise ValueError("the size of y has to match the number of rows in z")
  *
  *     if x.size != z.shape[1]:             # <<<<<<<<<<<<<<
@@ -4951,7 +4951,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
  */
   }
 
-  /* "pism_dbg.pyx":30
+  /* "drainage_basin_generator.pyx":30
  *     return mask
  *
  * cdef check_dimensions(x, y, z, mask):             # <<<<<<<<<<<<<<
@@ -4968,7 +4968,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_6);
   __Pyx_XDECREF(__pyx_t_7);
-  __Pyx_AddTraceback("pism_dbg.check_dimensions", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("drainage_basin_generator.check_dimensions", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -4976,7 +4976,7 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
   return __pyx_r;
 }
 
-/* "pism_dbg.pyx":43
+/* "drainage_basin_generator.pyx":43
  *         raise ValueError("the size of x has to match the number of columns in z")
  *
  * def upslope_area(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
@@ -4985,16 +4985,16 @@ static PyObject *__pyx_f_8pism_dbg_check_dimensions(PyObject *__pyx_v_x, PyObjec
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pism_dbg_3upslope_area(PyObject *__pyx_self,
+static PyObject *__pyx_pw_8drainage_basin_generator_3upslope_area(PyObject *__pyx_self,
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_8pism_dbg_2upslope_area, "\n    Computes the upslope area of points marked in the mask argument.\n\n    Ice-free cells should be marked with -1, icy cells to be processed with -2,\n    cells at termini (icy or not) with positive numbers, one per terminus.\n\n    Try initialize_mask(thickness) if you don't know where termini are.\n\n    arguments:\n    - x, y: 1D arrays with coordinates\n    - z: surface elevation, a 2D NumPy array\n    - mask: mask, integers, a 2D NumPy array\n    - copy: boolean; False if the mask is to be modified in place\n    ");
-static PyMethodDef __pyx_mdef_8pism_dbg_3upslope_area = {"upslope_area", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8pism_dbg_3upslope_area, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8pism_dbg_2upslope_area};
-static PyObject *__pyx_pw_8pism_dbg_3upslope_area(PyObject *__pyx_self,
+PyDoc_STRVAR(__pyx_doc_8drainage_basin_generator_2upslope_area, "\n    Computes the upslope area of points marked in the mask argument.\n\n    Ice-free cells should be marked with -1, icy cells to be processed with -2,\n    cells at termini (icy or not) with positive numbers, one per terminus.\n\n    Try initialize_mask(thickness) if you don't know where termini are.\n\n    arguments:\n    - x, y: 1D arrays with coordinates\n    - z: surface elevation, a 2D NumPy array\n    - mask: mask, integers, a 2D NumPy array\n    - copy: boolean; False if the mask is to be modified in place\n    ");
+static PyMethodDef __pyx_mdef_8drainage_basin_generator_3upslope_area = {"upslope_area", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8drainage_basin_generator_3upslope_area, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8drainage_basin_generator_2upslope_area};
+static PyObject *__pyx_pw_8drainage_basin_generator_3upslope_area(PyObject *__pyx_self,
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -5029,7 +5029,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject **__pyx_pyargnames[] = {&__pyx_n_s_x,&__pyx_n_s_y,&__pyx_n_s_z,&__pyx_n_s_mask,&__pyx_n_s_copy,&__pyx_n_s_print_output,0};
 
-    /* "pism_dbg.pyx":47
+    /* "drainage_basin_generator.pyx":47
  *                  np.ndarray[dtype=double_t, ndim=2, mode="c"] z,
  *                  np.ndarray[dtype=int_t, ndim=2, mode="c"] mask,
  *                  copy = False, print_output = False):             # <<<<<<<<<<<<<<
@@ -5147,7 +5147,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
       __Pyx_Arg_XDECREF_FASTCALL(values[__pyx_temp]);
     }
   }
-  __Pyx_AddTraceback("pism_dbg.upslope_area", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("drainage_basin_generator.upslope_area", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
@@ -5155,9 +5155,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_y), __pyx_ptype_5numpy_ndarray, 1, "y", 0))) __PYX_ERR(0, 44, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_z), __pyx_ptype_5numpy_ndarray, 1, "z", 0))) __PYX_ERR(0, 45, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_mask), __pyx_ptype_5numpy_ndarray, 1, "mask", 0))) __PYX_ERR(0, 46, __pyx_L1_error)
-  __pyx_r = __pyx_pf_8pism_dbg_2upslope_area(__pyx_self, __pyx_v_x, __pyx_v_y, __pyx_v_z, __pyx_v_mask, __pyx_v_copy, __pyx_v_print_output);
+  __pyx_r = __pyx_pf_8drainage_basin_generator_2upslope_area(__pyx_self, __pyx_v_x, __pyx_v_y, __pyx_v_z, __pyx_v_mask, __pyx_v_copy, __pyx_v_print_output);
 
-  /* "pism_dbg.pyx":43
+  /* "drainage_basin_generator.pyx":43
  *         raise ValueError("the size of x has to match the number of columns in z")
  *
  * def upslope_area(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
@@ -5180,7 +5180,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_mask, PyObject *__pyx_v_copy, PyObject *__pyx_v_print_output) {
+static PyObject *__pyx_pf_8drainage_basin_generator_2upslope_area(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_mask, PyObject *__pyx_v_copy, PyObject *__pyx_v_print_output) {
   PyArrayObject *__pyx_v_output = 0;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_mask;
   __Pyx_Buffer __pyx_pybuffer_mask;
@@ -5235,37 +5235,37 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
   __pyx_pybuffernd_mask.rcbuffer = &__pyx_pybuffer_mask;
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_x.rcbuffer->pybuffer, (PyObject*)__pyx_v_x, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 43, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_x.rcbuffer->pybuffer, (PyObject*)__pyx_v_x, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 43, __pyx_L1_error)
   }
   __pyx_pybuffernd_x.diminfo[0].strides = __pyx_pybuffernd_x.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_x.diminfo[0].shape = __pyx_pybuffernd_x.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_y.rcbuffer->pybuffer, (PyObject*)__pyx_v_y, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 43, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_y.rcbuffer->pybuffer, (PyObject*)__pyx_v_y, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 43, __pyx_L1_error)
   }
   __pyx_pybuffernd_y.diminfo[0].strides = __pyx_pybuffernd_y.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_y.diminfo[0].shape = __pyx_pybuffernd_y.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_z.rcbuffer->pybuffer, (PyObject*)__pyx_v_z, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 43, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_z.rcbuffer->pybuffer, (PyObject*)__pyx_v_z, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 43, __pyx_L1_error)
   }
   __pyx_pybuffernd_z.diminfo[0].strides = __pyx_pybuffernd_z.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_z.diminfo[0].shape = __pyx_pybuffernd_z.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_z.diminfo[1].strides = __pyx_pybuffernd_z.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_z.diminfo[1].shape = __pyx_pybuffernd_z.rcbuffer->pybuffer.shape[1];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_mask.rcbuffer->pybuffer, (PyObject*)__pyx_v_mask, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 43, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_mask.rcbuffer->pybuffer, (PyObject*)__pyx_v_mask, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 43, __pyx_L1_error)
   }
   __pyx_pybuffernd_mask.diminfo[0].strides = __pyx_pybuffernd_mask.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_mask.diminfo[0].shape = __pyx_pybuffernd_mask.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_mask.diminfo[1].strides = __pyx_pybuffernd_mask.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_mask.diminfo[1].shape = __pyx_pybuffernd_mask.rcbuffer->pybuffer.shape[1];
 
-  /* "pism_dbg.pyx":64
+  /* "drainage_basin_generator.pyx":64
  *     cdef np.ndarray[dtype=int_t, ndim=2, mode="c"] output
  *
  *     check_dimensions(x, y, z, mask)             # <<<<<<<<<<<<<<
  *
  *     if copy:
  */
-  __pyx_t_1 = __pyx_f_8pism_dbg_check_dimensions(((PyObject *)__pyx_v_x), ((PyObject *)__pyx_v_y), ((PyObject *)__pyx_v_z), ((PyObject *)__pyx_v_mask)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_8drainage_basin_generator_check_dimensions(((PyObject *)__pyx_v_x), ((PyObject *)__pyx_v_y), ((PyObject *)__pyx_v_z), ((PyObject *)__pyx_v_mask)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 64, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "pism_dbg.pyx":66
+  /* "drainage_basin_generator.pyx":66
  *     check_dimensions(x, y, z, mask)
  *
  *     if copy:             # <<<<<<<<<<<<<<
@@ -5275,7 +5275,7 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
   __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_v_copy); if (unlikely((__pyx_t_2 < 0))) __PYX_ERR(0, 66, __pyx_L1_error)
   if (__pyx_t_2) {
 
-    /* "pism_dbg.pyx":67
+    /* "drainage_basin_generator.pyx":67
  *
  *     if copy:
  *         output = mask.copy()             # <<<<<<<<<<<<<<
@@ -5311,10 +5311,10 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
     {
       __Pyx_BufFmt_StackElem __pyx_stack[1];
       __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_output.rcbuffer->pybuffer);
-      __pyx_t_5 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_t_6, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
+      __pyx_t_5 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_t_6, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
       if (unlikely(__pyx_t_5 < 0)) {
         PyErr_Fetch(&__pyx_t_7, &__pyx_t_8, &__pyx_t_9);
-        if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_v_output, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
+        if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_v_output, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
           Py_XDECREF(__pyx_t_7); Py_XDECREF(__pyx_t_8); Py_XDECREF(__pyx_t_9);
           __Pyx_RaiseBufferFallbackError();
         } else {
@@ -5329,7 +5329,7 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
     __pyx_v_output = ((PyArrayObject *)__pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "pism_dbg.pyx":66
+    /* "drainage_basin_generator.pyx":66
  *     check_dimensions(x, y, z, mask)
  *
  *     if copy:             # <<<<<<<<<<<<<<
@@ -5339,21 +5339,21 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
     goto __pyx_L3;
   }
 
-  /* "pism_dbg.pyx":69
+  /* "drainage_basin_generator.pyx":69
  *         output = mask.copy()
  *     else:
  *         output = mask             # <<<<<<<<<<<<<<
  *
- *     pism_dbg_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,
+ *     drainage_basin_generator_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,
  */
   /*else*/ {
     {
       __Pyx_BufFmt_StackElem __pyx_stack[1];
       __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_output.rcbuffer->pybuffer);
-      __pyx_t_5 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)((PyArrayObject *)__pyx_v_mask), &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
+      __pyx_t_5 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)((PyArrayObject *)__pyx_v_mask), &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
       if (unlikely(__pyx_t_5 < 0)) {
         PyErr_Fetch(&__pyx_t_9, &__pyx_t_8, &__pyx_t_7);
-        if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_v_output, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
+        if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_v_output, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_int_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
           Py_XDECREF(__pyx_t_9); Py_XDECREF(__pyx_t_8); Py_XDECREF(__pyx_t_7);
           __Pyx_RaiseBufferFallbackError();
         } else {
@@ -5369,10 +5369,10 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
   }
   __pyx_L3:;
 
-  /* "pism_dbg.pyx":71
+  /* "drainage_basin_generator.pyx":71
  *         output = mask
  *
- *     pism_dbg_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,             # <<<<<<<<<<<<<<
+ *     drainage_basin_generator_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,             # <<<<<<<<<<<<<<
  *                             <double*>z.data, <int*>output.data,
  *                             print_output)
  */
@@ -5381,9 +5381,9 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
   __pyx_t_12 = __pyx_f_5numpy_7ndarray_4data_data(((PyArrayObject *)__pyx_v_y)); if (unlikely(__pyx_t_12 == ((char *)NULL) && PyErr_Occurred())) __PYX_ERR(0, 71, __pyx_L1_error)
   __pyx_t_13 = __pyx_f_5numpy_7ndarray_4size_size(((PyArrayObject *)__pyx_v_y)); if (unlikely(__pyx_t_13 == ((npy_intp)-1) && PyErr_Occurred())) __PYX_ERR(0, 71, __pyx_L1_error)
 
-  /* "pism_dbg.pyx":72
+  /* "drainage_basin_generator.pyx":72
  *
- *     pism_dbg_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,
+ *     drainage_basin_generator_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,
  *                             <double*>z.data, <int*>output.data,             # <<<<<<<<<<<<<<
  *                             print_output)
  *
@@ -5391,8 +5391,8 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
   __pyx_t_14 = __pyx_f_5numpy_7ndarray_4data_data(((PyArrayObject *)__pyx_v_z)); if (unlikely(__pyx_t_14 == ((char *)NULL) && PyErr_Occurred())) __PYX_ERR(0, 72, __pyx_L1_error)
   __pyx_t_15 = __pyx_f_5numpy_7ndarray_4data_data(((PyArrayObject *)__pyx_v_output)); if (unlikely(__pyx_t_15 == ((char *)NULL) && PyErr_Occurred())) __PYX_ERR(0, 72, __pyx_L1_error)
 
-  /* "pism_dbg.pyx":73
- *     pism_dbg_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,
+  /* "drainage_basin_generator.pyx":73
+ *     drainage_basin_generator_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,
  *                             <double*>z.data, <int*>output.data,
  *                             print_output)             # <<<<<<<<<<<<<<
  *
@@ -5400,16 +5400,16 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
  */
   __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_v_print_output); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 73, __pyx_L1_error)
 
-  /* "pism_dbg.pyx":71
+  /* "drainage_basin_generator.pyx":71
  *         output = mask
  *
- *     pism_dbg_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,             # <<<<<<<<<<<<<<
+ *     drainage_basin_generator_c.upslope_area(<double*>x.data, x.size, <double*>y.data, y.size,             # <<<<<<<<<<<<<<
  *                             <double*>z.data, <int*>output.data,
  *                             print_output)
  */
   (void)(upslope_area(((double *)__pyx_t_10), __pyx_t_11, ((double *)__pyx_t_12), __pyx_t_13, ((double *)__pyx_t_14), ((int *)__pyx_t_15), __pyx_t_2));
 
-  /* "pism_dbg.pyx":75
+  /* "drainage_basin_generator.pyx":75
  *                             print_output)
  *
  *     return output             # <<<<<<<<<<<<<<
@@ -5421,7 +5421,7 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
   __pyx_r = ((PyObject *)__pyx_v_output);
   goto __pyx_L0;
 
-  /* "pism_dbg.pyx":43
+  /* "drainage_basin_generator.pyx":43
  *         raise ValueError("the size of x has to match the number of columns in z")
  *
  * def upslope_area(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
@@ -5444,7 +5444,7 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_y.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_z.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("pism_dbg.upslope_area", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("drainage_basin_generator.upslope_area", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -5460,7 +5460,7 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
   return __pyx_r;
 }
 
-/* "pism_dbg.pyx":77
+/* "drainage_basin_generator.pyx":77
  *     return output
  *
  * def accumulated_flow(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
@@ -5469,16 +5469,16 @@ static PyObject *__pyx_pf_8pism_dbg_2upslope_area(CYTHON_UNUSED PyObject *__pyx_
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pism_dbg_5accumulated_flow(PyObject *__pyx_self,
+static PyObject *__pyx_pw_8drainage_basin_generator_5accumulated_flow(PyObject *__pyx_self,
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_8pism_dbg_4accumulated_flow, "\n    Computes the accumulated flow map.\n\n    Ice-free cells should be marked with -1, icy cells with 0.\n\n    arguments:\n    - x, y: 1D arrays with coordinates\n    - z: surface elevation, a 2D NumPy array\n    - mask: mask, integers, a 2D NumPy array\n    - copy: boolean; False if the mask is to be modified in place\n    ");
-static PyMethodDef __pyx_mdef_8pism_dbg_5accumulated_flow = {"accumulated_flow", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8pism_dbg_5accumulated_flow, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8pism_dbg_4accumulated_flow};
-static PyObject *__pyx_pw_8pism_dbg_5accumulated_flow(PyObject *__pyx_self,
+PyDoc_STRVAR(__pyx_doc_8drainage_basin_generator_4accumulated_flow, "\n    Computes the accumulated flow map.\n\n    Ice-free cells should be marked with -1, icy cells with 0.\n\n    arguments:\n    - x, y: 1D arrays with coordinates\n    - z: surface elevation, a 2D NumPy array\n    - mask: mask, integers, a 2D NumPy array\n    - copy: boolean; False if the mask is to be modified in place\n    ");
+static PyMethodDef __pyx_mdef_8drainage_basin_generator_5accumulated_flow = {"accumulated_flow", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8drainage_basin_generator_5accumulated_flow, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8drainage_basin_generator_4accumulated_flow};
+static PyObject *__pyx_pw_8drainage_basin_generator_5accumulated_flow(PyObject *__pyx_self,
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -5513,7 +5513,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject **__pyx_pyargnames[] = {&__pyx_n_s_x,&__pyx_n_s_y,&__pyx_n_s_z,&__pyx_n_s_mask,&__pyx_n_s_copy,&__pyx_n_s_n_samples,0};
 
-    /* "pism_dbg.pyx":81
+    /* "drainage_basin_generator.pyx":81
  *                      np.ndarray[dtype=double_t, ndim=2, mode="c"] z,
  *                      np.ndarray[dtype=double_t, ndim=2, mode="c"] mask,
  *                      copy = False, n_samples = 1):             # <<<<<<<<<<<<<<
@@ -5631,7 +5631,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
       __Pyx_Arg_XDECREF_FASTCALL(values[__pyx_temp]);
     }
   }
-  __Pyx_AddTraceback("pism_dbg.accumulated_flow", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("drainage_basin_generator.accumulated_flow", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
@@ -5639,9 +5639,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_y), __pyx_ptype_5numpy_ndarray, 1, "y", 0))) __PYX_ERR(0, 78, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_z), __pyx_ptype_5numpy_ndarray, 1, "z", 0))) __PYX_ERR(0, 79, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_mask), __pyx_ptype_5numpy_ndarray, 1, "mask", 0))) __PYX_ERR(0, 80, __pyx_L1_error)
-  __pyx_r = __pyx_pf_8pism_dbg_4accumulated_flow(__pyx_self, __pyx_v_x, __pyx_v_y, __pyx_v_z, __pyx_v_mask, __pyx_v_copy, __pyx_v_n_samples);
+  __pyx_r = __pyx_pf_8drainage_basin_generator_4accumulated_flow(__pyx_self, __pyx_v_x, __pyx_v_y, __pyx_v_z, __pyx_v_mask, __pyx_v_copy, __pyx_v_n_samples);
 
-  /* "pism_dbg.pyx":77
+  /* "drainage_basin_generator.pyx":77
  *     return output
  *
  * def accumulated_flow(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
@@ -5664,7 +5664,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_mask, PyObject *__pyx_v_copy, PyObject *__pyx_v_n_samples) {
+static PyObject *__pyx_pf_8drainage_basin_generator_4accumulated_flow(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_mask, PyObject *__pyx_v_copy, PyObject *__pyx_v_n_samples) {
   PyArrayObject *__pyx_v_output = 0;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_mask;
   __Pyx_Buffer __pyx_pybuffer_mask;
@@ -5719,37 +5719,37 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
   __pyx_pybuffernd_mask.rcbuffer = &__pyx_pybuffer_mask;
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_x.rcbuffer->pybuffer, (PyObject*)__pyx_v_x, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_x.rcbuffer->pybuffer, (PyObject*)__pyx_v_x, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
   }
   __pyx_pybuffernd_x.diminfo[0].strides = __pyx_pybuffernd_x.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_x.diminfo[0].shape = __pyx_pybuffernd_x.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_y.rcbuffer->pybuffer, (PyObject*)__pyx_v_y, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_y.rcbuffer->pybuffer, (PyObject*)__pyx_v_y, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
   }
   __pyx_pybuffernd_y.diminfo[0].strides = __pyx_pybuffernd_y.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_y.diminfo[0].shape = __pyx_pybuffernd_y.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_z.rcbuffer->pybuffer, (PyObject*)__pyx_v_z, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_z.rcbuffer->pybuffer, (PyObject*)__pyx_v_z, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
   }
   __pyx_pybuffernd_z.diminfo[0].strides = __pyx_pybuffernd_z.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_z.diminfo[0].shape = __pyx_pybuffernd_z.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_z.diminfo[1].strides = __pyx_pybuffernd_z.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_z.diminfo[1].shape = __pyx_pybuffernd_z.rcbuffer->pybuffer.shape[1];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_mask.rcbuffer->pybuffer, (PyObject*)__pyx_v_mask, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_mask.rcbuffer->pybuffer, (PyObject*)__pyx_v_mask, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
   }
   __pyx_pybuffernd_mask.diminfo[0].strides = __pyx_pybuffernd_mask.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_mask.diminfo[0].shape = __pyx_pybuffernd_mask.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_mask.diminfo[1].strides = __pyx_pybuffernd_mask.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_mask.diminfo[1].shape = __pyx_pybuffernd_mask.rcbuffer->pybuffer.shape[1];
 
-  /* "pism_dbg.pyx":95
+  /* "drainage_basin_generator.pyx":95
  *     cdef np.ndarray[dtype=double_t, ndim=2, mode="c"] output
  *
  *     check_dimensions(x, y, z, mask)             # <<<<<<<<<<<<<<
  *
  *     if copy:
  */
-  __pyx_t_1 = __pyx_f_8pism_dbg_check_dimensions(((PyObject *)__pyx_v_x), ((PyObject *)__pyx_v_y), ((PyObject *)__pyx_v_z), ((PyObject *)__pyx_v_mask)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 95, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_8drainage_basin_generator_check_dimensions(((PyObject *)__pyx_v_x), ((PyObject *)__pyx_v_y), ((PyObject *)__pyx_v_z), ((PyObject *)__pyx_v_mask)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 95, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "pism_dbg.pyx":97
+  /* "drainage_basin_generator.pyx":97
  *     check_dimensions(x, y, z, mask)
  *
  *     if copy:             # <<<<<<<<<<<<<<
@@ -5759,7 +5759,7 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
   __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_v_copy); if (unlikely((__pyx_t_2 < 0))) __PYX_ERR(0, 97, __pyx_L1_error)
   if (__pyx_t_2) {
 
-    /* "pism_dbg.pyx":98
+    /* "drainage_basin_generator.pyx":98
  *
  *     if copy:
  *         output = mask.copy()             # <<<<<<<<<<<<<<
@@ -5795,10 +5795,10 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
     {
       __Pyx_BufFmt_StackElem __pyx_stack[1];
       __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_output.rcbuffer->pybuffer);
-      __pyx_t_5 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_t_6, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
+      __pyx_t_5 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_t_6, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
       if (unlikely(__pyx_t_5 < 0)) {
         PyErr_Fetch(&__pyx_t_7, &__pyx_t_8, &__pyx_t_9);
-        if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_v_output, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
+        if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_v_output, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
           Py_XDECREF(__pyx_t_7); Py_XDECREF(__pyx_t_8); Py_XDECREF(__pyx_t_9);
           __Pyx_RaiseBufferFallbackError();
         } else {
@@ -5813,7 +5813,7 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
     __pyx_v_output = ((PyArrayObject *)__pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "pism_dbg.pyx":97
+    /* "drainage_basin_generator.pyx":97
  *     check_dimensions(x, y, z, mask)
  *
  *     if copy:             # <<<<<<<<<<<<<<
@@ -5823,21 +5823,21 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
     goto __pyx_L3;
   }
 
-  /* "pism_dbg.pyx":100
+  /* "drainage_basin_generator.pyx":100
  *         output = mask.copy()
  *     else:
  *         output = mask             # <<<<<<<<<<<<<<
  *
- *     pism_dbg_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,
+ *     drainage_basin_generator_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,
  */
   /*else*/ {
     {
       __Pyx_BufFmt_StackElem __pyx_stack[1];
       __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_output.rcbuffer->pybuffer);
-      __pyx_t_5 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)((PyArrayObject *)__pyx_v_mask), &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
+      __pyx_t_5 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)((PyArrayObject *)__pyx_v_mask), &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack);
       if (unlikely(__pyx_t_5 < 0)) {
         PyErr_Fetch(&__pyx_t_9, &__pyx_t_8, &__pyx_t_7);
-        if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_v_output, &__Pyx_TypeInfo_nn___pyx_t_8pism_dbg_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
+        if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_output.rcbuffer->pybuffer, (PyObject*)__pyx_v_output, &__Pyx_TypeInfo_nn___pyx_t_8drainage_basin_generator_double_t, PyBUF_FORMAT| PyBUF_C_CONTIGUOUS, 2, 0, __pyx_stack) == -1)) {
           Py_XDECREF(__pyx_t_9); Py_XDECREF(__pyx_t_8); Py_XDECREF(__pyx_t_7);
           __Pyx_RaiseBufferFallbackError();
         } else {
@@ -5853,10 +5853,10 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
   }
   __pyx_L3:;
 
-  /* "pism_dbg.pyx":102
+  /* "drainage_basin_generator.pyx":102
  *         output = mask
  *
- *     pism_dbg_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,             # <<<<<<<<<<<<<<
+ *     drainage_basin_generator_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,             # <<<<<<<<<<<<<<
  *                                 <double*>z.data, <double*>output.data, n_samples)
  *
  */
@@ -5865,9 +5865,9 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
   __pyx_t_12 = __pyx_f_5numpy_7ndarray_4data_data(((PyArrayObject *)__pyx_v_y)); if (unlikely(__pyx_t_12 == ((char *)NULL) && PyErr_Occurred())) __PYX_ERR(0, 102, __pyx_L1_error)
   __pyx_t_13 = __pyx_f_5numpy_7ndarray_4size_size(((PyArrayObject *)__pyx_v_y)); if (unlikely(__pyx_t_13 == ((npy_intp)-1) && PyErr_Occurred())) __PYX_ERR(0, 102, __pyx_L1_error)
 
-  /* "pism_dbg.pyx":103
+  /* "drainage_basin_generator.pyx":103
  *
- *     pism_dbg_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,
+ *     drainage_basin_generator_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,
  *                                 <double*>z.data, <double*>output.data, n_samples)             # <<<<<<<<<<<<<<
  *
  *     return output
@@ -5876,16 +5876,16 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
   __pyx_t_15 = __pyx_f_5numpy_7ndarray_4data_data(((PyArrayObject *)__pyx_v_output)); if (unlikely(__pyx_t_15 == ((char *)NULL) && PyErr_Occurred())) __PYX_ERR(0, 103, __pyx_L1_error)
   __pyx_t_5 = __Pyx_PyInt_As_int(__pyx_v_n_samples); if (unlikely((__pyx_t_5 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 103, __pyx_L1_error)
 
-  /* "pism_dbg.pyx":102
+  /* "drainage_basin_generator.pyx":102
  *         output = mask
  *
- *     pism_dbg_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,             # <<<<<<<<<<<<<<
+ *     drainage_basin_generator_c.accumulated_flow(<double*>x.data, x.size, <double*>y.data, y.size,             # <<<<<<<<<<<<<<
  *                                 <double*>z.data, <double*>output.data, n_samples)
  *
  */
   (void)(accumulated_flow(((double *)__pyx_t_10), __pyx_t_11, ((double *)__pyx_t_12), __pyx_t_13, ((double *)__pyx_t_14), ((double *)__pyx_t_15), __pyx_t_5));
 
-  /* "pism_dbg.pyx":105
+  /* "drainage_basin_generator.pyx":105
  *                                 <double*>z.data, <double*>output.data, n_samples)
  *
  *     return output             # <<<<<<<<<<<<<<
@@ -5895,7 +5895,7 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
   __pyx_r = ((PyObject *)__pyx_v_output);
   goto __pyx_L0;
 
-  /* "pism_dbg.pyx":77
+  /* "drainage_basin_generator.pyx":77
  *     return output
  *
  * def accumulated_flow(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
@@ -5918,7 +5918,7 @@ static PyObject *__pyx_pf_8pism_dbg_4accumulated_flow(CYTHON_UNUSED PyObject *__
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_y.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_z.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("pism_dbg.accumulated_flow", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("drainage_basin_generator.accumulated_flow", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -5976,9 +5976,9 @@ static int __Pyx_CreateStringTabAndInitStrings(void) {
     {&__pyx_kp_s_numpy_core_multiarray_failed_to, __pyx_k_numpy_core_multiarray_failed_to, sizeof(__pyx_k_numpy_core_multiarray_failed_to), 0, 0, 1, 0},
     {&__pyx_kp_s_numpy_core_umath_failed_to_impor, __pyx_k_numpy_core_umath_failed_to_impor, sizeof(__pyx_k_numpy_core_umath_failed_to_impor), 0, 0, 1, 0},
     {&__pyx_n_s_output, __pyx_k_output, sizeof(__pyx_k_output), 0, 0, 1, 1},
-    {&__pyx_n_s_pism_dbg, __pyx_k_pism_dbg, sizeof(__pyx_k_pism_dbg), 0, 0, 1, 1},
+    {&__pyx_n_s_drainage_basin_generator, __pyx_k_drainage_basin_generator, sizeof(__pyx_k_drainage_basin_generator), 0, 0, 1, 1},
     {&__pyx_n_s_print_output, __pyx_k_print_output, sizeof(__pyx_k_print_output), 0, 0, 1, 1},
-    {&__pyx_kp_s_python_pism_dbg_pyx, __pyx_k_python_pism_dbg_pyx, sizeof(__pyx_k_python_pism_dbg_pyx), 0, 0, 1, 0},
+    {&__pyx_kp_s_python_drainage_basin_generator_pyx, __pyx_k_python_drainage_basin_generator_pyx, sizeof(__pyx_k_python_drainage_basin_generator_pyx), 0, 0, 1, 0},
     {&__pyx_n_s_shape, __pyx_k_shape, sizeof(__pyx_k_shape), 0, 0, 1, 1},
     {&__pyx_n_s_size, __pyx_k_size, sizeof(__pyx_k_size), 0, 0, 1, 1},
     {&__pyx_n_s_spec, __pyx_k_spec, sizeof(__pyx_k_spec), 0, 0, 1, 1},
@@ -6031,7 +6031,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "pism_dbg.pyx":38
+  /* "drainage_basin_generator.pyx":38
  *
  *     if y.size != z.shape[0]:
  *         raise ValueError("the size of y has to match the number of rows in z")             # <<<<<<<<<<<<<<
@@ -6042,7 +6042,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__3);
   __Pyx_GIVEREF(__pyx_tuple__3);
 
-  /* "pism_dbg.pyx":41
+  /* "drainage_basin_generator.pyx":41
  *
  *     if x.size != z.shape[1]:
  *         raise ValueError("the size of x has to match the number of columns in z")             # <<<<<<<<<<<<<<
@@ -6053,7 +6053,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__4);
   __Pyx_GIVEREF(__pyx_tuple__4);
 
-  /* "pism_dbg.pyx":14
+  /* "drainage_basin_generator.pyx":14
  * ctypedef np.int32_t int_t
  *
  * def initialize_mask(np.ndarray[dtype=double_t, ndim=2, mode="c"] thk):             # <<<<<<<<<<<<<<
@@ -6063,9 +6063,9 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__6 = PyTuple_Pack(4, __pyx_n_s_thk, __pyx_n_s_mask, __pyx_n_s_Mx, __pyx_n_s_My); if (unlikely(!__pyx_tuple__6)) __PYX_ERR(0, 14, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__6);
   __Pyx_GIVEREF(__pyx_tuple__6);
-  __pyx_codeobj__7 = (PyObject*)__Pyx_PyCode_New(1, 0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__6, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_python_pism_dbg_pyx, __pyx_n_s_initialize_mask, 14, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__7)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __pyx_codeobj__7 = (PyObject*)__Pyx_PyCode_New(1, 0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__6, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_python_drainage_basin_generator_pyx, __pyx_n_s_initialize_mask, 14, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__7)) __PYX_ERR(0, 14, __pyx_L1_error)
 
-  /* "pism_dbg.pyx":43
+  /* "drainage_basin_generator.pyx":43
  *         raise ValueError("the size of x has to match the number of columns in z")
  *
  * def upslope_area(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
@@ -6075,12 +6075,12 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__8 = PyTuple_Pack(7, __pyx_n_s_x, __pyx_n_s_y, __pyx_n_s_z, __pyx_n_s_mask, __pyx_n_s_copy, __pyx_n_s_print_output, __pyx_n_s_output); if (unlikely(!__pyx_tuple__8)) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__8);
   __Pyx_GIVEREF(__pyx_tuple__8);
-  __pyx_codeobj__9 = (PyObject*)__Pyx_PyCode_New(6, 0, 0, 7, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__8, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_python_pism_dbg_pyx, __pyx_n_s_upslope_area, 43, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__9)) __PYX_ERR(0, 43, __pyx_L1_error)
+  __pyx_codeobj__9 = (PyObject*)__Pyx_PyCode_New(6, 0, 0, 7, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__8, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_python_drainage_basin_generator_pyx, __pyx_n_s_upslope_area, 43, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__9)) __PYX_ERR(0, 43, __pyx_L1_error)
   __pyx_tuple__10 = PyTuple_Pack(2, ((PyObject *)Py_False), ((PyObject *)Py_False)); if (unlikely(!__pyx_tuple__10)) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__10);
   __Pyx_GIVEREF(__pyx_tuple__10);
 
-  /* "pism_dbg.pyx":77
+  /* "drainage_basin_generator.pyx":77
  *     return output
  *
  * def accumulated_flow(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
@@ -6090,7 +6090,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__11 = PyTuple_Pack(7, __pyx_n_s_x, __pyx_n_s_y, __pyx_n_s_z, __pyx_n_s_mask, __pyx_n_s_copy, __pyx_n_s_n_samples, __pyx_n_s_output); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__11);
   __Pyx_GIVEREF(__pyx_tuple__11);
-  __pyx_codeobj__12 = (PyObject*)__Pyx_PyCode_New(6, 0, 0, 7, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__11, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_python_pism_dbg_pyx, __pyx_n_s_accumulated_flow, 77, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__12)) __PYX_ERR(0, 77, __pyx_L1_error)
+  __pyx_codeobj__12 = (PyObject*)__Pyx_PyCode_New(6, 0, 0, 7, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__11, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_python_drainage_basin_generator_pyx, __pyx_n_s_accumulated_flow, 77, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__12)) __PYX_ERR(0, 77, __pyx_L1_error)
   __pyx_tuple__13 = PyTuple_Pack(2, ((PyObject *)Py_False), ((PyObject *)__pyx_int_1)); if (unlikely(!__pyx_tuple__13)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__13);
   __Pyx_GIVEREF(__pyx_tuple__13);
@@ -6243,10 +6243,10 @@ static int __Pyx_modinit_function_import_code(void) {
 #if PY_MAJOR_VERSION >= 3
 #if CYTHON_PEP489_MULTI_PHASE_INIT
 static PyObject* __pyx_pymod_create(PyObject *spec, PyModuleDef *def); /*proto*/
-static int __pyx_pymod_exec_pism_dbg(PyObject* module); /*proto*/
+static int __pyx_pymod_exec_drainage_basin_generator(PyObject* module); /*proto*/
 static PyModuleDef_Slot __pyx_moduledef_slots[] = {
   {Py_mod_create, (void*)__pyx_pymod_create},
-  {Py_mod_exec, (void*)__pyx_pymod_exec_pism_dbg},
+  {Py_mod_exec, (void*)__pyx_pymod_exec_drainage_basin_generator},
   {0, NULL}
 };
 #endif
@@ -6259,7 +6259,7 @@ namespace {
   #endif
   {
       PyModuleDef_HEAD_INIT,
-      "pism_dbg",
+      "drainage_basin_generator",
       0, /* m_doc */
     #if CYTHON_PEP489_MULTI_PHASE_INIT
       0, /* m_size */
@@ -6307,11 +6307,11 @@ namespace {
 
 
 #if PY_MAJOR_VERSION < 3
-__Pyx_PyMODINIT_FUNC initpism_dbg(void) CYTHON_SMALL_CODE; /*proto*/
-__Pyx_PyMODINIT_FUNC initpism_dbg(void)
+__Pyx_PyMODINIT_FUNC initdrainage_basin_generator(void) CYTHON_SMALL_CODE; /*proto*/
+__Pyx_PyMODINIT_FUNC initdrainage_basin_generator(void)
 #else
-__Pyx_PyMODINIT_FUNC PyInit_pism_dbg(void) CYTHON_SMALL_CODE; /*proto*/
-__Pyx_PyMODINIT_FUNC PyInit_pism_dbg(void)
+__Pyx_PyMODINIT_FUNC PyInit_drainage_basin_generator(void) CYTHON_SMALL_CODE; /*proto*/
+__Pyx_PyMODINIT_FUNC PyInit_drainage_basin_generator(void)
 #if CYTHON_PEP489_MULTI_PHASE_INIT
 {
   return PyModuleDef_Init(&__pyx_moduledef);
@@ -6392,7 +6392,7 @@ bad:
 }
 
 
-static CYTHON_SMALL_CODE int __pyx_pymod_exec_pism_dbg(PyObject *__pyx_pyinit_module)
+static CYTHON_SMALL_CODE int __pyx_pymod_exec_drainage_basin_generator(PyObject *__pyx_pyinit_module)
 #endif
 #endif
 {
@@ -6409,7 +6409,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_pism_dbg(PyObject *__pyx_pyinit_mo
   #if CYTHON_PEP489_MULTI_PHASE_INIT
   if (__pyx_m) {
     if (__pyx_m == __pyx_pyinit_module) return 0;
-    PyErr_SetString(PyExc_RuntimeError, "Module 'pism_dbg' has already been imported. Re-initialisation is not supported.");
+    PyErr_SetString(PyExc_RuntimeError, "Module 'drainage_basin_generator' has already been imported. Re-initialisation is not supported.");
     return -1;
   }
   #elif PY_MAJOR_VERSION >= 3
@@ -6421,13 +6421,13 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_pism_dbg(PyObject *__pyx_pyinit_mo
   Py_INCREF(__pyx_m);
   #else
   #if PY_MAJOR_VERSION < 3
-  __pyx_m = Py_InitModule4("pism_dbg", __pyx_methods, 0, 0, PYTHON_API_VERSION); Py_XINCREF(__pyx_m);
+  __pyx_m = Py_InitModule4("drainage_basin_generator", __pyx_methods, 0, 0, PYTHON_API_VERSION); Py_XINCREF(__pyx_m);
   if (unlikely(!__pyx_m)) __PYX_ERR(0, 1, __pyx_L1_error)
   #elif CYTHON_USE_MODULE_STATE
   __pyx_t_1 = PyModule_Create(&__pyx_moduledef); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 1, __pyx_L1_error)
   {
     int add_module_result = PyState_AddModule(__pyx_t_1, &__pyx_moduledef);
-    __pyx_t_1 = 0; /* transfer ownership from __pyx_t_1 to "pism_dbg" pseudovariable */
+    __pyx_t_1 = 0; /* transfer ownership from __pyx_t_1 to "drainage_basin_generator" pseudovariable */
     if (unlikely((add_module_result < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
     pystate_addmodule_run = 1;
   }
@@ -6451,7 +6451,7 @@ if (!__Pyx_RefNanny) {
       Py_FatalError("failed to import 'refnanny' module");
 }
 #endif
-  __Pyx_RefNannySetupContext("__Pyx_PyMODINIT_FUNC PyInit_pism_dbg(void)", 0);
+  __Pyx_RefNannySetupContext("__Pyx_PyMODINIT_FUNC PyInit_drainage_basin_generator(void)", 0);
   if (__Pyx_check_binary_version(__PYX_LIMITED_VERSION_HEX, __Pyx_get_runtime_version(), CYTHON_COMPILING_IN_LIMITED_API) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #ifdef __Pxy_PyFrame_Initialize_Offsets
   __Pxy_PyFrame_Initialize_Offsets();
@@ -6489,14 +6489,14 @@ if (!__Pyx_RefNanny) {
   #if PY_MAJOR_VERSION < 3 && (__PYX_DEFAULT_STRING_ENCODING_IS_ASCII || __PYX_DEFAULT_STRING_ENCODING_IS_DEFAULT)
   if (__Pyx_init_sys_getdefaultencoding_params() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
-  if (__pyx_module_is_main_pism_dbg) {
+  if (__pyx_module_is_main_drainage_basin_generator) {
     if (PyObject_SetAttr(__pyx_m, __pyx_n_s_name, __pyx_n_s_main) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   }
   #if PY_MAJOR_VERSION >= 3
   {
     PyObject *modules = PyImport_GetModuleDict(); if (unlikely(!modules)) __PYX_ERR(0, 1, __pyx_L1_error)
-    if (!PyDict_GetItemString(modules, "pism_dbg")) {
-      if (unlikely((PyDict_SetItemString(modules, "pism_dbg", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
+    if (!PyDict_GetItemString(modules, "drainage_basin_generator")) {
+      if (unlikely((PyDict_SetItemString(modules, "drainage_basin_generator", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
     }
   }
   #endif
@@ -6517,57 +6517,57 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "pism_dbg.pyx":7
+  /* "drainage_basin_generator.pyx":7
  *
  * cimport numpy as np
  * import numpy as np             # <<<<<<<<<<<<<<
  *
- * cimport pism_dbg_c
+ * cimport drainage_basin_generator_c
  */
   __pyx_t_2 = __Pyx_ImportDottedModule(__pyx_n_s_numpy, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_np, __pyx_t_2) < 0) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pism_dbg.pyx":14
+  /* "drainage_basin_generator.pyx":14
  * ctypedef np.int32_t int_t
  *
  * def initialize_mask(np.ndarray[dtype=double_t, ndim=2, mode="c"] thk):             # <<<<<<<<<<<<<<
  *     """
  *     Use ice thickness to initialize the mask.
  */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_8pism_dbg_1initialize_mask, 0, __pyx_n_s_initialize_mask, NULL, __pyx_n_s_pism_dbg, __pyx_d, ((PyObject *)__pyx_codeobj__7)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_8drainage_basin_generator_1initialize_mask, 0, __pyx_n_s_initialize_mask, NULL, __pyx_n_s_drainage_basin_generator, __pyx_d, ((PyObject *)__pyx_codeobj__7)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 14, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_initialize_mask, __pyx_t_2) < 0) __PYX_ERR(0, 14, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pism_dbg.pyx":43
+  /* "drainage_basin_generator.pyx":43
  *         raise ValueError("the size of x has to match the number of columns in z")
  *
  * def upslope_area(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
  *                  np.ndarray[dtype=double_t, ndim=1] y,
  *                  np.ndarray[dtype=double_t, ndim=2, mode="c"] z,
  */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_8pism_dbg_3upslope_area, 0, __pyx_n_s_upslope_area, NULL, __pyx_n_s_pism_dbg, __pyx_d, ((PyObject *)__pyx_codeobj__9)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_8drainage_basin_generator_3upslope_area, 0, __pyx_n_s_upslope_area, NULL, __pyx_n_s_drainage_basin_generator, __pyx_d, ((PyObject *)__pyx_codeobj__9)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_2, __pyx_tuple__10);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_upslope_area, __pyx_t_2) < 0) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pism_dbg.pyx":77
+  /* "drainage_basin_generator.pyx":77
  *     return output
  *
  * def accumulated_flow(np.ndarray[dtype=double_t, ndim=1] x,             # <<<<<<<<<<<<<<
  *                      np.ndarray[dtype=double_t, ndim=1] y,
  *                      np.ndarray[dtype=double_t, ndim=2, mode="c"] z,
  */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_8pism_dbg_5accumulated_flow, 0, __pyx_n_s_accumulated_flow, NULL, __pyx_n_s_pism_dbg, __pyx_d, ((PyObject *)__pyx_codeobj__12)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 77, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_8drainage_basin_generator_5accumulated_flow, 0, __pyx_n_s_accumulated_flow, NULL, __pyx_n_s_drainage_basin_generator, __pyx_d, ((PyObject *)__pyx_codeobj__12)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_2, __pyx_tuple__13);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_accumulated_flow, __pyx_t_2) < 0) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pism_dbg.pyx":1
+  /* "drainage_basin_generator.pyx":1
  * # -*- mode: python -*-             # <<<<<<<<<<<<<<
  * #cython: boundscheck=False
  * #cython: wraparound=False
@@ -6584,7 +6584,7 @@ if (!__Pyx_RefNanny) {
   __Pyx_XDECREF(__pyx_t_2);
   if (__pyx_m) {
     if (__pyx_d && stringtab_initialized) {
-      __Pyx_AddTraceback("init pism_dbg", __pyx_clineno, __pyx_lineno, __pyx_filename);
+      __Pyx_AddTraceback("init drainage_basin_generator", __pyx_clineno, __pyx_lineno, __pyx_filename);
     }
     #if !CYTHON_USE_MODULE_STATE
     Py_CLEAR(__pyx_m);
@@ -6598,7 +6598,7 @@ if (!__Pyx_RefNanny) {
     }
     #endif
   } else if (!PyErr_Occurred()) {
-    PyErr_SetString(PyExc_ImportError, "init pism_dbg");
+    PyErr_SetString(PyExc_ImportError, "init drainage_basin_generator");
   }
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();

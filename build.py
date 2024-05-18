@@ -55,9 +55,9 @@ class build_py(_build_py):
 
         self.distribution.ext_modules.append(
             Extension(
-                "pism_dbg",
+                "drainage_basin_generator",
                 sources=[
-                    "python/pism_dbg.pyx",
+                    "python/drainage_basin_generator.pyx",
                     "src/upslope_area.cc",
                     "src/accumulated_flow.cc",
                     "src/initialize_mask.cc",
