@@ -3,13 +3,14 @@
 """
 Module to calcuate drainage basins from surface DEM.
 """
+# pylint: disable=redefined-outer-name
 
 import sys
-from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
-import drainage_basin_calculator as dbg
-import numpy as np
 import xarray as xr
+
+import drainage_basin_generator as dbg
 
 
 def load_data(input_file, thickness_varname: str = "thickness", surface_varname: str = "surface", coarsen: int = 1):
@@ -74,7 +75,7 @@ def initialize_mask(thk, x, y, terminus):
     numpy.ndarray
         The initialized mask.
     """
-    mask = dbg.initialize_mask(thk.to_numpy().astype(float))
+    mask = dbg.initialize_mask(thk.to_numpy().astype(float))  # type: ignore[attr-defined]
 
     if terminus is not None:
         x_min, x_max, y_min, y_max = terminus
@@ -114,6 +115,7 @@ if __name__ == "__main__":
     sys.stderr.write("done.\n")
 
     sys.stderr.write("Computing the drainage basin mask...")
-    db = dbg.upslope_area(x.to_numpy(), y.to_numpy(), z.to_numpy().astype(float), mask)
+    db = dbg.upslope_area(x.to_numpy(), y.to_numpy(), z.to_numpy().astype(float), mask)  # type: ignore[attr-defined]
+
     db = xr.DataArray(data=db, dims=["y", "x"], coords=thickness.coords, name="mask")
     db.to_netcdf(opts.output)
