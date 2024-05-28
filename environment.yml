@@ -6,10 +6,26 @@ dependencies:
   - mpich-mpicxx
   - setuptools
   - pre-commit
-  - pytest
   - gsl
+
+  # Testing
+  - pytest
   - mypy
   - pylint
+
+  # Doc dependencies
+  - sphinx
+  - pydata-sphinx-theme
+  - sphinx-book-theme>=1.0
+  - sphinxcontrib-programoutput
+  - sphinx-design
+  - sphinx-autodoc-typehints
+  - sphinx-gallery
+  - autovizwidget
+  - graphviz
+  - myst-nb
+  - numpydoc
+
   - pip
   - pip:
       - -r requirements.txt
