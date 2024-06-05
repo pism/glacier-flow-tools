@@ -19,7 +19,6 @@ Read the docs config.
 import os
 import sys
 
-
 # -- Project information -----------------------------------------------------
 
 project = "glacier-flow-tools"
