@@ -339,71 +339,71 @@ if __name__ == "__main__":
         + obs_scale_alpha**2
     )
 
-    with silence_logging_cmgr(logging.CRITICAL):
+    # with silence_logging_cmgr(logging.CRITICAL):
 
-        cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=2)
-        with Client(cluster, asynchronous=True) as client:
-            n_jobs = len(client.ncores())
-            print(f"Open client in browser: {client.dashboard_link}")
+    #     cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=2)
+    #     with Client(cluster, asynchronous=True) as client:
+    #         n_jobs = len(client.ncores())
+    #         print(f"Open client in browser: {client.dashboard_link}")
 
-            start = time.time()
-            velocity_ds_scattered = client.scatter(velocity_ds)
-            exp_ds_scattered = client.scatter(exp_ds)
-            profiles_scattered = client.scatter([p for _, p in profiles.iterrows()])
-            profiles_df_scattered = client.scatter(profiles)
+    #         start = time.time()
+    #         velocity_ds_scattered = client.scatter(velocity_ds)
+    #         exp_ds_scattered = client.scatter(exp_ds)
+    #         profiles_scattered = client.scatter([p for _, p in profiles.iterrows()])
+    #         profiles_df_scattered = client.scatter(profiles)
 
-            futures = client.map(
-                extract_profile,
-                profiles_scattered,
-                obs_ds=velocity_ds_scattered,
-                sim_ds=exp_ds_scattered,
-                compute_profile_normal=project["Profiles"]["compute_profile_normal"],
-                obs_normal_var=obs_normal_var,
-                obs_normal_error_var=obs_normal_error_var,
-                obs_normal_component_vars=obs_normal_component_vars,
-                obs_normal_component_error_vars=obs_normal_component_error_vars,
-                sim_normal_var=sim_normal_var,
-                sim_normal_component_vars=sim_normal_component_vars,
-                stats=profile_stats,
-                stats_kwargs=profile_stats_kwargs,
-            )
-            futures_computed = client.compute(futures)
-            progress(futures_computed)
-            obs_sims_profiles = [p.compute() for p in client.gather(futures_computed)]
+    #         futures = client.map(
+    #             extract_profile,
+    #             profiles_scattered,
+    #             obs_ds=velocity_ds_scattered,
+    #             sim_ds=exp_ds_scattered,
+    #             compute_profile_normal=project["Profiles"]["compute_profile_normal"],
+    #             obs_normal_var=obs_normal_var,
+    #             obs_normal_error_var=obs_normal_error_var,
+    #             obs_normal_component_vars=obs_normal_component_vars,
+    #             obs_normal_component_error_vars=obs_normal_component_error_vars,
+    #             sim_normal_var=sim_normal_var,
+    #             sim_normal_component_vars=sim_normal_component_vars,
+    #             stats=profile_stats,
+    #             stats_kwargs=profile_stats_kwargs,
+    #         )
+    #         futures_computed = client.compute(futures)
+    #         progress(futures_computed)
+    #         obs_sims_profiles = [p.compute() for p in client.gather(futures_computed)]
 
-            futures = []
-            for p in obs_sims_profiles:
-                future = client.submit(
-                    dd.merge,
-                    p[["profile_id", "rmsd", "pearson_r", "obs_flux", "sim_flux"]].to_dataframe().reset_index(),
-                    profiles_gp,
-                    on="profile_id",
-                )
-                futures.append(future)
+    #         futures = []
+    #         for p in obs_sims_profiles:
+    #             future = client.submit(
+    #                 dd.merge,
+    #                 p[["profile_id", "rmsd", "pearson_r", "obs_flux", "sim_flux"]].to_dataframe().reset_index(),
+    #                 profiles_gp,
+    #                 on="profile_id",
+    #             )
+    #             futures.append(future)
 
-            futures_computed = client.compute(futures)
-            progress(futures_computed)
-            stats_profiles = dd.concat(client.gather(futures_computed)).compute().reset_index(drop=True)
-            stats_profiles = gp.GeoDataFrame(stats_profiles, geometry=stats_profiles.geometry, crs=crs)
-            stats_file = profile_output_dir / "stats.gpkg"
-            stats_profiles.to_file(stats_file)
+    #         futures_computed = client.compute(futures)
+    #         progress(futures_computed)
+    #         stats_profiles = dd.concat(client.gather(futures_computed)).compute().reset_index(drop=True)
+    #         stats_profiles = gp.GeoDataFrame(stats_profiles, geometry=stats_profiles.geometry, crs=crs)
+    #         stats_file = profile_output_dir / "stats.gpkg"
+    #         stats_profiles.to_file(stats_file)
 
-            obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
+    #         obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
 
-            print("Plotting profiles")
-            futures = client.map(
-                plot_profile,
-                obs_sims_profiles_scattered,
-                obs_var=project["Observations"]["profile_var"],
-                obs_error_var=project["Observations"]["profile_error_var"],
-                sim_var=project["Simulations"]["profile_var"],
-                result_dir=profile_figure_dir,
-                sigma=obs_sigma,
-                plot_kwargs=project["Plotting"],
-            )
-            futures_computed = client.compute(futures)
-            progress(futures_computed)
-            futures_gathered = client.gather(futures_computed)
+    #         print("Plotting profiles")
+    #         futures = client.map(
+    #             plot_profile,
+    #             obs_sims_profiles_scattered,
+    #             obs_var=project["Observations"]["profile_var"],
+    #             obs_error_var=project["Observations"]["profile_error_var"],
+    #             sim_var=project["Simulations"]["profile_var"],
+    #             result_dir=profile_figure_dir,
+    #             sigma=obs_sigma,
+    #             plot_kwargs=project["Plotting"],
+    #         )
+    #         futures_computed = client.compute(futures)
+    #         progress(futures_computed)
+    #         futures_gathered = client.gather(futures_computed)
 
-    time_elapsed = time.time() - start
-    print(f"Time elapsed {time_elapsed:.0f}s")
+    # time_elapsed = time.time() - start
+    # print(f"Time elapsed {time_elapsed:.0f}s")
