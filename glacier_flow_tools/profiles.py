@@ -49,6 +49,85 @@ register_colormaps()
 matplotlib.use("agg")
 
 
+def extract_profile(
+    profile,
+    obs_ds: xr.Dataset,
+    sim_ds: xr.Dataset,
+    result_dir: Union[str, Path, None] = None,
+    obs_normal_var: str = "obs_v_normal",
+    obs_normal_error_var: str = "obs_v_err_normal",
+    obs_normal_component_vars: dict = {"x": "vx", "y": "vy"},
+    obs_normal_component_error_vars: dict = {"x": "vx_err", "y": "vy_err"},
+    sim_normal_var: str = "sim_v_normal",
+    sim_normal_component_vars: dict = {"x": "uvelsurf", "y": "vvelsurf"},
+    compute_profile_normal: bool = True,
+    stats: List[str] = ["rmsd", "pearson_r"],
+    stats_kwargs: Dict = {},
+) -> xr.Dataset:
+    """
+    Extract and process profiles from observation and simulation datasets.
+
+    This function extracts profiles from the given observation and simulation datasets, processes them, and saves the processed profile as a netCDF file. It also merges the processed profile with a given GeoDataFrame on intersection.
+
+    Parameters
+    ----------
+    profile : dict
+        The profile to be processed.
+    obs_ds : xr.Dataset
+        The observation dataset.
+    sim_ds : xr.Dataset
+        The simulation dataset.
+    result_dir : str or Path, optional
+        The directory where the result netCDF file will be saved, by default None, no file is saved.
+    obs_normal_var : str, optional
+        The variable name for the normal component of the observations, by default 'obs_v_normal'.
+    obs_normal_error_var : str, optional
+        The variable name for the error of the normal component of the observations, by default 'obs_v_err_normal'.
+    obs_normal_component_vars : dict, optional
+        The variable names for the components of the normal component of the observations, by default {"x": "vx", "y": "vy"}.
+    obs_normal_component_error_vars : dict, optional
+        The variable names for the errors of the components of the normal component of the observations, by default {"x": "vx_err", "y": "vy_err"}.
+    sim_normal_var : str, optional
+        The variable name for the normal component of the simulations, by default 'sim_v_normal'.
+    sim_normal_component_vars : dict, optional
+        The variable names for the components of the normal component of the simulations, by default {"x": "uvelsurf", "y": "vvelsurf"}.
+    compute_profile_normal : bool, optional
+        Whether to compute the normal component of the profile, by default True.
+    stats : list of str, optional
+        The statistics to be computed for the profile, by default ["rmsd", "pearson_r"].
+    stats_kwargs : dict, optional
+        Additional keyword arguments to pass to the function for computing the statistics, by default {}.
+
+    Returns
+    -------
+    tuple of xr.Dataset and gp.GeoDataFrame
+        The processed profile as an xr.Dataset and the merged GeoDataFrame.
+
+    Examples
+    --------
+    >>> extract_profiles(profile, profiles_df, obs_ds, sim_ds, stats=["rmsd", "pearson_r"], result_dir='.', obs_normal_var='obs_v_normal', obs_normal_error_var='obs_v_err_normal', obs_normal_component_vars={"x": "vx", "y": "vy"}, obs_normal_component_error_vars={"x": "vx_err", "y": "vy_err"}, sim_normal_var='sim_v_normal', sim_normal_component_vars={"x": "uvelsurf", "y": "vvelsurf"}, compute_profile_normal=True, stats_kwargs={})
+    """
+    os_profile = process_profile(
+        profile,
+        obs_ds=obs_ds,
+        sim_ds=sim_ds,
+        compute_profile_normal=compute_profile_normal,
+        obs_normal_var=obs_normal_var,
+        obs_normal_error_var=obs_normal_error_var,
+        obs_normal_component_vars=obs_normal_component_vars,
+        obs_normal_component_error_vars=obs_normal_component_error_vars,
+        sim_normal_var=sim_normal_var,
+        sim_normal_component_vars=sim_normal_component_vars,
+        stats=stats,
+        stats_kwargs=stats_kwargs,
+    )
+
+    if result_dir is not None:
+        os_file = Path(result_dir) / f"""{profile["profile_name"]}_profile.nc"""
+        os_profile.to_netcdf(os_file, engine="h5netcdf")
+    return os_profile
+
+
 def plot_profile(
     ds: xr.Dataset,
     result_dir: Path,
@@ -448,7 +527,8 @@ def process_profile(
     This function extracts profiles from the observed and simulated datasets along the given profile, merges them, and calculates the specified statistics.
     """
 
-    x, y = map(np.asarray, profile["geometry"].xy)
+    coords = get_coordinates(profile["geometry"])
+    x, y = coords[:, 0], coords[:, 1]
     profile_name = profile["profile_name"]
     profile_id = profile["profile_id"]
     stats_kwargs_copy = stats_kwargs.copy()
@@ -974,7 +1054,6 @@ class ProfilesMethods:
 
         ds = xr.merge(das)
         ds["profile_id"] = [profile_id]
-
         if compute_profile_normal:
             a = [(v in ds.data_vars) for v in normal_component_vars.values()]
             if np.all(np.array(a)):
@@ -1006,7 +1085,7 @@ class ProfilesMethods:
         sigma: float = 1,
         title: Union[str, None] = None,
         obs_var: str = "v",
-        obs_error_var: str = "v_err",
+        obs_error_var: Union[str, None] = "v_err",
         sim_var: str = "velsurf_mag",
         palette: str = "Paired",
         obs_kwargs: dict = {"color": "0", "lw": 0.75, "marker": "o", "ms": 1.5},
@@ -1069,12 +1148,13 @@ class ProfilesMethods:
         n_exps = self._obj["exp_id"].size
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
-        ax.fill_between(
-            self._obj["profile_axis"],
-            self._obj[obs_var] - sigma * self._obj[obs_error_var],
-            self._obj[obs_var] + sigma * self._obj[obs_error_var],
-            **obs_error_kwargs,
-        )
+        if obs_error_var is not None:
+            ax.fill_between(
+                self._obj["profile_axis"],
+                self._obj[obs_var] - sigma * self._obj[obs_error_var],
+                self._obj[obs_var] + sigma * self._obj[obs_error_var],
+                **obs_error_kwargs,
+            )
         ax.plot(
             self._obj["profile_axis"],
             self._obj[obs_var],

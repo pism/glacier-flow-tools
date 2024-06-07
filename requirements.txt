@@ -23,4 +23,4 @@ Shapely
 toml
 types-toml
 tqdm
-xarray
+xarray==2024.2.0  # https://github.com/pydata/xarray/issues/8909 bug

@@ -26,7 +26,6 @@ from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
 from functools import partial
 from importlib.resources import files
 from pathlib import Path
-from typing import Dict, List, Union
 
 import dask_geopandas
 import geopandas as gp
@@ -37,7 +36,7 @@ from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster, progress
 from distributed.utils import silence_logging_cmgr
 
-from glacier_flow_tools.profiles import plot_profile, process_profile
+from glacier_flow_tools.profiles import extract_profile, plot_profile
 from glacier_flow_tools.utils import preprocess_nc
 
 default_project_file_url = files("glacier_flow_tools.data").joinpath("default.toml")
@@ -86,85 +85,6 @@ class ParseKwargs(Action):
         for value in values:
             key, value = value.split("=")
             getattr(namespace, self.dest)[key] = value
-
-
-def extract_profile(
-    profile,
-    obs_ds: xr.Dataset,
-    sim_ds: xr.Dataset,
-    result_dir: Union[str, Path, None] = None,
-    obs_normal_var: str = "obs_v_normal",
-    obs_normal_error_var: str = "obs_v_err_normal",
-    obs_normal_component_vars: dict = {"x": "vx", "y": "vy"},
-    obs_normal_component_error_vars: dict = {"x": "vx_err", "y": "vy_err"},
-    sim_normal_var: str = "sim_v_normal",
-    sim_normal_component_vars: dict = {"x": "uvelsurf", "y": "vvelsurf"},
-    compute_profile_normal: bool = True,
-    stats: List[str] = ["rmsd", "pearson_r"],
-    stats_kwargs: Dict = {},
-) -> xr.Dataset:
-    """
-    Extract and process profiles from observation and simulation datasets.
-
-    This function extracts profiles from the given observation and simulation datasets, processes them, and saves the processed profile as a netCDF file. It also merges the processed profile with a given GeoDataFrame on intersection.
-
-    Parameters
-    ----------
-    profile : dict
-        The profile to be processed.
-    obs_ds : xr.Dataset
-        The observation dataset.
-    sim_ds : xr.Dataset
-        The simulation dataset.
-    result_dir : str or Path, optional
-        The directory where the result netCDF file will be saved, by default None, no file is saved.
-    obs_normal_var : str, optional
-        The variable name for the normal component of the observations, by default 'obs_v_normal'.
-    obs_normal_error_var : str, optional
-        The variable name for the error of the normal component of the observations, by default 'obs_v_err_normal'.
-    obs_normal_component_vars : dict, optional
-        The variable names for the components of the normal component of the observations, by default {"x": "vx", "y": "vy"}.
-    obs_normal_component_error_vars : dict, optional
-        The variable names for the errors of the components of the normal component of the observations, by default {"x": "vx_err", "y": "vy_err"}.
-    sim_normal_var : str, optional
-        The variable name for the normal component of the simulations, by default 'sim_v_normal'.
-    sim_normal_component_vars : dict, optional
-        The variable names for the components of the normal component of the simulations, by default {"x": "uvelsurf", "y": "vvelsurf"}.
-    compute_profile_normal : bool, optional
-        Whether to compute the normal component of the profile, by default True.
-    stats : list of str, optional
-        The statistics to be computed for the profile, by default ["rmsd", "pearson_r"].
-    stats_kwargs : dict, optional
-        Additional keyword arguments to pass to the function for computing the statistics, by default {}.
-
-    Returns
-    -------
-    tuple of xr.Dataset and gp.GeoDataFrame
-        The processed profile as an xr.Dataset and the merged GeoDataFrame.
-
-    Examples
-    --------
-    >>> extract_profiles(profile, profiles_df, obs_ds, sim_ds, stats=["rmsd", "pearson_r"], result_dir='.', obs_normal_var='obs_v_normal', obs_normal_error_var='obs_v_err_normal', obs_normal_component_vars={"x": "vx", "y": "vy"}, obs_normal_component_error_vars={"x": "vx_err", "y": "vy_err"}, sim_normal_var='sim_v_normal', sim_normal_component_vars={"x": "uvelsurf", "y": "vvelsurf"}, compute_profile_normal=True, stats_kwargs={})
-    """
-    os_profile = process_profile(
-        profile,
-        obs_ds=obs_ds,
-        sim_ds=sim_ds,
-        compute_profile_normal=compute_profile_normal,
-        obs_normal_var=obs_normal_var,
-        obs_normal_error_var=obs_normal_error_var,
-        obs_normal_component_vars=obs_normal_component_vars,
-        obs_normal_component_error_vars=obs_normal_component_error_vars,
-        sim_normal_var=sim_normal_var,
-        sim_normal_component_vars=sim_normal_component_vars,
-        stats=stats,
-        stats_kwargs=stats_kwargs,
-    )
-
-    if result_dir is not None:
-        os_file = Path(result_dir) / f"""{profile["profile_name"]}_profile.nc"""
-        os_profile.to_netcdf(os_file, engine="h5netcdf")
-    return os_profile
 
 
 if __name__ == "__main__":
@@ -339,71 +259,71 @@ if __name__ == "__main__":
         + obs_scale_alpha**2
     )
 
-    # with silence_logging_cmgr(logging.CRITICAL):
+    with silence_logging_cmgr(logging.CRITICAL):
 
-    #     cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=2)
-    #     with Client(cluster, asynchronous=True) as client:
-    #         n_jobs = len(client.ncores())
-    #         print(f"Open client in browser: {client.dashboard_link}")
+        cluster = LocalCluster(n_workers=options.n_jobs, threads_per_worker=2)
+        with Client(cluster, asynchronous=True) as client:
+            n_jobs = len(client.ncores())
+            print(f"Open client in browser: {client.dashboard_link}")
 
-    #         start = time.time()
-    #         velocity_ds_scattered = client.scatter(velocity_ds)
-    #         exp_ds_scattered = client.scatter(exp_ds)
-    #         profiles_scattered = client.scatter([p for _, p in profiles.iterrows()])
-    #         profiles_df_scattered = client.scatter(profiles)
+            start = time.time()
+            velocity_ds_scattered = client.scatter(velocity_ds)
+            exp_ds_scattered = client.scatter(exp_ds)
+            profiles_scattered = client.scatter([p for _, p in profiles.iterrows()])
+            profiles_df_scattered = client.scatter(profiles)
 
-    #         futures = client.map(
-    #             extract_profile,
-    #             profiles_scattered,
-    #             obs_ds=velocity_ds_scattered,
-    #             sim_ds=exp_ds_scattered,
-    #             compute_profile_normal=project["Profiles"]["compute_profile_normal"],
-    #             obs_normal_var=obs_normal_var,
-    #             obs_normal_error_var=obs_normal_error_var,
-    #             obs_normal_component_vars=obs_normal_component_vars,
-    #             obs_normal_component_error_vars=obs_normal_component_error_vars,
-    #             sim_normal_var=sim_normal_var,
-    #             sim_normal_component_vars=sim_normal_component_vars,
-    #             stats=profile_stats,
-    #             stats_kwargs=profile_stats_kwargs,
-    #         )
-    #         futures_computed = client.compute(futures)
-    #         progress(futures_computed)
-    #         obs_sims_profiles = [p.compute() for p in client.gather(futures_computed)]
+            futures = client.map(
+                extract_profile,
+                profiles_scattered,
+                obs_ds=velocity_ds_scattered,
+                sim_ds=exp_ds_scattered,
+                compute_profile_normal=project["Profiles"]["compute_profile_normal"],
+                obs_normal_var=obs_normal_var,
+                obs_normal_error_var=obs_normal_error_var,
+                obs_normal_component_vars=obs_normal_component_vars,
+                obs_normal_component_error_vars=obs_normal_component_error_vars,
+                sim_normal_var=sim_normal_var,
+                sim_normal_component_vars=sim_normal_component_vars,
+                stats=profile_stats,
+                stats_kwargs=profile_stats_kwargs,
+            )
+            futures_computed = client.compute(futures)
+            progress(futures_computed)
+            obs_sims_profiles = [p.compute() for p in client.gather(futures_computed)]
 
-    #         futures = []
-    #         for p in obs_sims_profiles:
-    #             future = client.submit(
-    #                 dd.merge,
-    #                 p[["profile_id", "rmsd", "pearson_r", "obs_flux", "sim_flux"]].to_dataframe().reset_index(),
-    #                 profiles_gp,
-    #                 on="profile_id",
-    #             )
-    #             futures.append(future)
+            futures = []
+            for p in obs_sims_profiles:
+                future = client.submit(
+                    dd.merge,
+                    p[["profile_id", "rmsd", "pearson_r", "obs_flux", "sim_flux"]].to_dataframe().reset_index(),
+                    profiles_gp,
+                    on="profile_id",
+                )
+                futures.append(future)
 
-    #         futures_computed = client.compute(futures)
-    #         progress(futures_computed)
-    #         stats_profiles = dd.concat(client.gather(futures_computed)).compute().reset_index(drop=True)
-    #         stats_profiles = gp.GeoDataFrame(stats_profiles, geometry=stats_profiles.geometry, crs=crs)
-    #         stats_file = profile_output_dir / "stats.gpkg"
-    #         stats_profiles.to_file(stats_file)
+            futures_computed = client.compute(futures)
+            progress(futures_computed)
+            stats_profiles = dd.concat(client.gather(futures_computed)).compute().reset_index(drop=True)
+            stats_profiles = gp.GeoDataFrame(stats_profiles, geometry=stats_profiles.geometry, crs=crs)
+            stats_file = profile_output_dir / "stats.gpkg"
+            stats_profiles.to_file(stats_file)
 
-    #         obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
+            obs_sims_profiles_scattered = client.scatter(obs_sims_profiles)
 
-    #         print("Plotting profiles")
-    #         futures = client.map(
-    #             plot_profile,
-    #             obs_sims_profiles_scattered,
-    #             obs_var=project["Observations"]["profile_var"],
-    #             obs_error_var=project["Observations"]["profile_error_var"],
-    #             sim_var=project["Simulations"]["profile_var"],
-    #             result_dir=profile_figure_dir,
-    #             sigma=obs_sigma,
-    #             plot_kwargs=project["Plotting"],
-    #         )
-    #         futures_computed = client.compute(futures)
-    #         progress(futures_computed)
-    #         futures_gathered = client.gather(futures_computed)
+            print("Plotting profiles")
+            futures = client.map(
+                plot_profile,
+                obs_sims_profiles_scattered,
+                obs_var=project["Observations"]["profile_var"],
+                obs_error_var=project["Observations"]["profile_error_var"],
+                sim_var=project["Simulations"]["profile_var"],
+                result_dir=profile_figure_dir,
+                sigma=obs_sigma,
+                plot_kwargs=project["Plotting"],
+            )
+            futures_computed = client.compute(futures)
+            progress(futures_computed)
+            futures_gathered = client.gather(futures_computed)
 
-    # time_elapsed = time.time() - start
-    # print(f"Time elapsed {time_elapsed:.0f}s")
+    time_elapsed = time.time() - start
+    print(f"Time elapsed {time_elapsed:.0f}s")
