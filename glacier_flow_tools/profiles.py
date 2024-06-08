@@ -45,8 +45,6 @@ from glacier_flow_tools.utils import (
 )
 
 register_colormaps()
-# The standard backend is not thread-safe, but 'agg' works with the dask client.
-matplotlib.use("agg")
 
 
 def extract_profile(
@@ -131,6 +129,7 @@ def extract_profile(
 def plot_profile(
     ds: xr.Dataset,
     result_dir: Path,
+    interactive: bool = False,
     sigma: float = 1.0,
     obs_var: str = "v",
     obs_error_var: str = "v_err",
@@ -160,6 +159,9 @@ def plot_profile(
         The profile dataset to be plotted.
     result_dir : Path
         The directory where the result PDF file will be saved.
+    interactive : bool
+        If False (default), use non-interactive matplotlib backend for plotting.
+        Needed for distributed plottinging.
     sigma : float, optional
         The sigma value to be used for the plot, which determines the width of the Gaussian kernel, by default 1.0.
     obs_var : str, optional
@@ -188,6 +190,13 @@ def plot_profile(
     --------
     >>> plot_profile(ds, result_dir, sigma=1.0, obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
     """
+
+    if interactive:
+        # The standard backend is not thread-safe, but 'agg' works with the dask client.
+        matplotlib.use("agg")
+    else:
+        matplotlib.use("module://matplotlib_inline.backend_inline")
+
     fig = ds.profiles.plot(
         sigma=sigma,
         obs_var=obs_var,
@@ -212,6 +221,7 @@ def plot_glacier(
     surface: xr.DataArray,
     overlay: xr.DataArray,
     result_dir: Union[str, Path],
+    interactive: bool = False,
     cmap: str = "viridis",
     vmin: float = 10,
     vmax: float = 1500,
@@ -235,6 +245,9 @@ def plot_glacier(
         The overlay to be added to the plot.
     result_dir : Union[str, Path]
         The directory where the result PDF file will be saved.
+    interactive : bool
+        If False (default), use non-interactive matplotlib backend for plotting.
+        Needed for distributed plottinging.
     cmap : str, optional
         The colormap to be used for the plot, by default "viridis".
     vmin : float, optional
@@ -252,6 +265,13 @@ def plot_glacier(
     --------
     >>> plot_glacier(profile_series, surface, overlay, '/path/to/result_dir')
     """
+
+    if interactive:
+        # The standard backend is not thread-safe, but 'agg' works with the dask client.
+        matplotlib.use("agg")
+    else:
+        matplotlib.use("module://matplotlib_inline.backend_inline")
+
     plt.rcParams["font.size"] = fontsize
     geom = getattr(profile_series, "geometry")
     geom_centroid = geom.centroid
@@ -1082,6 +1102,7 @@ class ProfilesMethods:
 
     def plot(
         self,
+        interactive: bool = False,
         sigma: float = 1,
         title: Union[str, None] = None,
         obs_var: str = "v",
@@ -1108,6 +1129,9 @@ class ProfilesMethods:
 
         Parameters
         ----------
+        interactive : bool
+            If False (default), use non-interactive matplotlib backend for plotting.
+            Needed for distributed plottinging.
         sigma : float, optional
             The standard deviation of the observations, by default 1.
         title : str or None, optional
@@ -1143,6 +1167,12 @@ class ProfilesMethods:
         --------
         >>> plot(sigma=1, title='My Plot', obs_var='v', obs_error_var='v_err', sim_var='velsurf_mag', palette='Paired')
         """
+
+        if interactive:
+            # The standard backend is not thread-safe, but 'agg' works with the dask client.
+            matplotlib.use("agg")
+        else:
+            matplotlib.use("module://matplotlib_inline.backend_inline")
 
         plt.rcParams["font.size"] = fontsize
         n_exps = self._obj["exp_id"].size
