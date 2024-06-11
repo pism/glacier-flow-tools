@@ -88,6 +88,7 @@ class ParseKwargs(Action):
 
 
 if __name__ == "__main__":
+    __spec__ = None
 
     # set up the option parser
     profiles_parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
