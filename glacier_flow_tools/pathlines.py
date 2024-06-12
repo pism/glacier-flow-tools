@@ -26,7 +26,7 @@ import geopandas as gp
 import numpy as np
 from numpy import ndarray
 from numpy.linalg import norm
-from shapely.geometry import Point
+from shapely.geometry import LineString, Point
 from tqdm import tqdm as tqdm_script
 from tqdm.notebook import tqdm as tqdm_notebook
 from xarray import DataArray
@@ -310,6 +310,38 @@ def get_grf_perturbed_velocities(
     return Vx, Vy
 
 
+def pathline_to_line_geopandas_dataframe(
+    points: np.ndarray, attrs: Union[dict, None] = None, crs="EPSG:3413"
+) -> gp.GeoDataFrame:
+    """
+    Convert a np.ndarray to a geopandas.GeoDataFrame using LineString.
+
+    This function takes a list of points, optionally with associated attributes, and converts it into a GeoDataFrame.
+    The points represent a pathline, which is a trajectory traced by a particle in a fluid flow.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        Points along pathlines.
+    attrs : dict, optional
+        Dictionary of attributes to be added to the GeoDataFrame. E.g. {"pathline_id": 0}.
+        If None, no attributes are added. Default is None.
+    crs : str, optional
+        Coordinate reference system to be used for the GeoDataFrame. The default is "EPSG:3413", which represents the WGS 84 / NSIDC Sea Ice Polar Stereographic North coordinate system.
+
+    Returns
+    -------
+    gp.GeoDataFrame
+        A GeoDataFrame where each row represents a pathline. If attributes are provided, they are added as columns in the GeoDataFrame.
+    """
+    geom = LineString(points)
+    pathline_dict = {"geometry": geom}
+
+    if attrs is not None:
+        pathline_dict.update(attrs)
+    return gp.GeoDataFrame.from_dict(pathline_dict, crs=crs)
+
+
 def pathline_to_geopandas_dataframe(
     points: Union[list[Point], np.ndarray], attrs: Union[dict, None] = None, crs="EPSG:3413"
 ) -> gp.GeoDataFrame:
@@ -572,7 +604,7 @@ def series_to_pathline_geopandas_dataframe(series: gp.GeoSeries, pathline: Tuple
     >>>            [4.54747351e-13],
     >>>            [2.25377857e-09]]))
 
-    >>>    pathline_df = series_to_pathline_geopandas_dataframe(series, pathline).to_dict()
+    >>>    pathline_df = series_to_pathline_geopandas_dataframe(series, pathline)
     >>>    pathline_df.to_dict()
     >>>   {'geometry': {0: <POINT (249.994 -49750.006)>,
     >>>     1: <POINT (499.975 -49500.025)>,

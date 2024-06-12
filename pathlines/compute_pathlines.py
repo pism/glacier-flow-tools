@@ -34,6 +34,7 @@ from glacier_flow_tools.geom import geopandas_dataframe_shorten_lines
 from glacier_flow_tools.interpolation import velocity
 from glacier_flow_tools.pathlines import (
     compute_pathline,
+    pathline_to_line_geopandas_dataframe,
     series_to_pathline_geopandas_dataframe,
 )
 from glacier_flow_tools.utils import tqdm_joblib
@@ -82,6 +83,8 @@ if __name__ == "__main__":
 
     p = Path(options.outfile[-1])
     p.parent.mkdir(parents=True, exist_ok=True)
+    line_p = Path("line_" + options.outfile[-1])
+    line_p.parent.mkdir(parents=True, exist_ok=True)
 
     df = gp.read_file(options.vector_url)
     starting_points_df = geopandas_dataframe_shorten_lines(df).convert.to_points()
@@ -124,3 +127,11 @@ if __name__ == "__main__":
         ]
     ).reset_index(drop=True)
     result.to_file(p, mode="w")
+
+    result = pd.concat(
+        [
+            pathline_to_line_geopandas_dataframe(pathlines[k][0], attrs={"pathline_id": [k]})
+            for k, _ in starting_points_df.iterrows()
+        ]
+    ).reset_index(drop=True)
+    result.to_file(line_p, mode="w")

@@ -2,10 +2,13 @@
 # distutils: language = c
 
 import numpy as np
+
 cimport cython
+
 from cython.parallel import prange
 
-from libc.math cimport exp, pi, sqrt, fmin, lround
+from libc.math cimport exp, fmin, lround, pi, sqrt
+
 
 cdef double kernel_gaussian(double sigma, double r_squared) nogil:
     return 1.0 / (2.0 * pi * sigma*sigma) * exp(-r_squared / (2 * sigma*sigma))
