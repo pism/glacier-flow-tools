@@ -126,7 +126,7 @@ def extract_profile(
     return os_profile
 
 
-def plot_profile(
+def plot_obs_sims_profile(
     ds: xr.Dataset,
     result_dir: Path,
     interactive: bool = False,
@@ -197,7 +197,7 @@ def plot_profile(
     else:
         matplotlib.use("module://matplotlib_inline.backend_inline")
 
-    fig = ds.profiles.plot(
+    fig = ds.profiles.plot_obs_sims(
         sigma=sigma,
         obs_var=obs_var,
         obs_error_var=obs_error_var,
@@ -491,6 +491,41 @@ def compute_tangentials(px: Union[np.ndarray, list], py: Union[np.ndarray, list]
     ts[-1] = tangential(p[-2], p[-1])
 
     return ts[:, 0], ts[:, 1]
+
+
+def extract_profile_simple(profile, ds: xr.Dataset) -> xr.Dataset:
+    """
+    Extract a simple profile from a given dataset.
+
+    Parameters
+    ----------
+    profile : GeoDataFrame
+        The profile to extract, represented as a GeoDataFrame.
+    ds : xr.Dataset
+        The input dataset from which to extract the profile.
+
+    Returns
+    -------
+    xr.Dataset
+        The extracted profile as an xarray Dataset.
+
+    Notes
+    -----
+    This function uses the 'extract_profile' method of the 'profiles' accessor of the input dataset.
+    """
+    coords = get_coordinates(profile["geometry"])
+    x, y = coords[:, 0], coords[:, 1]
+    profile_name = profile["profile_name"]
+    profile_id = profile["profile_id"]
+
+    ds_profile = ds.profiles.extract_profile(
+        x,
+        y,
+        profile_name=profile_name,
+        profile_id=profile_id,
+        compute_profile_normal=False,
+    )
+    return ds_profile
 
 
 def process_profile(
@@ -1100,7 +1135,7 @@ class ProfilesMethods:
 
         return ds
 
-    def plot(
+    def plot_obs_sims(
         self,
         interactive: bool = False,
         sigma: float = 1,
@@ -1211,6 +1246,98 @@ class ProfilesMethods:
                 color=palette[0],
                 label=exp_label,
                 **sim_kwargs,
+            )
+        ax.set_xlabel("Distance along profile (m)")
+        ax.set_ylabel(plot_kwargs["y_axis_label"])
+        legend = ax.legend(loc="upper left")
+        legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+
+        if title is None:
+            title = self._obj["profile_name"].values.item()
+        plt.title(title)
+        return fig
+
+    def plot(
+        self,
+        interactive: bool = False,
+        title: Union[str, None] = None,
+        plot_var: str = "thickness",
+        palette: str = "Paired",
+        kwargs: dict = {"lw": 0.5, "marker": "o", "ms": 1.5},
+        figsize=[3.2, 3.2],
+        fontsize: float = 6,
+        plot_kwargs: dict = {
+            "x_axis_label": "Distance (m)",
+            "y_axis_label": "Ice Thickness",
+        },
+    ) -> plt.Figure:
+        """
+        Plot profile.
+
+        This function plots a variable along a profile.
+
+        Parameters
+        ----------
+        interactive : bool, optional
+            If False (default), use non-interactive matplotlib backend for plotting.
+            Needed for distributed plotting.
+        title : str or None, optional
+            The title of the plot, by default None.
+        plot_var : str, optional
+            The variable name for the plot, by default 'thickness'.
+        palette : str, optional
+            The color palette to use for the plot, by default 'Paired'.
+        kwargs : dict, optional
+            Additional keyword arguments to pass to the plot function for the plot, by default {"lw": 0.5, "marker": "o", "ms": 1.5}.
+        figsize : list, optional
+            The size of the figure in inches, by default [3.2, 3.2].
+        fontsize : float, optional
+            The font size to be used for the plot, by default 6.
+        plot_kwargs : dict, optional
+            Additional keyword arguments to pass to the plot function for the figure and axis, by default {"x_axis_label": "Distance (m)",
+              "y_axis_label": "Ice Thickness"}.
+
+        Returns
+        -------
+        plt.Figure
+            The created matplotlib Figure object.
+
+        Examples
+        --------
+        >>> plot(sigma=1, title='My Plot', plot_var='v', palette='Paired')
+        """
+
+        if interactive:
+            # The standard backend is not thread-safe, but 'agg' works with the dask client.
+            matplotlib.use("agg")
+        else:
+            matplotlib.use("module://matplotlib_inline.backend_inline")
+
+        plt.rcParams["font.size"] = fontsize
+        n_exps = self._obj["exp_id"].size
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+        palette = sns.color_palette(palette, n_colors=n_exps)
+        # Loop over the data and plot each line with a different color
+        if n_exps > 1:
+            for i in range(n_exps):
+                exp_label = f"""{self._obj["exp_id"].values[i].item()}"""
+                ax.plot(
+                    self._obj["profile_axis"],
+                    np.squeeze(self._obj[plot_var].isel(exp_id=i).T),
+                    color=palette[i],
+                    label=exp_label,
+                    **kwargs,
+                )
+        else:
+            exp_label = f"""{self._obj["exp_id"].values.item()}"""
+            ax.plot(
+                self._obj["profile_axis"],
+                np.squeeze(self._obj[plot_var].T),
+                color=palette[0],
+                label=exp_label,
+                **kwargs,
             )
         ax.set_xlabel("Distance along profile (m)")
         ax.set_ylabel(plot_kwargs["y_axis_label"])

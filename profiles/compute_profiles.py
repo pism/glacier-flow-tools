@@ -36,7 +36,7 @@ from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster, progress
 from distributed.utils import silence_logging_cmgr
 
-from glacier_flow_tools.profiles import extract_profile, plot_profile
+from glacier_flow_tools.profiles import extract_profile, plot_obs_sims_profile
 from glacier_flow_tools.utils import preprocess_nc
 
 default_project_file_url = files("glacier_flow_tools.data").joinpath("default.toml")
@@ -313,7 +313,7 @@ if __name__ == "__main__":
 
             print("Plotting profiles")
             futures = client.map(
-                plot_profile,
+                plot_obs_sims_profile,
                 obs_sims_profiles_scattered,
                 obs_var=project["Observations"]["profile_var"],
                 obs_error_var=project["Observations"]["profile_error_var"],
