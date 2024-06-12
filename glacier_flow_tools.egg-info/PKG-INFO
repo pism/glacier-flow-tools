@@ -1,0 +1,77 @@
+Metadata-Version: 2.1
+Name: glacier-flow-tools
+Version: 0.1.1
+Summary: Tools for analysing glacier flow.
+Maintainer-email: Andy Aschwanden <andy.aschwanden@gmail.com>
+License: GPL 3.0
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Natural Language :: English
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Postprocessing
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: bokeh
+Requires-Dist: Cartopy
+Requires-Dist: cftime
+Requires-Dist: cf_xarray
+Requires-Dist: dask
+Requires-Dist: dask_expr
+Requires-Dist: dask_geopandas
+Requires-Dist: distributed
+Requires-Dist: geocube
+Requires-Dist: geopandas
+Requires-Dist: h5netcdf
+Requires-Dist: ipywidgets
+Requires-Dist: ipyleaflet
+Requires-Dist: ipyfilechooser
+Requires-Dist: joblib
+Requires-Dist: matplotlib
+Requires-Dist: notebook
+Requires-Dist: numpy<2.0
+Requires-Dist: pandas
+Requires-Dist: pint_xarray
+Requires-Dist: seaborn
+Requires-Dist: Shapely
+Requires-Dist: toml
+Requires-Dist: types-toml
+Requires-Dist: tqdm
+Requires-Dist: xarray==2024.2.0
+
+[![License: GPL-3.0](https://img.shields.io:/github/license/pism/pypac)](https://opensource.org/licenses/GPL-3.0)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
+
+# Glacier Flow Tools
+
+Glacier Flow Tools facilitates analysis of glacier flow. It provides modules to compute pathlines (trajectories), compute flow across profiles (flux gates), etc. This tools is currently under development.
+
+## Installation
+
+Get glacier-flow-tools source from GitHub:
+
+    $ git clone git@github.com:pism/glacier-flow-tools.git
+    $ cd glacier-flow-tools
+
+Optionally create Conda environment named *glacier-flow-tools*:
+
+    $ conda env create -f environment.yml
+    $ conda activate glacier-flow-tools
+
+or using Mamba instead:
+
+    $ mamba env create -f environment.yml
+    $ mamba activate glacier-flow-tools
+
+
+Install glacier-flow-tools:
+
+    $ pip install .
+
+
+## Examples
+
+![Pathlines starting from the Jakobshaven Isbræ flux gate.](https://github.com/pism/glacier-flow-tools/blob/main/images/jak_obs_speed.png)

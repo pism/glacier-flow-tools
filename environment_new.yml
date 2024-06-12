@@ -1,0 +1,30 @@
+name: glacier-flow-tools
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.7
+  - setuptools
+  - pre-commit
+  - gsl
+
+  # Testing
+  - pytest
+  - mypy
+  - pylint
+
+  # Doc dependencies
+  - sphinx
+  - pydata-sphinx-theme
+  - sphinx-book-theme>=1.0
+  - sphinxcontrib-programoutput
+  - sphinx-design
+  - sphinx-autodoc-typehints
+  - sphinx-gallery
+  - autovizwidget
+  - graphviz
+  - myst-nb
+  - numpydoc
+
+  - pip
+  - pip:
+      - -r requirements.txt
