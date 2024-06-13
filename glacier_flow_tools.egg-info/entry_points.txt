@@ -1,0 +1,3 @@
+[console_scripts]
+compute_pathlines = glacier_flow_tools.pathlines:compute_pathlines
+compute_profiles = glacier_flow_tools.profiles:compute_profiles
