@@ -102,6 +102,7 @@ def compute_pathline(
     hmin: float = 0.0001,
     hmax: float = 10,
     tol: float = 1e-4,
+    v_threshold: float = 0.0,
     notebook: bool = False,
     progress: bool = False,
     progress_kwargs: Dict = {"leave": False, "position": 0},
@@ -129,6 +130,8 @@ def compute_pathline(
         The maximum step size for the integration. Default is 10.
     tol : float, optional
         The error tolerance for the integration. Default is 1e-4.
+    v_threshold : float, optional
+        A velocity threshold below which the solver stops. Default is 0.
     notebook : bool, optional
         If True, a progress bar is displayed in a Jupyter notebook. Default is False.
     progress : bool, optional
@@ -202,14 +205,16 @@ def compute_pathline(
     error_estimate = np.empty(0, dtype=float)
 
     pts = np.vstack([pts, x])
-    velocities = np.vstack([velocities, f(point, start_time, *f_args)])
+    vel = f(point, start_time, *f_args)
+    v = np.sqrt(vel[0] ** 2 + vel[1] ** 2)
+    velocities = np.vstack([velocities, vel])
     time = np.append(time, start_time)
     error_estimate = np.append(error_estimate, 0.0)
 
     k = 0
     p_bar = tqdm_notebook if notebook else tqdm_script
     with p_bar(desc="Integrating pathline", total=end_time, **progress_kwargs) if progress else nullcontext():
-        while t < end_time:
+        while (t < end_time) and (v > v_threshold):
 
             if np.isclose(t + h, end_time, rtol=1e-5):
                 h = end_time - t
@@ -246,8 +251,11 @@ def compute_pathline(
                     f"Error: Could not converge to the required tolerance {tol:e} with minimum stepsize  {hmin:e}"
                 )
 
+            vel = f(point, start_time, *f_args)
+            v = np.sqrt(vel[0] ** 2 + vel[1] ** 2)
+
             pts = np.append(pts, [x], axis=0)
-            velocities = np.append(velocities, [f(x, start_time, *f_args)], axis=0)
+            velocities = np.append(velocities, [vel], axis=0)
             time = np.append(time, t)
             error_estimate = np.append(error_estimate, r)
             k += 1
@@ -334,12 +342,17 @@ def pathline_to_line_geopandas_dataframe(
     gp.GeoDataFrame
         A GeoDataFrame where each row represents a pathline. If attributes are provided, they are added as columns in the GeoDataFrame.
     """
-    geom = LineString(points)
-    pathline_dict = {"geometry": geom}
+    if len(points) > 1:
+        geom = LineString(points)
+        pathline_dict = {"geometry": geom}
 
-    if attrs is not None:
-        pathline_dict.update(attrs)
-    return gp.GeoDataFrame.from_dict(pathline_dict, crs=crs)
+        if attrs is not None:
+            pathline_dict.update(attrs)
+        gdf = gp.GeoDataFrame.from_dict(pathline_dict, crs=crs)
+
+    else:
+        gdf = gp.GeoDataFrame()
+    return gdf
 
 
 def pathline_to_geopandas_dataframe(

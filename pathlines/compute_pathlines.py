@@ -77,6 +77,12 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        "--v_threshold",
+        help="""Threshold velocity below which solver stops Default is 0.0.""",
+        default=0.0,
+        type=float,
+    )
     parser.add_argument("outfile", nargs=1, help="Geopandas output file", default="pathlines.gpkg")
 
     options = parser.parse_args()
@@ -115,23 +121,23 @@ if __name__ == "__main__":
                 tol=options.tol,
                 start_time=options.start_time,
                 end_time=options.end_time,
+                v_threshold=options.v_threshold,
                 progress=False,
                 progress_kwargs={"leave": False, "position": index},
             )
             for index, df in starting_points_df.iterrows()
         )
-    result = pd.concat(
-        [
-            series_to_pathline_geopandas_dataframe(s.drop("geometry", errors="ignore"), pathlines[k])
-            for k, s in starting_points_df.iterrows()
-        ]
-    ).reset_index(drop=True)
+    ps = [
+        series_to_pathline_geopandas_dataframe(s.drop("geometry", errors="ignore"), pathlines[k])
+        for k, s in starting_points_df.iterrows()
+    ]
+
+    result = pd.concat(ps).reset_index(drop=True)
     result.to_file(p, mode="w")
 
-    result = pd.concat(
-        [
-            pathline_to_line_geopandas_dataframe(pathlines[k][0], attrs={"pathline_id": [k]})
-            for k, _ in starting_points_df.iterrows()
-        ]
-    ).reset_index(drop=True)
+    ps = [
+        pathline_to_line_geopandas_dataframe(pathlines[k][0], attrs={"pathline_id": [k]})
+        for k, _ in starting_points_df.iterrows()
+    ]
+    result = pd.concat(ps).reset_index(drop=True)
     result.to_file(line_p, mode="w")
