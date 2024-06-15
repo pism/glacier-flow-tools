@@ -3,6 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11.7
+  - cython
   - mpich-mpicxx
   - setuptools
   - pre-commit
