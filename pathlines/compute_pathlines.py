@@ -20,6 +20,7 @@
 Calculate pathlines (trajectories).
 """
 
+import time
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
 
@@ -58,7 +59,7 @@ if __name__ == "__main__":
         type=float,
         default=1.0,
     )
-    parser.add_argument("--tol", help="""Adaptive time stepping tolerance.""", type=float, default=1.0)
+    parser.add_argument("--tol", help="""Adaptive time stepping tolerance. Default=1e-3""", type=float, default=1e-3)
     parser.add_argument(
         "--start_time",
         help="""Start time. Default=0.0""",
@@ -78,6 +79,13 @@ if __name__ == "__main__":
         default=False,
     )
     parser.add_argument(
+        "--output_type",
+        help="""Save result as Points or LineStrings.""",
+        choices=["point", "line"],
+        default="point",
+    )
+
+    parser.add_argument(
         "--v_threshold",
         help="""Threshold velocity below which solver stops Default is 0.0.""",
         default=0.0,
@@ -89,8 +97,6 @@ if __name__ == "__main__":
 
     p = Path(options.outfile[-1])
     p.parent.mkdir(parents=True, exist_ok=True)
-    line_p = Path("line_" + options.outfile[-1])
-    line_p.parent.mkdir(parents=True, exist_ok=True)
 
     df = gp.read_file(options.vector_url)
     starting_points_df = geopandas_dataframe_shorten_lines(df).convert.to_points()
@@ -108,6 +114,7 @@ if __name__ == "__main__":
 
     n_pts = len(starting_points_df)
 
+    start = time.time()
     with tqdm_joblib(
         tqdm(desc="Processing Pathlines", total=n_pts, leave=True, position=0)
     ) as progress_bar:  # pylint: disable=unused-variable
@@ -123,21 +130,23 @@ if __name__ == "__main__":
                 end_time=options.end_time,
                 v_threshold=options.v_threshold,
                 progress=False,
-                progress_kwargs={"leave": False, "position": index},
             )
             for index, df in starting_points_df.iterrows()
         )
-    ps = [
-        series_to_pathline_geopandas_dataframe(s.drop("geometry", errors="ignore"), pathlines[k])
-        for k, s in starting_points_df.iterrows()
-    ]
+    time_elapsed = time.time() - start
+    print(f"Time elapsed {time_elapsed:.0f}s\n")
 
+    print(f"Saving {p}")
+
+    if options.output_type == "point":
+        ps = [
+            series_to_pathline_geopandas_dataframe(s.drop("geometry", errors="ignore"), pathlines[k])
+            for k, s in starting_points_df.iterrows()
+        ]
+    else:
+        ps = [
+            pathline_to_line_geopandas_dataframe(pathlines[k][0], attrs={"pathline_id": [k]})
+            for k, _ in starting_points_df.iterrows()
+        ]
     result = pd.concat(ps).reset_index(drop=True)
     result.to_file(p, mode="w")
-
-    ps = [
-        pathline_to_line_geopandas_dataframe(pathlines[k][0], attrs={"pathline_id": [k]})
-        for k, _ in starting_points_df.iterrows()
-    ]
-    result = pd.concat(ps).reset_index(drop=True)
-    result.to_file(line_p, mode="w")

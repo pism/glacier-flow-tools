@@ -193,9 +193,9 @@ def plot_obs_sims_profile(
 
     if interactive:
         # The standard backend is not thread-safe, but 'agg' works with the dask client.
-        matplotlib.use("agg")
-    else:
         matplotlib.use("module://matplotlib_inline.backend_inline")
+    else:
+        matplotlib.use("agg")
 
     fig = ds.profiles.plot_obs_sims(
         sigma=sigma,
@@ -1309,10 +1309,10 @@ class ProfilesMethods:
         """
 
         if interactive:
+            matplotlib.use("module://matplotlib_inline.backend_inline")
+        else:
             # The standard backend is not thread-safe, but 'agg' works with the dask client.
             matplotlib.use("agg")
-        else:
-            matplotlib.use("module://matplotlib_inline.backend_inline")
 
         plt.rcParams["font.size"] = fontsize
         n_exps = self._obj["exp_id"].size

@@ -204,14 +204,13 @@ def compute_pathline(
     time = np.empty(0, dtype=float)
     error_estimate = np.empty(0, dtype=float)
 
-    pts = np.vstack([pts, x])
+    # pts = np.vstack([pts, x])
     vel = f(point, start_time, *f_args)
     v = np.sqrt(vel[0] ** 2 + vel[1] ** 2)
-    velocities = np.vstack([velocities, vel])
-    time = np.append(time, start_time)
-    error_estimate = np.append(error_estimate, 0.0)
+    # velocities = np.vstack([velocities, vel])
+    # time = np.append(time, start_time)
+    # error_estimate = np.append(error_estimate, 0.0)
 
-    k = 0
     p_bar = tqdm_notebook if notebook else tqdm_script
     with p_bar(desc="Integrating pathline", total=end_time, **progress_kwargs) if progress else nullcontext():
         while (t < end_time) and (v > v_threshold):
@@ -240,25 +239,24 @@ def compute_pathline(
 
             r = norm(r1 * k1 + r3 * k3 + r4 * k4 + r5 * k5 + r6 * k6) / h
             if r <= tol:
+
+                pts = np.append(pts, [x], axis=0)
+                velocities = np.append(velocities, [vel], axis=0)
+                time = np.append(time, t)
+                error_estimate = np.append(error_estimate, r)
+
                 t = t + h
                 x = x + c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
+
+                vel = f(x, t, *f_args)
+                v = np.sqrt(vel[0] ** 2 + vel[1] ** 2)
 
             s = (tol / r) ** 0.25
             h = np.minimum(h * s, hmax)
 
             if (h < hmin) and (t < end_time):
-                raise RuntimeError(
-                    f"Error: Could not converge to the required tolerance {tol:e} with minimum stepsize  {hmin:e}"
-                )
-
-            vel = f(point, start_time, *f_args)
-            v = np.sqrt(vel[0] ** 2 + vel[1] ** 2)
-
-            pts = np.append(pts, [x], axis=0)
-            velocities = np.append(velocities, [vel], axis=0)
-            time = np.append(time, t)
-            error_estimate = np.append(error_estimate, r)
-            k += 1
+                print(f"Error: Could not converge to the required tolerance {tol:e} with minimum stepsize  {hmin:e}")
+                continue
 
     return pts, velocities, time, error_estimate
 

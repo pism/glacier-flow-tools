@@ -326,5 +326,5 @@ if __name__ == "__main__":
             progress(futures_computed)
             futures_gathered = client.gather(futures_computed)
 
-    time_elapsed = time.time() - start
-    print(f"Time elapsed {time_elapsed:.0f}s")
+            time_elapsed = time.time() - start
+            print(f"Time elapsed {time_elapsed:.0f}s")
