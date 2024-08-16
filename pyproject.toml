@@ -37,8 +37,8 @@ dependencies = {file = ["requirements.txt"]}
 [tool.setuptools]
 py-modules = ["glacier_flow_tools"]
 
-[tool.setuptools.cmdclass]
-build_py = "build.build_py"
+# [tool.setuptools.cmdclass]
+# build_py = "build.build_py"
 
 [tool.isort]
 multi_line_output = 3
