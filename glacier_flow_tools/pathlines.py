@@ -92,6 +92,10 @@ class nullcontext:
         return False
 
 
+def compute_pathline_with_progress(args):
+    return compute_pathline(*args)
+
+
 # pylint: disable=too-many-statements
 def compute_pathline(
     point: Union[list, ndarray, Point],
@@ -255,7 +259,9 @@ def compute_pathline(
             h = np.minimum(h * s, hmax)
 
             if (h < hmin) and (t < end_time):
-                print(f"Error: Could not converge to the required tolerance {tol:e} with minimum stepsize  {hmin:e}")
+                print(
+                    f"Error: Could not converge to the required tolerance {tol:e} with minimum stepsize  {hmin:e} at t={t}"
+                )
                 continue
 
     return pts, velocities, time, error_estimate

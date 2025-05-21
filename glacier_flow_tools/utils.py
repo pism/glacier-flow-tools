@@ -116,7 +116,7 @@ def blend_multiply(rgb: np.ndarray, intensity: np.ndarray) -> np.ndarray:
     return img_scaled * alpha + intensity * (1.0 - alpha)
 
 
-def register_colormaps(path: Optional[Union[str, Path]] = None):
+def register_colormaps(path: Optional[str | Path] = None):
     """
     Register colormaps from text files in a specified directory or in the 'glacier_flow_tools.data' directory.
 

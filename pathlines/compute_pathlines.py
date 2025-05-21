@@ -40,6 +40,7 @@ from glacier_flow_tools.pathlines import (
 )
 from glacier_flow_tools.utils import tqdm_joblib
 
+
 if __name__ == "__main__":
     # set up the option parser
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -115,6 +116,7 @@ if __name__ == "__main__":
     n_pts = len(starting_points_df)
 
     start = time.time()
+
     with tqdm_joblib(
         tqdm(desc="Processing Pathlines", total=n_pts, leave=True, position=0)
     ) as progress_bar:  # pylint: disable=unused-variable
@@ -145,8 +147,10 @@ if __name__ == "__main__":
         ]
     else:
         ps = [
-            pathline_to_line_geopandas_dataframe(pathlines[k][0], attrs={"pathline_id": [k]})
-            for k, _ in starting_points_df.iterrows()
+            pathline_to_line_geopandas_dataframe(
+                pathlines[k][0], attrs={"pathline_id": [k], "id": df["id"], "name": df["name"]}
+            )
+            for k, df in starting_points_df.iterrows()
         ]
     result = pd.concat(ps).reset_index(drop=True)
     result.to_file(p, mode="w")
