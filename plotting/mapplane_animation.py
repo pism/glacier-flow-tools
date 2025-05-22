@@ -51,13 +51,17 @@ def plot_glacier(
     overlay: xr.DataArray,
     vert_exag: float = 0.015,
     sealevel: float | None = None,
+    timeseries: xr.Dataset | None = None,
     cmap: str = "viridis",
     interactive: bool = False,
     title: str | None = None,
-    vmin: float = 10,
+    vmin: float = 8,
     vmax: float = 1500,
-    fontsize: float = 6,
+    x_lim: list[int] = [1980, 2020],
+    y_lim: list[float] = [-10_000, 10_000],
+    fontsize: float = 10,
     figwidth: float = 3.2,
+    figheight: float = 3.2,
     sealevel_color="#bdd7e7",
 ) -> plt.figure:
     """
@@ -121,8 +125,14 @@ def plot_glacier(
     wi = figwidth  # width in inches
     hi = wi * ar  # height in inches
 
-    fig = plt.figure(figsize=(wi, hi))
-    ax = fig.add_subplot(111, projection=cartopy_crs)
+    if timeseries is not None:
+        fig = plt.figure(figsize=(figwidth, figheight))
+        ax_ts = fig.add_subplot(1, 2, 1)
+        ax = fig.add_subplot(1, 2, 2, projection=cartopy_crs)
+    else:
+        fig = plt.figure(figsize=(wi, hi))
+        ax = fig.add_subplot(111, projection=cartopy_crs)
+
     if sealevel is not None:
         if isinstance(sealevel, float):
             sealevel_da = xr.zeros_like(glacier_overlay) + sealevel
@@ -137,22 +147,41 @@ def plot_glacier(
     ax.imshow(rgb, extent=extent, origin="lower", transform=cartopy_crs)
     ax.set_title(title)
 
-    # ax.set_extent(extent, crs=cartopy_crs)
+    if timeseries is not None:
+        try:
+            timeseries.plot(ax=ax_ts, hue="Area", lw=1.5)
+            l = ax_ts.get_legend()
+            l.set_loc("upper left")
+            l.set_frame_on(False)
+        except:
+            pass
+        ax_ts.set_box_aspect(1)
+        ax_ts.set_ylabel("""Area (1)""")
+        ax_ts.grid()
+        ax_ts.set_xlim(
+            np.datetime64(f"{x_lim[0]}-01-01"),
+            np.datetime64(f"{x_lim[1]}-01-01"),
+        )
+        ax_ts.set_ylim(*y_lim)
+    else:
+        # Get proper ratio here
+        xmin, xmax = ax.get_xbound()
+        ymin, ymax = ax.get_ybound()
+        y2x_ratio = (ymax - ymin) / (xmax - xmin)
+        fig.set_figheight(wi * y2x_ratio)
+
     fig.colorbar(im, ax=ax, shrink=0.5, pad=0.025, label=overlay.units, extend="both")
     plt.draw()
 
-    # Get proper ratio here
-    xmin, xmax = ax.get_xbound()
-    ymin, ymax = ax.get_ybound()
-    y2x_ratio = (ymax - ymin) / (xmax - xmin)
-    fig.set_figheight(wi * y2x_ratio)
     fig.tight_layout()
     return fig
 
 
-def plot_mapplane(surface, overlay, k: int = 0, p: str | Path = "result", **kwargs):
+def plot_mapplane(
+    surface, overlay, k: int = 0, timeseries: xr.Dataset | None = None, p: str | Path = "result", **kwargs
+):
     title = surface.time.values
-    fig = plot_glacier(surface, overlay, title=title, **kwargs)
+    fig = plot_glacier(surface, overlay, timeseries=timeseries.isel(time=slice(0, k)), title=title, **kwargs)
     p = Path(p)
     p.mkdir(parents=True, exist_ok=True)
     fname = p / Path(f"frame_{k:04}")
@@ -190,6 +219,26 @@ if __name__ == "__main__":
     print(f"Open client in browser: {client.dashboard_link}")
     ds["velsurf_mag"] = ds["velsurf_mag"].where(ds["thk"] > 10, other=np.nan)
     ds["usurf"] = ds["usurf"].where(ds["usurf"] > 0, other=np.nan)
+    mask = ds.mask
+    ice_thickness = ds.usurf
+    land = mask.where(ice_thickness < 10 & (mask != (3 or 4)))
+    ice = mask.where(ice_thickness > 10)
+    ocean = mask.where(mask == 4)
+    dx = ds.x.diff("x").mean().item() / 1000
+    dy = ds.y.diff("y").mean().item() / 1000
+    cumulative_ocean_area = ocean.sum(dim=["x", "y"]) * dx * dy
+    cumulative_ocean_area -= cumulative_ocean_area.isel(time=0)
+    cumulative_ocean_area = cumulative_ocean_area.expand_dims({"Area": ["Ocean"]})
+
+    cumulative_land_area = land.sum(dim=["x", "y"]) * dx * dy
+    cumulative_land_area -= cumulative_land_area.isel(time=0)
+    cumulative_land_area = cumulative_land_area.expand_dims({"Area": ["Land"]})
+
+    cumulative_ice_area = ice.sum(dim=["x", "y"]) * dx * dy
+    cumulative_ice_area -= cumulative_ice_area.isel(time=0)
+    cumulative_ice_area = cumulative_ice_area.expand_dims({"Area": ["Ice"]})
+
+    cumulative_areas = xr.merge([cumulative_ice_area, cumulative_land_area, cumulative_ocean_area]).mask
     surfaces = [ds.isel({"time": k})["usurf"].load() for k, _ in enumerate(ds.time)]
     overlays = [ds.isel({"time": k})["velsurf_mag"].load() for k, _ in enumerate(ds.time)]
 
@@ -198,7 +247,12 @@ if __name__ == "__main__":
         surfaces,
         overlays,
         range(ds.time.size),
+        timeseries=cumulative_areas,
         sealevel=0.0,
+        y_lim=[-60_000, 100_000],
+        fontsize=11,
+        figwidth=16,
+        figheight=9,
         p=options.result_dir,
         cmap="speed_colorblind",
     )
