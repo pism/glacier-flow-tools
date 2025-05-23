@@ -194,6 +194,7 @@ def plot_mapplane(
     surface, overlay, k: int = 0, timeseries: xr.Dataset | None = None, p: str | Path = "result", **kwargs
 ):
     title = surface.time.values
+    print(surface.time.values)
     fig = plot_glacier(surface, overlay, timeseries=timeseries.isel(time=slice(0, k)), title=title, **kwargs)
     p = Path(p)
     p.mkdir(parents=True, exist_ok=True)
@@ -235,7 +236,7 @@ if __name__ == "__main__":
     ds = (
         xr.open_dataset(infile[0], decode_times=time_coder, decode_timedelta=True)
         .sel({"x": slice(*x_bnds), "y": slice(*y_bnds)})
-        .chunk({"time": step, "x": 1200, "y": 1200})
+        .chunk({"time": step, "x": -1, "y": -1})
     )
     ice_thickness = ds.thk
     usurf = ds.usurf
@@ -265,33 +266,14 @@ if __name__ == "__main__":
     with ProgressBar():
         print("Calculating cumulative values")
         cumulative_areas = xr.merge([cumulative_ice_area, cumulative_land_area, cumulative_ocean_area]).mask.compute()
-    # print("Plotting...")
-    # for j in tqdm(range(0, ds.time.size)):
-    #     s = surface.isel({"time": j})
-    #     o = speed.isel({"time": j})
-    #     plot_mapplane(
-    #         s,
-    #         o,
-    #         j,
-    #         timeseries=cumulative_areas,
-    #         sealevel=0.0,
-    #         vmax=1000,
-    #         x_lim=[2008, 3007],
-    #         y_lim=[-1_750_000, 1_750_000],
-    #         fontsize=11,
-    #         figwidth=16,
-    #         figheight=9,
-    #         p=options.result_dir,
-    #         cmap="speed_colorblind_1000",
-    #     )
 
     client = Client()
     print(f"Open client in browser: {client.dashboard_link}")
     for i in range(0, ds.time.size, step):
         j = min(i + step, ds.time.size - 1)
         print(f"Scattering from {ds.time.isel(time=i).values} to {ds.time.isel(time=j).values}")
-        surfaces = client.scatter([surface.isel({"time": k}) for k, _ in enumerate(range(i, j))])
-        overlays = client.scatter([speed.isel({"time": k}) for k, _ in enumerate(range(i, j))])
+        surfaces = client.scatter([surface.isel({"time": k}) for k in range(i, j)])
+        overlays = client.scatter([speed.isel({"time": k}) for k in range(i, j)])
         print(f"Plotting from {ds.time.isel(time=i).values} to {ds.time.isel(time=j).values}")
         futures = client.map(
             plot_mapplane,
