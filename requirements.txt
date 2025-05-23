@@ -15,7 +15,7 @@ ipyfilechooser
 joblib
 matplotlib
 notebook
-numpy<2.0
+numpy
 pandas
 pint_xarray
 seaborn
@@ -23,4 +23,5 @@ Shapely
 toml
 types-toml
 tqdm
-xarray==2024.2.0  # https://github.com/pydata/xarray/issues/8909 bug
+#xarray==2024.2.0  # https://github.com/pydata/xarray/issues/8909 bug
+xarray

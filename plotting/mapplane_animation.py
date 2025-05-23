@@ -24,6 +24,7 @@ from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
 
 import cartopy.crs as ccrs
+import cftime
 import cf_xarray.units  # pylint: disable=unused-import
 
 import matplotlib
@@ -32,6 +33,8 @@ from matplotlib.colors import LightSource
 from matplotlib.colors import ListedColormap
 import matplotlib.pylab as plt
 from shapely import get_coordinates
+import nc_time_axis
+from tqdm.auto import tqdm
 
 from glacier_flow_tools.utils import (
     blend_multiply,
@@ -41,6 +44,7 @@ from glacier_flow_tools.utils import (
 
 import numpy as np
 import xarray as xr
+from dask.diagnostics import ProgressBar
 from dask.distributed import Client, progress
 
 xr.set_options(keep_attrs=True)
@@ -55,8 +59,9 @@ def plot_glacier(
     cmap: str = "viridis",
     interactive: bool = False,
     title: str | None = None,
-    vmin: float = 8,
+    vmin: float = 10,
     vmax: float = 1500,
+    ticks: list[float] | np.ndarray = [10, 100, 250, 500, 1000],
     x_lim: list[int] = [1980, 2020],
     y_lim: list[float] = [-10_000, 10_000],
     fontsize: float = 10,
@@ -97,16 +102,16 @@ def plot_glacier(
     >>> plot_glacier(profile_series, surface, overlay, '/path/to/result_dir')
     """
 
-    if interactive:
-        # The standard backend is not thread-safe, but 'agg' works with the dask client.
-        matplotlib.use("agg")
-    else:
-        matplotlib.use("module://matplotlib_inline.backend_inline")
-
     try:
         register_colormaps()
     except:
         pass
+
+    if interactive:
+        # The standard backend is not thread-safe, but 'agg' works with the dask client.
+        matplotlib.use("module://matplotlib_inline.backend_inline")
+    else:
+        matplotlib.use("agg")
 
     extent = None
     plt.rcParams["font.size"] = fontsize
@@ -156,13 +161,21 @@ def plot_glacier(
         except:
             pass
         ax_ts.set_box_aspect(1)
-        ax_ts.set_ylabel("""Area (1)""")
+        ax_ts.set_ylabel("""Area (km2)""")
         ax_ts.grid()
-        ax_ts.set_xlim(
-            np.datetime64(f"{x_lim[0]}-01-01"),
-            np.datetime64(f"{x_lim[1]}-01-01"),
-        )
+        try:
+            ax_ts.set_xlim(
+                np.datetime64(f"{x_lim[0]}-01-01"),
+                np.datetime64(f"{x_lim[1]}-01-01"),
+            )
+        except:
+            ax_ts.set_xlim(
+                cftime.datetime(x_lim[0], 1, 1),
+                cftime.datetime(x_lim[1], 1, 1),
+            )
+
         ax_ts.set_ylim(*y_lim)
+        ax_ts.set_title("Area")
     else:
         # Get proper ratio here
         xmin, xmax = ax.get_xbound()
@@ -170,7 +183,7 @@ def plot_glacier(
         y2x_ratio = (ymax - ymin) / (xmax - xmin)
         fig.set_figheight(wi * y2x_ratio)
 
-    fig.colorbar(im, ax=ax, shrink=0.5, pad=0.025, label=overlay.units, extend="both")
+    fig.colorbar(im, ax=ax, shrink=0.5, pad=0.025, label=overlay.units, extend="both", ticks=ticks)
     plt.draw()
 
     fig.tight_layout()
@@ -186,6 +199,7 @@ def plot_mapplane(
     p.mkdir(parents=True, exist_ok=True)
     fname = p / Path(f"frame_{k:04}")
     fig.savefig(fname, dpi=600)
+    plt.close()
     del fig
 
 
@@ -209,23 +223,33 @@ if __name__ == "__main__":
 
     options, unknown = parser.parse_known_args()
     infile = options.FILE
+    step = 40
 
     # x_bnds = [-212900, 291100]
     # y_bnds = [-2340650, -2016650]
     x_bnds = [None, None]
     y_bnds = [None, None]
-    client = Client()
-    ds = xr.open_dataset(infile[0]).sel({"x": slice(*x_bnds), "y": slice(*y_bnds)})
-    print(f"Open client in browser: {client.dashboard_link}")
-    ds["velsurf_mag"] = ds["velsurf_mag"].where(ds["thk"] > 10, other=np.nan)
-    ds["usurf"] = ds["usurf"].where(ds["usurf"] > 0, other=np.nan)
+    # client = Client()
+    # print(f"Open client in browser: {client.dashboard_link}")
+    time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+    ds = (
+        xr.open_dataset(infile[0], decode_times=time_coder, decode_timedelta=True)
+        .sel({"x": slice(*x_bnds), "y": slice(*y_bnds)})
+        .chunk({"time": step, "x": 1200, "y": 1200})
+    )
+    ice_thickness = ds.thk
+    usurf = ds.usurf
+    bed = ds.topg
+    speed = ds["velsurf_mag"].where(ice_thickness > 10, other=np.nan)
+    surface = usurf.where(ice_thickness > 10, other=bed)
+    surface = surface.where(surface > 0)
     mask = ds.mask
-    ice_thickness = ds.usurf
-    land = mask.where(ice_thickness < 10 & (mask != (3 or 4)))
-    ice = mask.where(ice_thickness > 10)
-    ocean = mask.where(mask == 4)
+    land = mask == 0
+    ocean = mask == 4
+    ice = (mask == 3) | (mask == 2)
     dx = ds.x.diff("x").mean().item() / 1000
     dy = ds.y.diff("y").mean().item() / 1000
+
     cumulative_ocean_area = ocean.sum(dim=["x", "y"]) * dx * dy
     cumulative_ocean_area -= cumulative_ocean_area.isel(time=0)
     cumulative_ocean_area = cumulative_ocean_area.expand_dims({"Area": ["Ocean"]})
@@ -238,23 +262,52 @@ if __name__ == "__main__":
     cumulative_ice_area -= cumulative_ice_area.isel(time=0)
     cumulative_ice_area = cumulative_ice_area.expand_dims({"Area": ["Ice"]})
 
-    cumulative_areas = xr.merge([cumulative_ice_area, cumulative_land_area, cumulative_ocean_area]).mask
-    surfaces = [ds.isel({"time": k})["usurf"].load() for k, _ in enumerate(ds.time)]
-    overlays = [ds.isel({"time": k})["velsurf_mag"].load() for k, _ in enumerate(ds.time)]
+    with ProgressBar():
+        print("Calculating cumulative values")
+        cumulative_areas = xr.merge([cumulative_ice_area, cumulative_land_area, cumulative_ocean_area]).mask.compute()
+    # print("Plotting...")
+    # for j in tqdm(range(0, ds.time.size)):
+    #     s = surface.isel({"time": j})
+    #     o = speed.isel({"time": j})
+    #     plot_mapplane(
+    #         s,
+    #         o,
+    #         j,
+    #         timeseries=cumulative_areas,
+    #         sealevel=0.0,
+    #         vmax=1000,
+    #         x_lim=[2008, 3007],
+    #         y_lim=[-1_750_000, 1_750_000],
+    #         fontsize=11,
+    #         figwidth=16,
+    #         figheight=9,
+    #         p=options.result_dir,
+    #         cmap="speed_colorblind_1000",
+    #     )
 
-    futures = client.map(
-        plot_mapplane,
-        surfaces,
-        overlays,
-        range(ds.time.size),
-        timeseries=cumulative_areas,
-        sealevel=0.0,
-        y_lim=[-60_000, 100_000],
-        fontsize=11,
-        figwidth=16,
-        figheight=9,
-        p=options.result_dir,
-        cmap="speed_colorblind",
-    )
-    progress(futures)
-    client.gather(futures)
+    client = Client()
+    print(f"Open client in browser: {client.dashboard_link}")
+    for i in range(0, ds.time.size, step):
+        j = min(i + step, ds.time.size - 1)
+        print(f"Scattering from {ds.time.isel(time=i).values} to {ds.time.isel(time=j).values}")
+        surfaces = client.scatter([surface.isel({"time": k}) for k, _ in enumerate(range(i, j))])
+        overlays = client.scatter([speed.isel({"time": k}) for k, _ in enumerate(range(i, j))])
+        print(f"Plotting from {ds.time.isel(time=i).values} to {ds.time.isel(time=j).values}")
+        futures = client.map(
+            plot_mapplane,
+            surfaces,
+            overlays,
+            range(i, j),
+            timeseries=cumulative_areas,
+            sealevel=0.0,
+            vmax=1000,
+            x_lim=[2008, 3007],
+            y_lim=[-1_750_000, 1_750_000],
+            fontsize=11,
+            figwidth=16,
+            figheight=9,
+            p=options.result_dir,
+            cmap="speed_colorblind_1000",
+        )
+        progress(futures)
+        client.gather(futures)
