@@ -194,7 +194,6 @@ def plot_mapplane(
     surface, overlay, k: int = 0, timeseries: xr.Dataset | None = None, p: str | Path = "result", **kwargs
 ):
     title = surface.time.values
-    print(surface.time.values)
     fig = plot_glacier(surface, overlay, timeseries=timeseries.isel(time=slice(0, k)), title=title, **kwargs)
     p = Path(p)
     p.mkdir(parents=True, exist_ok=True)
@@ -217,6 +216,13 @@ if __name__ == "__main__":
         default="./results",
     )
     parser.add_argument(
+        "--frames",
+        help="""Only process given frame.""",
+        type=int,
+        nargs="*",
+        default=None,
+    )
+    parser.add_argument(
         "FILE",
         help="""Input netCDF file""",
         nargs=1,
@@ -225,18 +231,17 @@ if __name__ == "__main__":
     options, unknown = parser.parse_known_args()
     infile = options.FILE
     step = 40
+    frames = options.frames
+    print(frames)
+    print(infile)
 
-    # x_bnds = [-212900, 291100]
-    # y_bnds = [-2340650, -2016650]
     x_bnds = [None, None]
     y_bnds = [None, None]
-    # client = Client()
-    # print(f"Open client in browser: {client.dashboard_link}")
     time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
     ds = (
         xr.open_dataset(infile[0], decode_times=time_coder, decode_timedelta=True)
         .sel({"x": slice(*x_bnds), "y": slice(*y_bnds)})
-        .chunk({"time": step, "x": -1, "y": -1})
+        .chunk({"time": step, "x": 1000, "y": 1000})
     )
     ice_thickness = ds.thk
     usurf = ds.usurf
@@ -267,29 +272,51 @@ if __name__ == "__main__":
         print("Calculating cumulative values")
         cumulative_areas = xr.merge([cumulative_ice_area, cumulative_land_area, cumulative_ocean_area]).mask.compute()
 
-    client = Client()
-    print(f"Open client in browser: {client.dashboard_link}")
-    for i in range(0, ds.time.size, step):
-        j = min(i + step, ds.time.size - 1)
-        print(f"Scattering from {ds.time.isel(time=i).values} to {ds.time.isel(time=j).values}")
-        surfaces = client.scatter([surface.isel({"time": k}) for k in range(i, j)])
-        overlays = client.scatter([speed.isel({"time": k}) for k in range(i, j)])
-        print(f"Plotting from {ds.time.isel(time=i).values} to {ds.time.isel(time=j).values}")
-        futures = client.map(
-            plot_mapplane,
-            surfaces,
-            overlays,
-            range(i, j),
-            timeseries=cumulative_areas,
-            sealevel=0.0,
-            vmax=1000,
-            x_lim=[2008, 3007],
-            y_lim=[-1_750_000, 1_750_000],
-            fontsize=11,
-            figwidth=16,
-            figheight=9,
-            p=options.result_dir,
-            cmap="speed_colorblind_1000",
-        )
-        progress(futures)
-        client.gather(futures)
+    if frames is not None:
+        for frame in frames:
+            s = surface.isel({"time": frame})
+            o = speed.isel({"time": frame})
+            print(f"Plotting {ds.time.isel(time=frame).values}")
+            plot_mapplane(
+                s,
+                o,
+                frame,
+                timeseries=cumulative_areas,
+                sealevel=0.0,
+                vmax=1000,
+                x_lim=[2008, 3007],
+                y_lim=[-1_750_000, 1_750_000],
+                fontsize=11,
+                figwidth=16,
+                figheight=9,
+                p=options.result_dir,
+                cmap="speed_colorblind_1000",
+            )
+
+    else:
+        client = Client()
+        print(f"Open client in browser: {client.dashboard_link}")
+        for i in range(0, ds.time.size, step):
+            j = min(i + step, ds.time.size - 1)
+            print(f"Scattering from {ds.time.isel(time=i).values} to {ds.time.isel(time=j).values}")
+            surfaces = client.scatter([surface.isel({"time": k}) for k in range(i, j)])
+            overlays = client.scatter([speed.isel({"time": k}) for k in range(i, j)])
+            print(f"Plotting from {ds.time.isel(time=i).values} to {ds.time.isel(time=j).values}")
+            futures = client.map(
+                plot_mapplane,
+                surfaces,
+                overlays,
+                range(i, j),
+                timeseries=cumulative_areas,
+                sealevel=0.0,
+                vmax=1000,
+                x_lim=[2008, 3007],
+                y_lim=[-1_750_000, 1_750_000],
+                fontsize=11,
+                figwidth=16,
+                figheight=9,
+                p=options.result_dir,
+                cmap="speed_colorblind_1000",
+            )
+            progress(futures)
+            client.gather(futures)
