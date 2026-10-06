@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.4]
 
 ### Fixed
 - `compute_profiles` crashed while plotting with `RuntimeError: Entry point name 'inline' duplicated` when there was more than one profile. `plot_glacier` and `plot_obs_sims` chose the matplotlib backend the wrong way round: the non-interactive default selected the notebook inline backend, which is not thread-safe in the dask workers. They now use `agg` unless `interactive=True`, as documented and as the other plotting functions do.
