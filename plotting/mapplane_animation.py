@@ -24,16 +24,18 @@ from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
 
 import cartopy.crs as ccrs
-import cftime
 import cf_xarray.units  # pylint: disable=unused-import
-
+import cftime
 import matplotlib
-from matplotlib import cm, colors
-from matplotlib.colors import LightSource
-from matplotlib.colors import ListedColormap
 import matplotlib.pylab as plt
-from shapely import get_coordinates
 import nc_time_axis
+import numpy as np
+import xarray as xr
+from dask.diagnostics import ProgressBar
+from dask.distributed import Client, progress
+from matplotlib import cm, colors
+from matplotlib.colors import LightSource, ListedColormap
+from shapely import get_coordinates
 from tqdm.auto import tqdm
 
 from glacier_flow_tools.utils import (
@@ -41,11 +43,6 @@ from glacier_flow_tools.utils import (
     get_dataarray_extent,
     register_colormaps,
 )
-
-import numpy as np
-import xarray as xr
-from dask.diagnostics import ProgressBar
-from dask.distributed import Client, progress
 
 xr.set_options(keep_attrs=True)
 
@@ -72,30 +69,52 @@ def plot_glacier(
     """
     Plot a surface over a hillshade, add profile and correlation coefficient.
 
-    This function plots a surface over a hillshade, adds a profile and correlation coefficient.
-    The plot is saved as a PDF file in the specified result directory.
+    The overlay is colored with ``cmap`` and shaded using the relief of the surface.
+    A colorbar is added and, if ``timeseries`` is given, an area time series panel
+    is plotted next to the map.
 
     Parameters
     ----------
     surface : xr.DataArray
-        The surface to be plotted over the hillshade.
+        The surface elevation used for the hillshade.
     overlay : xr.DataArray
-        The overlay to be added to the plot.
-    interactive : bool
-        If False (default), use non-interactive matplotlib backend for plotting.
-        Needed for distributed plottinging.
+        The field to be colored and plotted over the hillshade.
+    vert_exag : float, optional
+        Vertical exaggeration used for the hillshade, by default 0.015.
+    sealevel : float, xr.DataArray or None, optional
+        Sea level, drawn as a flat color beneath the map, by default None.
+    timeseries : xr.Dataset or None, optional
+        Area time series, plotted with one line per ``Area``, by default None.
     cmap : str, optional
         The colormap to be used for the plot, by default "viridis".
+    interactive : bool, optional
+        If False (default), use non-interactive matplotlib backend for plotting.
+        Needed for distributed plotting.
+    title : str or None, optional
+        Title of the figure, by default None.
     vmin : float, optional
         The minimum value for the colormap, by default 10.
     vmax : float, optional
         The maximum value for the colormap, by default 1500.
-    ticks : Union[List[float], np.ndarray], optional
-        The ticks to be used for the colorbar, by default [10, 100, 250, 500, 750, 1500].
+    ticks : list of float or np.ndarray, optional
+        The ticks to be used for the colorbar, by default [10, 100, 250, 500, 1000].
+    x_lim : list of int, optional
+        The x-axis limits of the time series panel, by default [1980, 2020].
+    y_lim : list of float, optional
+        The y-axis limits of the time series panel, by default [-10_000, 10_000].
     fontsize : float, optional
-        The font size to be used for the plot, by default 6.
+        The font size to be used for the plot, by default 10.
     figwidth : float, optional
         The width of the figure in inches, by default 3.2.
+    figheight : float, optional
+        The height of the figure in inches, by default 3.2.
+    sealevel_color : str, optional
+        Color of the sea level overlay, by default "#bdd7e7".
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure.
 
     Examples
     --------
@@ -192,7 +211,26 @@ def plot_glacier(
 
 def plot_mapplane(
     surface, overlay, k: int = 0, timeseries: xr.Dataset | None = None, p: str | Path = "result", **kwargs
-):
+) -> None:
+    """
+    Plot and save one frame of a map plane animation.
+
+    Parameters
+    ----------
+    surface : xr.DataArray
+        The surface to plot, for a single time step.
+    overlay : xr.DataArray
+        The overlay to be added to the plot.
+    k : int, optional
+        Frame index. The time series is plotted up to this index and the file is
+        named ``frame_<k>``, by default 0.
+    timeseries : xr.Dataset or None, optional
+        Time series to plot next to the map, by default None.
+    p : str or Path, optional
+        Directory the frame is written to; created if needed, by default "result".
+    **kwargs
+        Additional keyword arguments passed to `plot_glacier`.
+    """
     title = surface.time.values
     fig = plot_glacier(surface, overlay, timeseries=timeseries.isel(time=slice(0, k)), title=title, **kwargs)
     p = Path(p)
