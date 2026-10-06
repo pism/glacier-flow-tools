@@ -9,6 +9,7 @@ distributed
 geocube
 geopandas
 h5netcdf
+h5py
 ipywidgets
 ipyleaflet
 ipyfilechooser
