@@ -12,6 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A `.gitignore` that ignores `__pycache__/`.
 
 ### Changed
+- The test workflow installs the package in editable mode, so coverage is measured on the repository's source files. With the installed copy, Codecov could not match the paths and reported 0% coverage.
 - The Codecov project check compares coverage against the base branch (`target: auto`, 1% threshold) instead of requiring 100%, which failed on every pull request.
 
 ## [0.2.1]
