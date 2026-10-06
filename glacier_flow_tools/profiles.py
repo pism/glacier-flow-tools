@@ -267,10 +267,10 @@ def plot_glacier(
     """
 
     if interactive:
+        matplotlib.use("module://matplotlib_inline.backend_inline")
+    else:
         # The standard backend is not thread-safe, but 'agg' works with the dask client.
         matplotlib.use("agg")
-    else:
-        matplotlib.use("module://matplotlib_inline.backend_inline")
 
     plt.rcParams["font.size"] = fontsize
     geom = getattr(profile_series, "geometry")
@@ -1205,10 +1205,10 @@ class ProfilesMethods:
         """
 
         if interactive:
+            matplotlib.use("module://matplotlib_inline.backend_inline")
+        else:
             # The standard backend is not thread-safe, but 'agg' works with the dask client.
             matplotlib.use("agg")
-        else:
-            matplotlib.use("module://matplotlib_inline.backend_inline")
 
         plt.rcParams["font.size"] = fontsize
         n_exps = self._obj["exp_id"].size
