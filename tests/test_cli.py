@@ -261,3 +261,58 @@ def test_compute_profiles(profile_inputs, tmp_path, monkeypatch):
         assert np.allclose(np.abs(stats.loc[stats["exp_id"] == exp_id, "sim_flux"]), speed * 6000.0)
 
     assert sorted(p.name for p in (result_dir / "figures").iterdir()) == ["a_profile.pdf", "b_profile.pdf"]
+
+
+def test_compute_pathlines_densify(tmp_path, monkeypatch):
+    """
+    With ``--densify`` a pathline starts every 500 m along the line.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    """
+    x = np.arange(0.0, 10_000.0, 100.0)
+    y = np.arange(0.0, 10_000.0, 100.0)
+    shape = (len(y), len(x))
+    raster = tmp_path / "velocity.nc"
+    xr.Dataset(
+        {"vx": (("y", "x"), np.full(shape, 100.0)), "vy": (("y", "x"), np.zeros(shape))},
+        coords={"x": x, "y": y},
+    ).to_netcdf(raster)
+    # A 1.2 km long line across the flow: points at y = 4000, 4500 and 5000.
+    vector = tmp_path / "start.gpkg"
+    gp.GeoDataFrame(
+        {"id": [1], "name": ["a"]}, geometry=[LineString([(2000, 4000), (2000, 5200)])], crs="EPSG:3413"
+    ).to_file(vector)
+    outfile = tmp_path / "pathlines.gpkg"
+
+    argv = ["compute_pathlines", "--raster_url", str(raster), "--vector_url", str(vector)]
+    argv += ["--n_jobs", "1", "--end_time", "5", "--densify", "500m", str(outfile)]
+    monkeypatch.setattr("sys.argv", argv)
+    compute_pathlines.main()
+
+    result = gp.read_file(outfile)
+    starts = result.groupby("pathline_id").first()
+    assert len(starts) == 3
+    assert [(g.x, g.y) for g in starts.geometry] == [(2000.0, 4000.0), (2000.0, 4500.0), (2000.0, 5000.0)]
+
+
+def test_compute_pathlines_densify_rejects_bad_distance(monkeypatch, capsys):
+    """
+    An invalid distance ends with a usage error that explains the problem.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    capsys : pytest.CaptureFixture
+        Used to capture the error message.
+    """
+    monkeypatch.setattr("sys.argv", ["compute_pathlines", "--densify", "abc", "out.gpkg"])
+    with pytest.raises(SystemExit) as exc:
+        compute_pathlines.main()
+    assert exc.value.code == 2
+    assert "is not a distance" in capsys.readouterr().err

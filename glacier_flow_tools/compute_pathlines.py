@@ -21,7 +21,7 @@ Calculate pathlines (trajectories).
 """
 
 import time
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, ArgumentTypeError
 from pathlib import Path
 
 import geopandas as gp
@@ -31,7 +31,11 @@ import xarray as xr
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
-from glacier_flow_tools.geom import geopandas_dataframe_shorten_lines
+from glacier_flow_tools.geom import (
+    geopandas_dataframe_densify_lines,
+    geopandas_dataframe_shorten_lines,
+    parse_distance,
+)
 from glacier_flow_tools.interpolation import velocity
 from glacier_flow_tools.pathlines import (
     compute_pathline,
@@ -39,6 +43,31 @@ from glacier_flow_tools.pathlines import (
     series_to_pathline_geopandas_dataframe,
 )
 from glacier_flow_tools.utils import tqdm_joblib
+
+
+def distance_argument(value: str) -> float:
+    """
+    Convert the value of a command line option to a distance in meters.
+
+    Parameters
+    ----------
+    value : str
+        The text given on the command line, such as ``500m``.
+
+    Returns
+    -------
+    float
+        The distance in meters.
+
+    Raises
+    ------
+    ArgumentTypeError
+        If the text is not a positive distance.
+    """
+    try:
+        return parse_distance(value)
+    except ValueError as exc:
+        raise ArgumentTypeError(str(exc)) from exc
 
 
 def main() -> None:
@@ -50,6 +79,16 @@ def main() -> None:
     parser.description = "Compute pathlines (forward/backward) given a velocity field (xr.Dataset) and starting points (geopandas.GeoDataFrame)."
     parser.add_argument("--raster_url", help="""Path to raster dataset.""", default=None)
     parser.add_argument("--vector_url", help="""Path to vector dataset.""", default=None)
+    parser.add_argument(
+        "--densify",
+        help="""Start a pathline every DENSIFY along each line of the vector dataset, for example 500m or 0.5km.
+        The distance is measured along the line, in the units of the dataset's coordinate reference system,
+        which must be meters. Points are kept as they are. Without this option, a pathline starts near each
+        end of a line.""",
+        type=distance_argument,
+        default=None,
+        metavar="DENSIFY",
+    )
     parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
     parser.add_argument(
         "--hmin",
@@ -103,7 +142,10 @@ def main() -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
 
     df = gp.read_file(options.vector_url)
-    starting_points_df = geopandas_dataframe_shorten_lines(df).convert.to_points()
+    if options.densify is not None:
+        starting_points_df = geopandas_dataframe_densify_lines(df, options.densify)
+    else:
+        starting_points_df = geopandas_dataframe_shorten_lines(df).convert.to_points()
 
     ds = xr.open_dataset(options.raster_url)
     Vx = np.squeeze(ds["vx"].to_numpy())

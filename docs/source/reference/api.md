@@ -67,7 +67,10 @@ one page per symbol under `generated/`.
     linestring_to_points
     multilinestring_to_points
     convert_to_point_geometry_dataframe
+    densify_line
+    geopandas_dataframe_densify_lines
     geopandas_dataframe_shorten_lines
+    parse_distance
     shorten_line
     GeometryConverter
 ```
