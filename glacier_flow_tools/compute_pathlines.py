@@ -40,6 +40,7 @@ from glacier_flow_tools.pathlines import (
 )
 from glacier_flow_tools.utils import tqdm_joblib
 
+
 def main() -> None:
     """
     Command line interface: compute pathlines (forward/backward) from a velocity field and starting points.

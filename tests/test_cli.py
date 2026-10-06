@@ -30,14 +30,32 @@ SCRIPTS = ["compute_pathlines", "compute_profiles"]
 
 @pytest.mark.parametrize("name", SCRIPTS)
 def test_entry_point_resolves(name):
-    """The installed console script points at a callable."""
+    """
+    The installed console script points at a callable.
+
+    Parameters
+    ----------
+    name : str
+        Name of the console script.
+    """
     (entry_point,) = [e for e in entry_points(group="console_scripts") if e.name == name]
     assert callable(entry_point.load())
 
 
 @pytest.mark.parametrize("name", SCRIPTS)
 def test_help(name, monkeypatch, capsys):
-    """``--help`` prints usage and exits with status 0."""
+    """
+    Check that ``--help`` prints usage and exits with status 0.
+
+    Parameters
+    ----------
+    name : str
+        Name of the console script.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    capsys : pytest.CaptureFixture
+        Used to capture the printed usage.
+    """
     module = importlib.import_module(f"glacier_flow_tools.{name}")
     monkeypatch.setattr("sys.argv", [name, "--help"])
     with pytest.raises(SystemExit) as exc:
