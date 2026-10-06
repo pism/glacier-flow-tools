@@ -8,6 +8,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- A `.gitignore` that ignores `__pycache__/`.
+
 ### Changed
 - The Codecov project check compares coverage against the base branch (`target: auto`, 1% threshold) instead of requiring 100%, which failed on every pull request.
 
