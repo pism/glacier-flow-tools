@@ -13,6 +13,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `glacier_flow_tools.geom.densify_line`, `geopandas_dataframe_densify_lines` and `parse_distance`, which the option uses.
 - `compute_pathlines --velocity_units UNITS` gives the units of `vx` and `vy` when the raster dataset has none, or has units that are wrong or not understood.
 - `glacier_flow_tools.utils.to_numpy_in_units` returns the values of a DataArray converted to given units.
+- A documentation page, "Pathlines at Jakobshavn Isbræ", that computes backward pathlines from the flux gate of Jakobshavn Isbræ with observed velocities and plots them. `docs/make_data/plot_jib_pathlines.py` makes the figure and `docs/make_data/extract_jib_velocities.py` makes the velocity file.
+- `glacier_flow_tools/data/jib_velocities.nc`, the ITS_LIVE velocities `vx` and `vy` around Jakobshavn Isbræ on a 240 m grid (4.2 MB), and `glacier_flow_tools/data/jib-flux-gates.gpkg`, its flux gate. NetCDF files in `data/` are now installed with the package.
 
 ### Fixed
 - `compute_pathline` could run forever where the velocity jumps, for example at an ice margin or a data gap. It shrank the time step without limit, below `hmin`, and printed `Error: Could not converge to the required tolerance ...` on every attempt. The time step now stays at or above `hmin`. Where the tolerance cannot be met at `hmin`, the step is taken anyway.

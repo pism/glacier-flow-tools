@@ -110,6 +110,7 @@ Use a smaller --hmin or a larger --tol to change this.
 The pathlines are still computed and saved. The numbers are the positions of
 the pathlines in the output, the `pathline_id`.
 
+(units)=
 ### Units
 
 `compute_pathlines` reads the units of `vx`, `vy`, `x` and `y` from their
@@ -171,7 +172,10 @@ Default
 In Python, {func}`~glacier_flow_tools.geom.geopandas_dataframe_densify_lines`
 does the same for a {class}`geopandas.GeoDataFrame`.
 
-## Example
+## Examples
+
+{doc}`../examples/jakobshavn` traces the ice of Jakobshavn Isbræ upstream
+from its flux gate, with observed velocities, and plots the pathlines.
 
 {doc}`../auto_examples/plot_pathlines` computes pathlines in a rotating flow
 and checks them against the exact solution.
