@@ -16,6 +16,20 @@ classifiers = [
         ]
 dynamic = ["version", "dependencies"]
 optional-dependencies.test = ["pytest", "pytest-cov"]
+optional-dependencies.docs = [
+    "ipykernel",
+    "myst-nb",
+    "numpydoc",
+    "pydata-sphinx-theme",
+    "sphinx",
+    "sphinx-autobuild",
+    "sphinx-autodoc-typehints",
+    "sphinx-book-theme",
+    "sphinx-copybutton",
+    "sphinx-design",
+    "sphinx-gallery",
+    "sphinxcontrib-programoutput",
+]
 
 [build-system]
 requires = ["setuptools>=77", "setuptools-scm[toml]>=6.2", "numpy"]

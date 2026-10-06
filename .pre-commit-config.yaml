@@ -31,6 +31,8 @@ repos:
     rev: v1.7.0
     hooks:
       - id: numpydoc-validation
+        # Gallery examples start with a sphinx-gallery title, not a numpydoc summary.
+        exclude: ^examples/
 
   - repo: local
     hooks:
