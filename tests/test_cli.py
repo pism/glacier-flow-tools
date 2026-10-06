@@ -28,7 +28,7 @@ import geopandas as gp
 import numpy as np
 import pytest
 import xarray as xr
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from glacier_flow_tools import compute_pathlines, compute_profiles
 
@@ -90,8 +90,11 @@ def fixture_pathline_inputs(tmp_path):
     y = np.arange(0.0, 10_000.0, 100.0)
     shape = (len(y), len(x))
     ds = xr.Dataset(
-        {"vx": (("y", "x"), np.full(shape, 100.0)), "vy": (("y", "x"), np.zeros(shape))},
-        coords={"x": x, "y": y},
+        {
+            "vx": (("y", "x"), np.full(shape, 100.0), {"units": "m/yr"}),
+            "vy": (("y", "x"), np.zeros(shape), {"units": "m/yr"}),
+        },
+        coords={"x": ("x", x, {"units": "m"}), "y": ("y", y, {"units": "m"})},
     )
     raster = tmp_path / "velocity.nc"
     ds.to_netcdf(raster)
@@ -279,8 +282,11 @@ def test_compute_pathlines_densify(tmp_path, monkeypatch):
     shape = (len(y), len(x))
     raster = tmp_path / "velocity.nc"
     xr.Dataset(
-        {"vx": (("y", "x"), np.full(shape, 100.0)), "vy": (("y", "x"), np.zeros(shape))},
-        coords={"x": x, "y": y},
+        {
+            "vx": (("y", "x"), np.full(shape, 100.0), {"units": "m/yr"}),
+            "vy": (("y", "x"), np.zeros(shape), {"units": "m/yr"}),
+        },
+        coords={"x": ("x", x, {"units": "m"}), "y": ("y", y, {"units": "m"})},
     ).to_netcdf(raster)
     # A 1.2 km long line across the flow: points at y = 4000, 4500 and 5000.
     vector = tmp_path / "start.gpkg"
@@ -316,3 +322,240 @@ def test_compute_pathlines_densify_rejects_bad_distance(monkeypatch, capsys):
         compute_pathlines.main()
     assert exc.value.code == 2
     assert "is not a distance" in capsys.readouterr().err
+
+
+def write_velocity(path, vx, velocity_units=None, x_units=None, scale_x=1.0):
+    """
+    Write a uniform eastward velocity field on a 10 km by 10 km grid.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The file to write.
+    vx : float
+        The velocity in x.
+    velocity_units : str, optional
+        The units attribute of the velocities. If None (default), they have no units.
+    x_units : str, optional
+        The units attribute of the coordinates. If None (default), they have no units.
+    scale_x : float, optional
+        Factor applied to the coordinates, which are in meters before scaling.
+    """
+    x = np.arange(0.0, 10_000.0, 100.0)
+    shape = (len(x), len(x))
+    v_attrs = {} if velocity_units is None else {"units": velocity_units}
+    x_attrs = {} if x_units is None else {"units": x_units}
+    xr.Dataset(
+        {"vx": (("y", "x"), np.full(shape, vx), v_attrs), "vy": (("y", "x"), np.zeros(shape), v_attrs)},
+        coords={"x": ("x", x * scale_x, x_attrs), "y": ("y", x * scale_x, x_attrs)},
+    ).to_netcdf(path)
+
+
+def run_compute_pathlines(tmp_path, monkeypatch, raster, extra_args=()):
+    """
+    Run compute_pathlines for 5 years from the point (2000, 5000) and return the result.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    raster : pathlib.Path
+        The velocity file.
+    extra_args : sequence of str, optional
+        Additional command line arguments.
+
+    Returns
+    -------
+    numpy.ndarray
+        The x coordinates of the points along the pathline.
+    """
+    vector = tmp_path / "start.gpkg"
+    gp.GeoDataFrame({"id": [1], "name": ["a"]}, geometry=[Point(2000, 5000)], crs="EPSG:3413").to_file(vector)
+    outfile = tmp_path / "pathlines.gpkg"
+    argv = ["compute_pathlines", "--raster_url", str(raster), "--vector_url", str(vector)]
+    argv += ["--n_jobs", "1", "--end_time", "5", "--hmin", "1", "--hmax", "1", *extra_args, str(outfile)]
+    monkeypatch.setattr("sys.argv", argv)
+    compute_pathlines.main()
+    result = gp.read_file(outfile)
+    return np.array([g.x for g in result[result["pathline_id"] == 0].geometry])
+
+
+SECONDS_PER_YEAR = 365.25 * 86400.0
+EXPECTED_X = [2000.0, 2100.0, 2200.0, 2300.0, 2400.0]
+
+
+@pytest.mark.parametrize(
+    "vx, velocity_units",
+    [(100.0, "m/yr"), (100.0, "m year-1"), (0.1, "km/yr"), (100.0 / SECONDS_PER_YEAR, "m/s")],
+)
+def test_compute_pathlines_converts_velocity_units(tmp_path, monkeypatch, vx, velocity_units):
+    """
+    Get the same pathline for the same flow of 100 m/yr, whatever units the file uses.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    vx : float
+        The velocity in x, in the units of the file.
+    velocity_units : str
+        The units of the velocities in the file.
+    """
+    raster = tmp_path / "velocity.nc"
+    write_velocity(raster, vx, velocity_units=velocity_units, x_units="m")
+    assert np.allclose(run_compute_pathlines(tmp_path, monkeypatch, raster), EXPECTED_X)
+
+
+def test_compute_pathlines_converts_coordinate_units(tmp_path, monkeypatch):
+    """
+    Convert grid coordinates given in km to meters.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    """
+    raster = tmp_path / "velocity.nc"
+    write_velocity(raster, 100.0, velocity_units="m/yr", x_units="km", scale_x=1e-3)
+    assert np.allclose(run_compute_pathlines(tmp_path, monkeypatch, raster), EXPECTED_X)
+
+
+def test_compute_pathlines_assumes_units_with_a_warning(tmp_path, monkeypatch):
+    """
+    Assume m/yr and m, with a warning, for a file without units.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    """
+    raster = tmp_path / "velocity.nc"
+    write_velocity(raster, 100.0)
+    with pytest.warns(UserWarning) as record:
+        result = run_compute_pathlines(tmp_path, monkeypatch, raster)
+    messages = [str(w.message) for w in record]
+    assert "'vx' has no units, assuming 'm/yr'." in messages
+    assert "'x' has no units, assuming 'm'." in messages
+    assert np.allclose(result, EXPECTED_X)
+
+
+def test_compute_pathlines_velocity_units_option(tmp_path, monkeypatch):
+    """
+    Use ``--velocity_units`` in place of the units in the file.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    """
+    raster = tmp_path / "velocity.nc"
+    # 'm/y' is not understood, so the file alone would be rejected.
+    write_velocity(raster, 100.0 / 365.25, velocity_units="m/y", x_units="m")
+    result = run_compute_pathlines(tmp_path, monkeypatch, raster, extra_args=["--velocity_units", "m/d"])
+    assert np.allclose(result, EXPECTED_X)
+
+
+@pytest.mark.parametrize(
+    "velocity_units, message",
+    [("m/y", "The units 'm/y' of 'vx' are not understood."), ("m", "cannot be converted to 'm/yr'")],
+)
+def test_compute_pathlines_rejects_bad_units(tmp_path, monkeypatch, capsys, velocity_units, message):
+    """
+    End with a usage error for velocity units that are not understood or are not a velocity.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    capsys : pytest.CaptureFixture
+        Used to capture the error message.
+    velocity_units : str
+        The units of the velocities in the file.
+    message : str
+        Part of the expected error message.
+    """
+    raster = tmp_path / "velocity.nc"
+    write_velocity(raster, 100.0, velocity_units=velocity_units, x_units="m")
+    with pytest.raises(SystemExit) as exc:
+        run_compute_pathlines(tmp_path, monkeypatch, raster)
+    assert exc.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+def test_compute_pathlines_reports_step_size_warnings_once(tmp_path, monkeypatch, capsys):
+    """
+    Print one summary after the progress bar for pathlines that did not meet the tolerance.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    capsys : pytest.CaptureFixture
+        Used to capture the printed summary.
+    """
+    # The speed drops from 100 to 10 m/yr at x = 5 km. With a large hmin and a tight
+    # tolerance, the steps across the drop cannot meet the tolerance.
+    x = np.arange(0.0, 10_000.0, 100.0)
+    X, _ = np.meshgrid(x, x)
+    vx = np.where(X < 5000.0, 100.0, 10.0)
+    raster = tmp_path / "velocity.nc"
+    xr.Dataset(
+        {"vx": (("y", "x"), vx, {"units": "m/yr"}), "vy": (("y", "x"), np.zeros_like(vx), {"units": "m/yr"})},
+        coords={"x": ("x", x, {"units": "m"}), "y": ("y", x, {"units": "m"})},
+    ).to_netcdf(raster)
+    vector = tmp_path / "start.gpkg"
+    gp.GeoDataFrame(
+        {"id": [1], "name": ["a"]}, geometry=[LineString([(4000, 2000), (4000, 4000)])], crs="EPSG:3413"
+    ).to_file(vector)
+    outfile = tmp_path / "pathlines.gpkg"
+
+    argv = ["compute_pathlines", "--raster_url", str(raster), "--vector_url", str(vector), "--n_jobs", "1"]
+    argv += ["--densify", "1km", "--end_time", "30", "--hmin", "0.5", "--tol", "1e-6", str(outfile)]
+    monkeypatch.setattr("sys.argv", argv)
+    compute_pathlines.main()
+
+    out = capsys.readouterr().out
+    assert "Could not converge" not in out
+    assert out.count("Warning:") == 1
+    assert "Warning: 3 of 3 pathlines did not meet the tolerance tol=1e-06 everywhere" in out
+    assert "even at the minimum time step hmin=0.5 yr." in out
+    assert "  pathline 0: " in out
+
+    # All three pathlines got past the drop in speed.
+    result = gp.read_file(outfile)
+    assert set(result["pathline_id"]) == {0, 1, 2}
+    assert all(result.groupby("pathline_id").geometry.apply(lambda g: g.x.max()) > 5000.0)
+
+
+def test_step_size_summary():
+    """
+    Summarize the affected pathlines and shorten a long list.
+    """
+    assert compute_pathlines.step_size_summary([None, None], hmin=0.01, tol=1e-3) == ""
+
+    entry = {"n_steps": 1, "first_time": 1.1289327601462458, "max_error": 0.0123}
+    summary = compute_pathlines.step_size_summary([None, entry, None], hmin=0.01, tol=1e-3)
+    assert summary.splitlines()[0] == (
+        "Warning: 1 of 3 pathlines did not meet the tolerance tol=0.001 everywhere, "
+        "even at the minimum time step hmin=0.01 yr."
+    )
+    assert "  pathline 1: 1 step, first at t=1.129 yr, largest error estimate 0.012" in summary
+
+    many = compute_pathlines.step_size_summary([dict(entry, n_steps=4)] * 8, hmin=0.01, tol=1e-3)
+    assert "  pathline 4: 4 steps, " in many
+    assert "pathline 5:" not in many
+    assert "  ... and 3 more" in many

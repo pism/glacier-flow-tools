@@ -13,6 +13,7 @@ one page per symbol under `generated/`.
 
     compute_pathline
     compute_pathline_with_progress
+    StepSizeWarning
     get_grf_perturbed_velocities
     pathline_to_geopandas_dataframe
     pathline_to_line_geopandas_dataframe
@@ -105,4 +106,5 @@ one page per symbol under `generated/`.
     merge_on_intersection_dask
     merge_on_intersection_pandas
     tqdm_joblib
+    to_numpy_in_units
 ```

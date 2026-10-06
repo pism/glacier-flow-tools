@@ -42,6 +42,15 @@ The options that control the integration are:
 `tol`
 : The error tolerance of the adaptive time stepping.
 
+The solver shortens the time step until the error estimate is below `tol`, but
+never below `hmin`. Where the tolerance cannot be met even at `hmin`, the step
+is taken at `hmin` anyway. This happens where the velocity jumps, for example
+at an ice margin or a data gap. The pathline then carries a
+{class}`~glacier_flow_tools.pathlines.StepSizeWarning`, issued once when the
+pathline is complete. It gives the number of such steps, the time of the first
+one and the largest error estimate. The error estimate of every step is the
+last element of the result.
+
 `v_threshold`
 : The solver stops where the speed drops below this value.
 
@@ -84,6 +93,55 @@ and `y`. Add `--reverse` for backward pathlines, and `--output_type line` to
 save lines instead of points. All options are listed in
 {doc}`../reference/cli`.
 
+### Messages about the time step
+
+If pathlines did not meet the tolerance everywhere, `compute_pathlines` prints
+one summary after the progress bar:
+
+```text
+Warning: 3 of 44 pathlines did not meet the tolerance tol=0.001 everywhere, even at the minimum time step hmin=0.01 yr.
+The affected steps were taken at the minimum time step.
+  pathline 12: 1 step, first at t=1.129 yr, largest error estimate 0.012
+  ...
+This is common where the velocity jumps, such as at an ice margin or a data gap.
+Use a smaller --hmin or a larger --tol to change this.
+```
+
+The pathlines are still computed and saved. The numbers are the positions of
+the pathlines in the output, the `pathline_id`.
+
+(units)=
+### Units
+
+`compute_pathlines` reads the units of `vx`, `vy`, `x` and `y` from their
+`units` attributes. It converts the velocities to m/yr and the coordinates to
+m, with [pint-xarray](https://pint-xarray.readthedocs.io/) and the unit
+definitions of [cf-xarray](https://cf-xarray.readthedocs.io/). Times
+(`--start_time`, `--end_time`, `--hmin`, `--hmax`) are therefore in years, and
+`--v_threshold` is in m/yr.
+
+- Common spellings are understood, for example `m/yr`, `m year-1`,
+  `meter/year`, `m/s`, `m s-1`, `m day-1` and `km/yr`. A year is 365.25 days.
+- If a variable has no `units` attribute, m/yr (for velocities) or m (for
+  coordinates) is assumed, with a warning.
+- If the units are not understood, or are not a velocity or a length, the
+  command stops with an error that names the variable.
+- `--velocity_units` gives the units of `vx` and `vy` and takes precedence
+  over the file. Use it when the file has units that are wrong or not
+  understood, such as `m/y`:
+
+  ```bash
+  compute_pathlines --velocity_units "m/yr" ...
+  ```
+
+The coordinates of the starting points are not converted. They must be in
+meters, in the same projection as the velocity grid.
+
+In Python, {func}`~glacier_flow_tools.utils.to_numpy_in_units` does the
+conversion for one {class}`xarray.DataArray`.
+{func}`~glacier_flow_tools.pathlines.compute_pathline` itself does not track
+units.
+
 ### Starting points from lines
 
 The vector file may hold points, lines, or both. Points are used as they are.
@@ -114,7 +172,10 @@ Default
 In Python, {func}`~glacier_flow_tools.geom.geopandas_dataframe_densify_lines`
 does the same for a {class}`geopandas.GeoDataFrame`.
 
-## Example
+## Examples
+
+{doc}`../examples/jakobshavn` traces the ice of Jakobshavn Isbræ upstream
+from its flux gate, with observed velocities, and plots the pathlines.
 
 {doc}`../auto_examples/plot_pathlines` computes pathlines in a rotating flow
 and checks them against the exact solution.

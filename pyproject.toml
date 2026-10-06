@@ -43,7 +43,7 @@ compute_profiles = "glacier_flow_tools.compute_profiles:main"
 include = ["glacier_flow_tools"]
 
 [tool.setuptools.package-data]
-"glacier_flow_tools" = ['data/*.txt', 'data/*.gpkg', 'data/*.toml']
+"glacier_flow_tools" = ['data/*.txt', 'data/*.gpkg', 'data/*.toml', 'data/*.nc']
 
 [tool.setuptools_scm]
 

@@ -32,16 +32,18 @@ Install glacier-flow-tools:
 
 ## Documentation
 
-The documentation lives in `docs/`. To build it, create the development
-environment and install the `docs` extras:
+Full documentation — installation, tutorials and workflows — is published on **Read the Docs**  <https://glacier-flow-tools.readthedocs.io/>
 
-    $ conda env create -f environment-dev.yml
-    $ conda activate glacier-flow-tools
-    $ pip install -e ".[docs]"
-    $ cd docs
-    $ make html
+To build the docs locally:
 
-Then open `docs/_build/html/index.html`.
+    python -m pip install -e ".[docs]"
+    cd docs
+    make html
+    open _build/html/index.html
+
+Live-reload while editing:
+
+    make livehtml
 
 ## Examples
 
