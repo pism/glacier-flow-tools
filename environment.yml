@@ -2,7 +2,7 @@ name: glacier-flow-tools
 channels:
   - conda-forge
 dependencies:
-  - python=3.11.7
+  - python>=3.10
   - cython
   - mpich-mpicxx
   - setuptools
@@ -11,6 +11,7 @@ dependencies:
 
   # Testing
   - pytest
+  - pytest-cov
   - mypy
   - pylint
 
