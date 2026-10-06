@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4]
+
+### Fixed
+- `compute_profiles` crashed while plotting with `RuntimeError: Entry point name 'inline' duplicated` when there was more than one profile. `plot_glacier` and `plot_obs_sims` chose the matplotlib backend the wrong way round: the non-interactive default selected the notebook inline backend, which is not thread-safe in the dask workers. They now use `agg` unless `interactive=True`, as documented and as the other plotting functions do.
+
+### Added
+- Documentation in `docs/`, built with Sphinx and MyST. Its layout, configuration and build setup are adapted from pism-terra. It has pages on installation, a quick start, pathlines and profiles, a gallery example that computes pathlines in a rotating flow, an API reference, a command-line reference and the release notes.
+- `environment-dev.yml`, the conda environment for development. It has the packages for building the documentation.
+- A `docs` extra in `pyproject.toml` with the same documentation packages. New ones are `sphinx-copybutton`, `sphinx-autobuild` and `ipykernel`.
+- An end-to-end test for `compute_profiles` on synthetic observations, simulations and profiles.
+
+### Changed
+- The documentation packages moved from `environment.yml` to `environment-dev.yml`. `autovizwidget` and `graphviz` are no longer installed, because the documentation does not use them.
+- `.readthedocs.yaml` builds from `docs/source/conf.py` and installs the package with the `docs` extra, instead of the conda environment.
+- The old `doc/` skeleton, which pointed at xDEM logos that were never in the repository, and the empty `examples/basic` and `examples/advanced` folders are replaced.
+- The help of `compute_profiles` describes profiles. It had the description of `compute_pathlines`.
+
 ## [0.2.3]
 
 ### Fixed

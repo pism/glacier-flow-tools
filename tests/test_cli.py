@@ -23,13 +23,14 @@ Tests for the console scripts.
 import importlib
 from importlib.metadata import entry_points
 
+import dask
 import geopandas as gp
 import numpy as np
 import pytest
 import xarray as xr
 from shapely.geometry import LineString
 
-from glacier_flow_tools import compute_pathlines
+from glacier_flow_tools import compute_pathlines, compute_profiles
 
 SCRIPTS = ["compute_pathlines", "compute_profiles"]
 
@@ -163,3 +164,100 @@ def test_compute_pathlines(pathline_inputs, tmp_path, monkeypatch, extra_args, o
         assert np.allclose(ys, 5000.0)
         assert np.allclose(np.diff(xs), np.sign(direction) * 100.0)
         assert abs(xs[-1] - xs[0]) >= 900.0
+
+
+@pytest.fixture(name="profile_inputs")
+def fixture_profile_inputs(tmp_path):
+    """
+    Write observations, two simulations and two profiles for a uniform northward flow.
+
+    The observed speed is 100 m/yr. The simulated speeds are 90 m/yr and 110 m/yr.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+
+    Returns
+    -------
+    tuple
+        The observation file name, the list of simulation file names and the profiles file name.
+    """
+    x = np.arange(0.0, 10_000.0, 100.0)
+    y = np.arange(0.0, 10_000.0, 100.0)
+    shape = (len(y), len(x))
+
+    obs_values = {"vx": 0.0, "vy": 100.0, "v": 100.0, "vx_err": 1.0, "vy_err": 1.0, "v_err": 1.0}
+    obs_values |= {"rock": 0.0, "count": 1.0, "ocean": 0.0, "ice": 1.0}
+    obs = tmp_path / "obs.nc"
+    xr.Dataset({k: (("y", "x"), np.full(shape, v)) for k, v in obs_values.items()}, coords={"x": x, "y": y}).to_netcdf(
+        obs, engine="h5netcdf"
+    )
+
+    sims = []
+    for exp_id, speed in enumerate([90.0, 110.0]):
+        sim = tmp_path / f"sim_id_{exp_id}_0_50.nc"
+        xr.Dataset(
+            {
+                "uvelsurf": (("time", "y", "x"), np.zeros((1, *shape)), {"units": "m/yr"}),
+                "vvelsurf": (("time", "y", "x"), np.full((1, *shape), speed), {"units": "m/yr"}),
+            },
+            coords={"time": [0.0], "x": x, "y": y},
+        ).to_netcdf(sim, engine="h5netcdf")
+        sims.append(sim)
+
+    profiles = tmp_path / "profiles.gpkg"
+    gp.GeoDataFrame(
+        {"id": [1, 2], "name": ["a", "b"]},
+        geometry=[LineString([(2000, 5000), (8000, 5000)]), LineString([(2000, 3000), (8000, 3000)])],
+        crs="EPSG:3413",
+    ).to_file(profiles)
+    return obs, sims, profiles
+
+
+def test_compute_profiles(profile_inputs, tmp_path, monkeypatch):
+    """
+    Extract two profiles from two simulations and check the statistics and figures.
+
+    Parameters
+    ----------
+    profile_inputs : tuple
+        The observation file name, the list of simulation file names and the profiles file name.
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    """
+    obs, sims, profiles = profile_inputs
+    result_dir = tmp_path / "results"
+    argv = [
+        "compute_profiles",
+        "--n_jobs",
+        "1",
+        "--segmentize",
+        "500",
+        "--profiles_url",
+        str(profiles),
+        "--velocity_url",
+        str(obs),
+        "--result_dir",
+        str(result_dir),
+        *[str(s) for s in sims],
+    ]
+    monkeypatch.setattr("sys.argv", argv)
+    # The workers import dask_geopandas through the script when it is run from the command line.
+    # Here pytest is the main program, so they are told to import it.
+    with dask.config.set({"distributed.worker.preload": ["dask_geopandas"]}):
+        compute_profiles.main()
+
+    stats = gp.read_file(result_dir / "files" / "stats.gpkg")
+    assert len(stats) == 4
+    assert set(zip(stats["profile_id"], stats["exp_id"])) == {(1, 0), (1, 1), (2, 0), (2, 1)}
+    # Simulated speeds of 90 and 110 m/yr are both 10 m/yr off the observed 100 m/yr.
+    assert np.allclose(stats["rmsd"], 10.0)
+    # Flux through the 6 km long profiles scales with the speed.
+    assert np.allclose(np.abs(stats["obs_flux"]), 100.0 * 6000.0)
+    for exp_id, speed in [(0, 90.0), (1, 110.0)]:
+        assert np.allclose(np.abs(stats.loc[stats["exp_id"] == exp_id, "sim_flux"]), speed * 6000.0)
+
+    assert sorted(p.name for p in (result_dir / "figures").iterdir()) == ["a_profile.pdf", "b_profile.pdf"]

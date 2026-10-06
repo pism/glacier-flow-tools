@@ -30,6 +30,19 @@ Install glacier-flow-tools:
     $ pip install .
 
 
+## Documentation
+
+The documentation lives in `docs/`. To build it, create the development
+environment and install the `docs` extras:
+
+    $ conda env create -f environment-dev.yml
+    $ conda activate glacier-flow-tools
+    $ pip install -e ".[docs]"
+    $ cd docs
+    $ make html
+
+Then open `docs/_build/html/index.html`.
+
 ## Examples
 
 ![Pathlines starting from the Jakobshaven Isbræ flux gate.](https://github.com/pism/glacier-flow-tools/blob/main/images/jak_obs_speed.png)
