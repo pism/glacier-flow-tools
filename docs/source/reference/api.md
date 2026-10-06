@@ -105,4 +105,5 @@ one page per symbol under `generated/`.
     merge_on_intersection_dask
     merge_on_intersection_pandas
     tqdm_joblib
+    to_numpy_in_units
 ```

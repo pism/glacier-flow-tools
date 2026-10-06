@@ -28,7 +28,7 @@ import geopandas as gp
 import numpy as np
 import pytest
 import xarray as xr
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from glacier_flow_tools import compute_pathlines, compute_profiles
 
@@ -90,8 +90,11 @@ def fixture_pathline_inputs(tmp_path):
     y = np.arange(0.0, 10_000.0, 100.0)
     shape = (len(y), len(x))
     ds = xr.Dataset(
-        {"vx": (("y", "x"), np.full(shape, 100.0)), "vy": (("y", "x"), np.zeros(shape))},
-        coords={"x": x, "y": y},
+        {
+            "vx": (("y", "x"), np.full(shape, 100.0), {"units": "m/yr"}),
+            "vy": (("y", "x"), np.zeros(shape), {"units": "m/yr"}),
+        },
+        coords={"x": ("x", x, {"units": "m"}), "y": ("y", y, {"units": "m"})},
     )
     raster = tmp_path / "velocity.nc"
     ds.to_netcdf(raster)
@@ -279,8 +282,11 @@ def test_compute_pathlines_densify(tmp_path, monkeypatch):
     shape = (len(y), len(x))
     raster = tmp_path / "velocity.nc"
     xr.Dataset(
-        {"vx": (("y", "x"), np.full(shape, 100.0)), "vy": (("y", "x"), np.zeros(shape))},
-        coords={"x": x, "y": y},
+        {
+            "vx": (("y", "x"), np.full(shape, 100.0), {"units": "m/yr"}),
+            "vy": (("y", "x"), np.zeros(shape), {"units": "m/yr"}),
+        },
+        coords={"x": ("x", x, {"units": "m"}), "y": ("y", y, {"units": "m"})},
     ).to_netcdf(raster)
     # A 1.2 km long line across the flow: points at y = 4000, 4500 and 5000.
     vector = tmp_path / "start.gpkg"
@@ -316,3 +322,173 @@ def test_compute_pathlines_densify_rejects_bad_distance(monkeypatch, capsys):
         compute_pathlines.main()
     assert exc.value.code == 2
     assert "is not a distance" in capsys.readouterr().err
+
+
+def write_velocity(path, vx, velocity_units=None, x_units=None, scale_x=1.0):
+    """
+    Write a uniform eastward velocity field on a 10 km by 10 km grid.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The file to write.
+    vx : float
+        The velocity in x.
+    velocity_units : str, optional
+        The units attribute of the velocities. If None (default), they have no units.
+    x_units : str, optional
+        The units attribute of the coordinates. If None (default), they have no units.
+    scale_x : float, optional
+        Factor applied to the coordinates, which are in meters before scaling.
+    """
+    x = np.arange(0.0, 10_000.0, 100.0)
+    shape = (len(x), len(x))
+    v_attrs = {} if velocity_units is None else {"units": velocity_units}
+    x_attrs = {} if x_units is None else {"units": x_units}
+    xr.Dataset(
+        {"vx": (("y", "x"), np.full(shape, vx), v_attrs), "vy": (("y", "x"), np.zeros(shape), v_attrs)},
+        coords={"x": ("x", x * scale_x, x_attrs), "y": ("y", x * scale_x, x_attrs)},
+    ).to_netcdf(path)
+
+
+def run_compute_pathlines(tmp_path, monkeypatch, raster, extra_args=()):
+    """
+    Run compute_pathlines for 5 years from the point (2000, 5000) and return the result.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    raster : pathlib.Path
+        The velocity file.
+    extra_args : sequence of str, optional
+        Additional command line arguments.
+
+    Returns
+    -------
+    numpy.ndarray
+        The x coordinates of the points along the pathline.
+    """
+    vector = tmp_path / "start.gpkg"
+    gp.GeoDataFrame({"id": [1], "name": ["a"]}, geometry=[Point(2000, 5000)], crs="EPSG:3413").to_file(vector)
+    outfile = tmp_path / "pathlines.gpkg"
+    argv = ["compute_pathlines", "--raster_url", str(raster), "--vector_url", str(vector)]
+    argv += ["--n_jobs", "1", "--end_time", "5", "--hmin", "1", "--hmax", "1", *extra_args, str(outfile)]
+    monkeypatch.setattr("sys.argv", argv)
+    compute_pathlines.main()
+    result = gp.read_file(outfile)
+    return np.array([g.x for g in result[result["pathline_id"] == 0].geometry])
+
+
+SECONDS_PER_YEAR = 365.25 * 86400.0
+EXPECTED_X = [2000.0, 2100.0, 2200.0, 2300.0, 2400.0]
+
+
+@pytest.mark.parametrize(
+    "vx, velocity_units",
+    [(100.0, "m/yr"), (100.0, "m year-1"), (0.1, "km/yr"), (100.0 / SECONDS_PER_YEAR, "m/s")],
+)
+def test_compute_pathlines_converts_velocity_units(tmp_path, monkeypatch, vx, velocity_units):
+    """
+    Get the same pathline for the same flow of 100 m/yr, whatever units the file uses.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    vx : float
+        The velocity in x, in the units of the file.
+    velocity_units : str
+        The units of the velocities in the file.
+    """
+    raster = tmp_path / "velocity.nc"
+    write_velocity(raster, vx, velocity_units=velocity_units, x_units="m")
+    assert np.allclose(run_compute_pathlines(tmp_path, monkeypatch, raster), EXPECTED_X)
+
+
+def test_compute_pathlines_converts_coordinate_units(tmp_path, monkeypatch):
+    """
+    Convert grid coordinates given in km to meters.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    """
+    raster = tmp_path / "velocity.nc"
+    write_velocity(raster, 100.0, velocity_units="m/yr", x_units="km", scale_x=1e-3)
+    assert np.allclose(run_compute_pathlines(tmp_path, monkeypatch, raster), EXPECTED_X)
+
+
+def test_compute_pathlines_assumes_units_with_a_warning(tmp_path, monkeypatch):
+    """
+    Assume m/yr and m, with a warning, for a file without units.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    """
+    raster = tmp_path / "velocity.nc"
+    write_velocity(raster, 100.0)
+    with pytest.warns(UserWarning) as record:
+        result = run_compute_pathlines(tmp_path, monkeypatch, raster)
+    messages = [str(w.message) for w in record]
+    assert "'vx' has no units, assuming 'm/yr'." in messages
+    assert "'x' has no units, assuming 'm'." in messages
+    assert np.allclose(result, EXPECTED_X)
+
+
+def test_compute_pathlines_velocity_units_option(tmp_path, monkeypatch):
+    """
+    Use ``--velocity_units`` in place of the units in the file.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    """
+    raster = tmp_path / "velocity.nc"
+    # 'm/y' is not understood, so the file alone would be rejected.
+    write_velocity(raster, 100.0 / 365.25, velocity_units="m/y", x_units="m")
+    result = run_compute_pathlines(tmp_path, monkeypatch, raster, extra_args=["--velocity_units", "m/d"])
+    assert np.allclose(result, EXPECTED_X)
+
+
+@pytest.mark.parametrize(
+    "velocity_units, message",
+    [("m/y", "The units 'm/y' of 'vx' are not understood."), ("m", "cannot be converted to 'm/yr'")],
+)
+def test_compute_pathlines_rejects_bad_units(tmp_path, monkeypatch, capsys, velocity_units, message):
+    """
+    End with a usage error for velocity units that are not understood or are not a velocity.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    capsys : pytest.CaptureFixture
+        Used to capture the error message.
+    velocity_units : str
+        The units of the velocities in the file.
+    message : str
+        Part of the expected error message.
+    """
+    raster = tmp_path / "velocity.nc"
+    write_velocity(raster, 100.0, velocity_units=velocity_units, x_units="m")
+    with pytest.raises(SystemExit) as exc:
+        run_compute_pathlines(tmp_path, monkeypatch, raster)
+    assert exc.value.code == 2
+    assert message in capsys.readouterr().err

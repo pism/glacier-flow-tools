@@ -11,6 +11,11 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - `compute_pathlines --densify DISTANCE` starts a pathline every `DISTANCE` along each line of the vector dataset, for example `--densify 500m`. The distance takes the unit `m` or `km`, and a plain number is in meters. It is measured along the line from its first vertex. Points in the dataset are kept as they are, and lines are not shortened in this mode. Without the option the behavior is unchanged: a pathline starts near each end of a line.
 - `glacier_flow_tools.geom.densify_line`, `geopandas_dataframe_densify_lines` and `parse_distance`, which the option uses.
+- `compute_pathlines --velocity_units UNITS` gives the units of `vx` and `vy` when the raster dataset has none, or has units that are wrong or not understood.
+- `glacier_flow_tools.utils.to_numpy_in_units` returns the values of a DataArray converted to given units.
+
+### Changed
+- `compute_pathlines` reads the units of `vx`, `vy`, `x` and `y` from the raster dataset and converts the velocities to m/yr and the coordinates to m, using pint-xarray with the unit definitions of cf-xarray. Before, the numbers were used as they were, so a file in m/s gave wrong pathlines without any message. A variable without units is assumed to be in m/yr or m, with a warning. Units that are not understood, or that are not a velocity or a length, stop the command with an error.
 
 ## [0.2.4]
 

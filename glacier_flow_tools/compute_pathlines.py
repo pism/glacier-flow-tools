@@ -42,7 +42,7 @@ from glacier_flow_tools.pathlines import (
     pathline_to_line_geopandas_dataframe,
     series_to_pathline_geopandas_dataframe,
 )
-from glacier_flow_tools.utils import tqdm_joblib
+from glacier_flow_tools.utils import to_numpy_in_units, tqdm_joblib
 
 
 def distance_argument(value: str) -> float:
@@ -91,27 +91,34 @@ def main() -> None:
     )
     parser.add_argument("--n_jobs", help="""Number of parallel jobs.""", type=int, default=4)
     parser.add_argument(
+        "--velocity_units",
+        help="""Units of the velocities vx and vy in the raster dataset, for example 'm/s'. By default the units
+        are read from the dataset; without units there, m/yr is assumed. The velocities are converted to m/yr.""",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
         "--hmin",
-        help="""Minimum time step for adaptive time stepping. Default=0.01. If hmin=hmax then a fixed time step is used""",
+        help="""Minimum time step in years for adaptive time stepping. Default=0.01. If hmin=hmax then a fixed time step is used""",
         type=float,
         default=0.01,
     )
     parser.add_argument(
         "--hmax",
-        help="""Maximum time step for adaptive time stepping. Default=1.0. If hmin=hmax then a fixed time step is used""",
+        help="""Maximum time step in years for adaptive time stepping. Default=1.0. If hmin=hmax then a fixed time step is used""",
         type=float,
         default=1.0,
     )
     parser.add_argument("--tol", help="""Adaptive time stepping tolerance. Default=1e-3""", type=float, default=1e-3)
     parser.add_argument(
         "--start_time",
-        help="""Start time. Default=0.0""",
+        help="""Start time in years. Default=0.0""",
         type=float,
         default=0.0,
     )
     parser.add_argument(
         "--end_time",
-        help="""End time. Default=1000.0""",
+        help="""End time in years. Default=1000.0""",
         type=float,
         default=1_000.0,
     )
@@ -130,7 +137,7 @@ def main() -> None:
 
     parser.add_argument(
         "--v_threshold",
-        help="""Threshold velocity below which solver stops Default is 0.0.""",
+        help="""Threshold velocity in m/yr below which solver stops Default is 0.0.""",
         default=0.0,
         type=float,
     )
@@ -147,16 +154,20 @@ def main() -> None:
     else:
         starting_points_df = geopandas_dataframe_shorten_lines(df).convert.to_points()
 
+    # The solver does not track units: velocities are converted to m/yr and coordinates to m,
+    # so that times are in years and distances in meters.
     ds = xr.open_dataset(options.raster_url)
-    Vx = np.squeeze(ds["vx"].to_numpy())
-    Vy = np.squeeze(ds["vy"].to_numpy())
+    try:
+        Vx = np.squeeze(to_numpy_in_units(ds["vx"], "m/yr", assume="m/yr", override=options.velocity_units))
+        Vy = np.squeeze(to_numpy_in_units(ds["vy"], "m/yr", assume="m/yr", override=options.velocity_units))
+        x = to_numpy_in_units(ds["x"], "m", assume="m")
+        y = to_numpy_in_units(ds["y"], "m", assume="m")
+    except ValueError as exc:
+        parser.error(f"{options.raster_url}: {exc}")
 
     if options.reverse:
         Vx = -Vx
         Vy = -Vy
-
-    x = ds["x"].to_numpy()
-    y = ds["y"].to_numpy()
 
     n_pts = len(starting_points_df)
 

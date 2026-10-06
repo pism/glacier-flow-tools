@@ -22,6 +22,7 @@ Module provides utility functions that do not fit anywhere else.
 
 import contextlib
 import re
+import warnings
 from importlib.resources import files
 from pathlib import Path
 from typing import (  # pylint: disable=deprecated-class
@@ -34,9 +35,11 @@ from typing import (  # pylint: disable=deprecated-class
     Union,
 )
 
+import cf_xarray.units  # pylint: disable=unused-import
 import joblib
 import numpy as np
 import pandas as pd
+import pint_xarray  # pylint: disable=unused-import
 import pylab as plt
 import xarray as xr
 from dask import dataframe as dd
@@ -308,3 +311,62 @@ def qgis2cmap(filename: Union[Path, str], N: int = 256, name: str = "my colormap
     cmap = colors.LinearSegmentedColormap.from_list(name, m_colors, N=N)
 
     return cmap
+
+
+def to_numpy_in_units(
+    da: xr.DataArray, units: str, assume: Optional[str] = None, override: Optional[str] = None
+) -> np.ndarray:
+    """
+    Return the values of a DataArray converted to the given units.
+
+    The units of the data are read from its ``units`` attribute and converted with pint, using the
+    unit definitions of cf_xarray. These understand CF-style units such as ``m year-1`` as well as ``m/yr``.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        The data. Its ``units`` attribute gives the units of its values.
+    units : str
+        The units to convert to, for example ``m/yr``.
+    assume : str, optional
+        The units to assume, with a warning, if the data has no ``units`` attribute. If None (default),
+        data without units raises an error.
+    override : str, optional
+        The units of the data. If given, the ``units`` attribute is ignored. Use this for data whose
+        units are missing, wrong or not understood.
+
+    Returns
+    -------
+    np.ndarray
+        The values in the requested units.
+
+    Raises
+    ------
+    ValueError
+        If the data has no units and ``assume`` is None, if the units are not understood, or if they
+        cannot be converted to the requested units.
+
+    Examples
+    --------
+    >>> da = xr.DataArray([1.0, 2.0], attrs={"units": "km/yr"})
+    >>> to_numpy_in_units(da, "m/yr")
+    array([1000., 2000.])
+    """
+    name = f"'{da.name}'" if da.name is not None else "the data"
+    data_units = override if override is not None else str(da.attrs.get("units", "")).strip()
+    if not data_units:
+        if assume is None:
+            raise ValueError(f"{name} has no units. Expected units that can be converted to '{units}'.")
+        warnings.warn(f"{name} has no units, assuming '{assume}'.")
+        data_units = assume
+
+    # Convert a bare copy, so that neither coordinates nor other attributes get in the way.
+    bare = xr.DataArray(da.to_numpy(), dims=da.dims)
+    try:
+        quantified = bare.pint.quantify(data_units)
+    except Exception as exc:
+        raise ValueError(f"The units '{data_units}' of {name} are not understood.") from exc
+    try:
+        return quantified.pint.to(units).pint.dequantify().to_numpy()
+    except Exception as exc:
+        raise ValueError(f"{name} has units '{data_units}', which cannot be converted to '{units}'.") from exc

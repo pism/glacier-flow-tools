@@ -84,6 +84,37 @@ and `y`. Add `--reverse` for backward pathlines, and `--output_type line` to
 save lines instead of points. All options are listed in
 {doc}`../reference/cli`.
 
+### Units
+
+`compute_pathlines` reads the units of `vx`, `vy`, `x` and `y` from their
+`units` attributes. It converts the velocities to m/yr and the coordinates to
+m, with [pint-xarray](https://pint-xarray.readthedocs.io/) and the unit
+definitions of [cf-xarray](https://cf-xarray.readthedocs.io/). Times
+(`--start_time`, `--end_time`, `--hmin`, `--hmax`) are therefore in years, and
+`--v_threshold` is in m/yr.
+
+- Common spellings are understood, for example `m/yr`, `m year-1`,
+  `meter/year`, `m/s`, `m s-1`, `m day-1` and `km/yr`. A year is 365.25 days.
+- If a variable has no `units` attribute, m/yr (for velocities) or m (for
+  coordinates) is assumed, with a warning.
+- If the units are not understood, or are not a velocity or a length, the
+  command stops with an error that names the variable.
+- `--velocity_units` gives the units of `vx` and `vy` and takes precedence
+  over the file. Use it when the file has units that are wrong or not
+  understood, such as `m/y`:
+
+  ```bash
+  compute_pathlines --velocity_units "m/yr" ...
+  ```
+
+The coordinates of the starting points are not converted. They must be in
+meters, in the same projection as the velocity grid.
+
+In Python, {func}`~glacier_flow_tools.utils.to_numpy_in_units` does the
+conversion for one {class}`xarray.DataArray`.
+{func}`~glacier_flow_tools.pathlines.compute_pathline` itself does not track
+units.
+
 ### Starting points from lines
 
 The vector file may hold points, lines, or both. Points are used as they are.
