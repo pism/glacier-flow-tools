@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.3]
 
 ### Fixed
 - The console scripts `compute_pathlines` and `compute_profiles` failed with an `ImportError` on start. Their entry points named functions that did not exist. The scripts' code now lives in the package, as `glacier_flow_tools.compute_pathlines` and `glacier_flow_tools.compute_profiles`, each with a `main()` function.
