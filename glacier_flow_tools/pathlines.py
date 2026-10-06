@@ -92,7 +92,23 @@ class nullcontext:
         return False
 
 
-def compute_pathline_with_progress(args):
+def compute_pathline_with_progress(args: Tuple) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
+    """
+    Compute a pathline from a single packed argument tuple.
+
+    Wrapper around `compute_pathline` for use with mapping functions (for example
+    `multiprocessing.Pool.imap`) that pass exactly one argument.
+
+    Parameters
+    ----------
+    args : tuple
+        Positional arguments for `compute_pathline`, in order.
+
+    Returns
+    -------
+    tuple of ndarray
+        The result of `compute_pathline`.
+    """
     return compute_pathline(*args)
 
 

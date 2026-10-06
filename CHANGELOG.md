@@ -17,6 +17,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The test workflow uses micromamba, runs on Ubuntu and macOS with Python 3.10, 3.12, 3.13 and 3.14, and replaces `python-package.yml`.
 - `environment.yml` no longer pins Python to 3.11.7.
 
+### Fixed
+- A stray `b` line before the module docstring in `profiles/compute_profiles.py` raised a `NameError` on import.
+- Trailing whitespace in `README.md`, import order in the pathline and plotting scripts, and missing numpydoc docstrings, so that pre-commit passes.
+
 ## [0.1.1]
 
 ## [0.1.0]

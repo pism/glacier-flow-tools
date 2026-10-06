@@ -11,6 +11,9 @@ jobs:
 
   pre-commit:
     runs-on: ubuntu-latest
+    env:
+      # These hooks need the project's conda environment; pytest runs in test.yml.
+      SKIP: pytest,mypy,pylint
     steps:
     - uses: actions/checkout@v7
     - uses: actions/setup-python@v7
