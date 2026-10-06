@@ -12,7 +12,7 @@ classifiers = [
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3.11",
-        "Topic :: Scientific/Engineering :: Postprocessing",
+        "Topic :: Scientific/Engineering :: GIS",
         ]
 dynamic = ["version", "dependencies"]
 optional-dependencies.test = ["pytest", "pytest-cov"]

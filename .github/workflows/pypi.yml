@@ -4,9 +4,14 @@ on:
   push:
     tags:
       - 'v*'
-  # Run by hand on a tag (Actions -> Publish to PyPI -> Run workflow -> pick the tag)
-  # to publish a version that was tagged before this workflow existed.
+  # Run by hand (Actions -> Publish to PyPI -> Run workflow) and enter a tag, for
+  # example v0.2.0, to publish a version whose tag-triggered run failed.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build and publish, for example v0.2.0
+        required: true
+        type: string
 
 jobs:
   publish:
@@ -23,6 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0  # setuptools_scm needs the tags
 
       - uses: actions/setup-python@v7
@@ -32,7 +38,8 @@ jobs:
       - name: Build sdist and wheel
         run: |
           python -m pip install --upgrade build twine
-          python -m build
+          # Not `python -m build`: it would import ./build.py instead of the build package.
+          pyproject-build
           twine check --strict dist/*
 
       - name: Publish to PyPI
