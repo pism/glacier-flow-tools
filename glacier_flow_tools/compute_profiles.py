@@ -93,7 +93,9 @@ def main() -> None:
     """
     # set up the option parser
     profiles_parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    profiles_parser.description = "Compute pathlines (forward/backward) given a velocity field (xr.Dataset) and starting points (geopandas.GeoDataFrame)."
+    profiles_parser.description = (
+        "Extract profiles from observed and simulated velocities, compute statistics and plot them."
+    )
     profiles_parser.add_argument(
         "--alpha",
         help="""Scale observational error. Use 0.05 to reproduce 'Commplex Outlet Glacier Flow Captured'. Default=0.""",
