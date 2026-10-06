@@ -10,6 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - The console scripts `compute_pathlines` and `compute_profiles` failed with an `ImportError` on start. Their entry points named functions that did not exist. The scripts' code now lives in the package, as `glacier_flow_tools.compute_pathlines` and `glacier_flow_tools.compute_profiles`, each with a `main()` function.
+- `h5py` is a requirement. `h5netcdf` no longer pulls it in, so NetCDF files could not be opened after a plain `pip install`.
 - `pathlines/compute_pathlines.py` and `profiles/compute_profiles.py` are thin wrappers around these, so `%run` in the notebooks still works.
 
 ### Added
