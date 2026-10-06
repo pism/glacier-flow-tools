@@ -292,6 +292,118 @@ def shorten_line(series: gp.GeoSeries, buffer: float = 100):
     return geom
 
 
+def parse_distance(value: str) -> float:
+    """
+    Convert a distance given as text, such as ``500``, ``500m`` or ``0.5km``, to meters.
+
+    Parameters
+    ----------
+    value : str
+        A positive number, optionally followed by the unit ``m`` or ``km``. Without a unit the number is in meters.
+
+    Returns
+    -------
+    float
+        The distance in meters.
+
+    Raises
+    ------
+    ValueError
+        If the text is not a positive distance in ``m`` or ``km``.
+
+    Examples
+    --------
+    >>> parse_distance("500m")
+    500.0
+    >>> parse_distance("0.5km")
+    500.0
+    """
+    text = str(value).strip().lower()
+    factor = 1.0
+    if text.endswith("km"):
+        text, factor = text[:-2], 1000.0
+    elif text.endswith("m"):
+        text = text[:-1]
+    try:
+        distance_m = float(text) * factor
+    except ValueError as exc:
+        raise ValueError(f"'{value}' is not a distance. Use a number, optionally with the unit m or km.") from exc
+    if not distance_m > 0:
+        raise ValueError(f"'{value}' is not a positive distance.")
+    return distance_m
+
+
+def densify_line(line: LineString, spacing: float) -> List[Point]:
+    """
+    Place points along a line at a regular spacing.
+
+    The first point is the start of the line. Further points follow every ``spacing`` along the line,
+    measured along the line and not as the crow flies. The end of the line is only included if it falls on a multiple of ``spacing``.
+
+    Parameters
+    ----------
+    line : LineString
+        The line.
+    spacing : float
+        The distance between points along the line, in the units of the line's coordinates.
+
+    Returns
+    -------
+    List[Point]
+        The points along the line.
+
+    Examples
+    --------
+    >>> points = densify_line(LineString([(0, 0), (1200, 0)]), 500)
+    >>> [p.x for p in points]
+    [0.0, 500.0, 1000.0]
+    """
+    if spacing <= 0:
+        raise ValueError("spacing must be positive.")
+    # The small tolerance keeps a point that lies at the end of the line despite rounding.
+    n = int(np.floor(line.length / spacing + 1e-9))
+    return [line.interpolate(k * spacing) for k in range(n + 1)]
+
+
+def geopandas_dataframe_densify_lines(df: gp.GeoDataFrame, spacing: float) -> gp.GeoDataFrame:
+    """
+    Convert the lines of a GeoDataFrame to points at a regular spacing.
+
+    Each "LineString" is replaced by points every ``spacing`` along it, see `densify_line`.
+    Each part of a "MultiLineString" is treated as a line of its own. Rows with any other geometry,
+    such as "Point", are kept unchanged. Every point keeps the attributes of the row it comes from.
+
+    Parameters
+    ----------
+    df : gp.GeoDataFrame
+        The GeoDataFrame.
+    spacing : float
+        The distance between points along a line, in the units of the coordinate reference system.
+
+    Returns
+    -------
+    gp.GeoDataFrame
+        A GeoDataFrame with the same columns and coordinate reference system, and one row per point.
+
+    Examples
+    --------
+    >>> df = gp.GeoDataFrame({"name": ["a"]}, geometry=[LineString([(0, 0), (1200, 0)])])
+    >>> len(geopandas_dataframe_densify_lines(df, 500))
+    3
+    """
+    rows = []
+    for k in df.index:
+        geometry = df.geometry[k]
+        if geometry.geom_type == "LineString":
+            geometries = densify_line(geometry, spacing)
+        elif geometry.geom_type == "MultiLineString":
+            geometries = [pt for line in geometry.geoms for pt in densify_line(line, spacing)]
+        else:
+            geometries = [geometry]
+        rows.append(to_geopandas_row(df, k, geometries))
+    return gp.GeoDataFrame(pd.concat(rows), geometry="geometry", crs=df.crs).reset_index(drop=True)
+
+
 @pd.api.extensions.register_dataframe_accessor("convert")
 class GeometryConverter:  # pylint: disable=too-few-public-methods
     """

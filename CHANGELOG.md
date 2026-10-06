@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `compute_pathlines --densify DISTANCE` starts a pathline every `DISTANCE` along each line of the vector dataset, for example `--densify 500m`. The distance takes the unit `m` or `km`, and a plain number is in meters. It is measured along the line from its first vertex. Points in the dataset are kept as they are, and lines are not shortened in this mode. Without the option the behavior is unchanged: a pathline starts near each end of a line.
+- `glacier_flow_tools.geom.densify_line`, `geopandas_dataframe_densify_lines` and `parse_distance`, which the option uses.
+
 ## [0.2.4]
 
 ### Fixed

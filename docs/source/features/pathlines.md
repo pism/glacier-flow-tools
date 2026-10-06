@@ -68,7 +68,7 @@ study how the uncertainty of the velocities affects the pathlines.
 ## From the command line
 
 `compute_pathlines` computes one pathline for each starting point in a vector
-file. Lines in the file are converted to their points first.
+file.
 
 ```bash
 compute_pathlines \
@@ -83,6 +83,36 @@ The velocity file must have the variables `vx` and `vy` on the coordinates `x`
 and `y`. Add `--reverse` for backward pathlines, and `--output_type line` to
 save lines instead of points. All options are listed in
 {doc}`../reference/cli`.
+
+### Starting points from lines
+
+The vector file may hold points, lines, or both. Points are used as they are.
+For lines there are two modes:
+
+Default
+: Two pathlines per line, one near each end. The start points lie about 200 m
+  in from the ends of the line.
+
+`--densify`
+: A pathline every given distance along each line, for example every 500 m:
+
+  ```bash
+  compute_pathlines \
+      --raster_url velocity.nc \
+      --vector_url flux_gates.gpkg \
+      --densify 500m \
+      pathlines.gpkg
+  ```
+
+  The distance takes the unit `m` or `km`; a plain number is in meters. It is
+  measured along the line, starting at the first vertex. The end of the line
+  only gets a point if it falls on a multiple of the distance, so a 1.2 km
+  line with `--densify 500m` gives points at 0, 500 and 1000 m. The lines are
+  not shortened in this mode. The coordinate reference system of the file
+  must be in meters.
+
+In Python, {func}`~glacier_flow_tools.geom.geopandas_dataframe_densify_lines`
+does the same for a {class}`geopandas.GeoDataFrame`.
 
 ## Example
 
