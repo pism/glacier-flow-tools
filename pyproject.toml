@@ -22,8 +22,8 @@ requires = ["setuptools>=77", "setuptools-scm[toml]>=6.2", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-compute_pathlines = "glacier_flow_tools.pathlines:compute_pathlines"
-compute_profiles = "glacier_flow_tools.profiles:compute_profiles"
+compute_pathlines = "glacier_flow_tools.compute_pathlines:main"
+compute_profiles = "glacier_flow_tools.compute_profiles:main"
 
 [tool.setuptools.packages.find]
 include = ["glacier_flow_tools"]
