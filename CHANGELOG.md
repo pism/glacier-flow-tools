@@ -18,6 +18,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `environment.yml` no longer pins Python to 3.11.7.
 
 ### Fixed
+- `profiles.normal` no longer uses `np.cross` on 2D vectors, which NumPy 2.3 removed. `test_normal` and `test_extract_profiles` failed with it on Python 3.12 and later.
 - A stray `b` line before the module docstring in `profiles/compute_profiles.py` raised a `NameError` on import.
 - Trailing whitespace in `README.md`, import order in the pathline and plotting scripts, and missing numpydoc docstrings, so that pre-commit passes.
 
