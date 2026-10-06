@@ -1,0 +1,20 @@
+name: Static analysis
+
+on: push
+
+jobs:
+  call-secrets-analysis-workflow:
+    # Docs: https://github.com/ASFHyP3/actions
+    uses: ASFHyP3/actions/.github/workflows/reusable-secrets-analysis.yml@v0.22.0
+    permissions:
+      contents: read
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    env:
+      # These hooks need the project's conda environment; pytest runs in test.yml.
+      SKIP: pytest,mypy,pylint
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-python@v7
+    - uses: pre-commit/action@v3.0.1

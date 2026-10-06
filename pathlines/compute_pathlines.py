@@ -40,7 +40,6 @@ from glacier_flow_tools.pathlines import (
 )
 from glacier_flow_tools.utils import tqdm_joblib
 
-
 if __name__ == "__main__":
     # set up the option parser
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)

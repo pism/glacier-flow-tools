@@ -386,7 +386,8 @@ def normal(point0: np.ndarray, point1: np.ndarray) -> np.ndarray:
     n = n / np.linalg.norm(n)  # normalize
 
     # flip direction if needed:
-    if np.cross(a, n) < 0:
+    # (z-component of the 2D cross product; np.cross no longer supports 2D vectors in NumPy >= 2.3)
+    if a[0] * n[1] - a[1] * n[0] < 0:
         n = -1.0 * n
     return n
 

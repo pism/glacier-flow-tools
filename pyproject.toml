@@ -1,6 +1,5 @@
 [project]
 name = "glacier-flow-tools"
-version = "0.1.1"
 maintainers = [{name = "Andy Aschwanden", email = "andy.aschwanden@gmail.com"}]
 description = """Tools for analysing glacier flow."""
 readme = "README.md"
@@ -15,10 +14,11 @@ classifiers = [
         "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering :: Postprocessing",
         ]
-dynamic = ["dependencies"]
+dynamic = ["version", "dependencies"]
+optional-dependencies.test = ["pytest", "pytest-cov"]
 
 [build-system]
-requires = ["setuptools", "setuptools-scm", "numpy"]
+requires = ["setuptools>=77", "setuptools-scm[toml]>=6.2", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
@@ -30,6 +30,8 @@ include = ["glacier_flow_tools"]
 
 [tool.setuptools.package-data]
 "glacier_flow_tools" = ['data/*.txt', 'data/*.gpkg', 'data/*.toml']
+
+[tool.setuptools_scm]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

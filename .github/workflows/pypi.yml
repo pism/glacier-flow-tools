@@ -1,0 +1,39 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Run by hand on a tag (Actions -> Publish to PyPI -> Run workflow -> pick the tag)
+  # to publish a version that was tagged before this workflow existed.
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # PyPI trusted publishing: no token is stored, PyPI trusts this workflow
+    # in this repository and environment. Configure it at
+    # https://pypi.org/manage/project/glacier-flow-tools/settings/publishing/
+    environment:
+      name: pypi
+      url: https://pypi.org/project/glacier-flow-tools/
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # setuptools_scm needs the tags
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: 3.x
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          twine check --strict dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

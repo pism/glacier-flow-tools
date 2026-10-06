@@ -4,7 +4,7 @@
 
 # Glacier Flow Tools
 
-Glacier Flow Tools facilitates analysis of glacier flow. It provides modules to compute pathlines (trajectories), compute flow across profiles (flux gates), etc. 
+Glacier Flow Tools facilitates analysis of glacier flow. It provides modules to compute pathlines (trajectories), compute flow across profiles (flux gates), etc.
 This tools is currently under development.
 
 ## Installation
