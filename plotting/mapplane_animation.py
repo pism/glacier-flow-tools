@@ -24,16 +24,18 @@ from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
 
 import cartopy.crs as ccrs
-import cftime
 import cf_xarray.units  # pylint: disable=unused-import
-
+import cftime
 import matplotlib
-from matplotlib import cm, colors
-from matplotlib.colors import LightSource
-from matplotlib.colors import ListedColormap
 import matplotlib.pylab as plt
-from shapely import get_coordinates
 import nc_time_axis
+import numpy as np
+import xarray as xr
+from dask.diagnostics import ProgressBar
+from dask.distributed import Client, progress
+from matplotlib import cm, colors
+from matplotlib.colors import LightSource, ListedColormap
+from shapely import get_coordinates
 from tqdm.auto import tqdm
 
 from glacier_flow_tools.utils import (
@@ -41,11 +43,6 @@ from glacier_flow_tools.utils import (
     get_dataarray_extent,
     register_colormaps,
 )
-
-import numpy as np
-import xarray as xr
-from dask.diagnostics import ProgressBar
-from dask.distributed import Client, progress
 
 xr.set_options(keep_attrs=True)
 
