@@ -20,6 +20,8 @@
 Tests for pathlines.
 """
 
+import warnings
+
 import geopandas as gp
 import numpy as np
 import pandas as pd
@@ -31,6 +33,7 @@ from shapely.geometry import Point
 
 from glacier_flow_tools.interpolation import velocity
 from glacier_flow_tools.pathlines import (
+    StepSizeWarning,
     compute_pathline,
     pathline_to_geopandas_dataframe,
 )
@@ -313,3 +316,87 @@ def test_pathline_to_geopandas():
 
     pathline_gp_shapely = pathline_to_geopandas_dataframe(pts_shapely_points, attributes)
     assert_frame_equal(pathline_gp_shapely, gp_true, check_exact=False, atol=0.01)
+
+
+def jump_velocity(p, t):  # pylint: disable=unused-argument
+    """
+    Return a velocity in x that drops from 100 to 10 at x = 50.
+
+    Parameters
+    ----------
+    p : array_like
+        The point.
+    t : float
+        The time, which is not used.
+
+    Returns
+    -------
+    numpy.ndarray
+        The velocity at the point.
+    """
+    return np.array([100.0 if p[0] < 50 else 10.0, 0.0])
+
+
+def test_compute_pathline_gets_past_a_jump_in_velocity():
+    """
+    Finish a pathline that crosses a jump in the velocity, and warn once about the step taken at hmin.
+
+    Before, the solver shrank the step without limit and never got past the jump.
+    """
+    with pytest.warns(StepSizeWarning) as record:
+        pts, _, time, _ = compute_pathline(
+            [0.0, 0.0], jump_velocity, (), start_time=0.0, end_time=2.0, hmin=0.01, hmax=1.0, tol=1e-3
+        )
+
+    step_size_warnings = [w.message for w in record if isinstance(w.message, StepSizeWarning)]
+    assert len(step_size_warnings) == 1
+    warning = step_size_warnings[0]
+    assert warning.n_steps >= 1
+    # The jump is at x = 50, which a particle moving at 100 m/yr reaches at t = 0.5.
+    assert warning.first_time == pytest.approx(0.5, abs=0.01)
+    assert warning.max_error > 1e-3
+    assert "taken at the minimum step size hmin=0.01" in str(warning)
+
+    # The pathline crosses the jump and carries on at the lower speed.
+    assert pts[-1, 0] > 50.0
+    assert time[-1] > 1.0
+    # No step is shorter than hmin.
+    assert np.diff(time).min() >= 0.01 - 1e-12
+
+
+def test_compute_pathline_does_not_warn_when_the_tolerance_is_met():
+    """
+    Issue no warning for a smooth flow that meets the tolerance.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", StepSizeWarning)
+        pts, _, _, _ = compute_pathline(
+            [1.0, 0.0],
+            lambda p, t: np.array([-p[1], p[0]]),
+            (),
+            start_time=0.0,
+            end_time=1.0,
+            hmin=1e-4,
+            hmax=0.1,
+            tol=1e-6,
+        )
+    # A rigid rotation keeps the particle on the unit circle.
+    assert_array_almost_equal(np.hypot(pts[:, 0], pts[:, 1]), np.ones(len(pts)), decimal=5)
+
+
+def test_compute_pathline_fixed_time_step():
+    """
+    Use a fixed time step if hmin equals hmax, whatever the tolerance.
+    """
+    with pytest.warns(StepSizeWarning):
+        _, _, time, _ = compute_pathline(
+            [1.0, 0.0],
+            lambda p, t: np.array([-p[1], p[0]]),
+            (),
+            start_time=0.0,
+            end_time=2.0,
+            hmin=0.5,
+            hmax=0.5,
+            tol=1e-12,
+        )
+    assert_array_almost_equal(time, [0.0, 0.5, 1.0, 1.5])

@@ -42,6 +42,15 @@ The options that control the integration are:
 `tol`
 : The error tolerance of the adaptive time stepping.
 
+The solver shortens the time step until the error estimate is below `tol`, but
+never below `hmin`. Where the tolerance cannot be met even at `hmin`, the step
+is taken at `hmin` anyway. This happens where the velocity jumps, for example
+at an ice margin or a data gap. The pathline then carries a
+{class}`~glacier_flow_tools.pathlines.StepSizeWarning`, issued once when the
+pathline is complete. It gives the number of such steps, the time of the first
+one and the largest error estimate. The error estimate of every step is the
+last element of the result.
+
 `v_threshold`
 : The solver stops where the speed drops below this value.
 
@@ -83,6 +92,23 @@ The velocity file must have the variables `vx` and `vy` on the coordinates `x`
 and `y`. Add `--reverse` for backward pathlines, and `--output_type line` to
 save lines instead of points. All options are listed in
 {doc}`../reference/cli`.
+
+### Messages about the time step
+
+If pathlines did not meet the tolerance everywhere, `compute_pathlines` prints
+one summary after the progress bar:
+
+```text
+Warning: 3 of 44 pathlines did not meet the tolerance tol=0.001 everywhere, even at the minimum time step hmin=0.01 yr.
+The affected steps were taken at the minimum time step.
+  pathline 12: 1 step, first at t=1.129 yr, largest error estimate 0.012
+  ...
+This is common where the velocity jumps, such as at an ice margin or a data gap.
+Use a smaller --hmin or a larger --tol to change this.
+```
+
+The pathlines are still computed and saved. The numbers are the positions of
+the pathlines in the output, the `pathline_id`.
 
 ### Units
 

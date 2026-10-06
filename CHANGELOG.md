@@ -14,7 +14,14 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `compute_pathlines --velocity_units UNITS` gives the units of `vx` and `vy` when the raster dataset has none, or has units that are wrong or not understood.
 - `glacier_flow_tools.utils.to_numpy_in_units` returns the values of a DataArray converted to given units.
 
+### Fixed
+- `compute_pathline` could run forever where the velocity jumps, for example at an ice margin or a data gap. It shrank the time step without limit, below `hmin`, and printed `Error: Could not converge to the required tolerance ...` on every attempt. The time step now stays at or above `hmin`. Where the tolerance cannot be met at `hmin`, the step is taken anyway.
+- With `hmin` equal to `hmax` the time step is fixed, as the help of `--hmin` says. Before, it still shrank.
+
 ### Changed
+- `compute_pathline` no longer prints a message for every attempt below `hmin`. It issues one `StepSizeWarning` per pathline, with the number of steps taken at `hmin` above the tolerance, the time of the first one and the largest error estimate.
+- `compute_pathlines` prints one summary of these warnings after the progress bar, instead of lines that broke up the bar.
+- Pathlines that needed a time step below `hmin` before can differ slightly, because their steps are no longer shorter than `hmin`.
 - `compute_pathlines` reads the units of `vx`, `vy`, `x` and `y` from the raster dataset and converts the velocities to m/yr and the coordinates to m, using pint-xarray with the unit definitions of cf-xarray. Before, the numbers were used as they were, so a file in m/s gave wrong pathlines without any message. A variable without units is assumed to be in m/yr or m, with a warning. Units that are not understood, or that are not a velocity or a length, stop the command with an error.
 
 ## [0.2.4]

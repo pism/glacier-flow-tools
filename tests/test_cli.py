@@ -492,3 +492,70 @@ def test_compute_pathlines_rejects_bad_units(tmp_path, monkeypatch, capsys, velo
         run_compute_pathlines(tmp_path, monkeypatch, raster)
     assert exc.value.code == 2
     assert message in capsys.readouterr().err
+
+
+def test_compute_pathlines_reports_step_size_warnings_once(tmp_path, monkeypatch, capsys):
+    """
+    Print one summary after the progress bar for pathlines that did not meet the tolerance.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Used to set the command line arguments.
+    capsys : pytest.CaptureFixture
+        Used to capture the printed summary.
+    """
+    # The speed drops from 100 to 10 m/yr at x = 5 km. With a large hmin and a tight
+    # tolerance, the steps across the drop cannot meet the tolerance.
+    x = np.arange(0.0, 10_000.0, 100.0)
+    X, _ = np.meshgrid(x, x)
+    vx = np.where(X < 5000.0, 100.0, 10.0)
+    raster = tmp_path / "velocity.nc"
+    xr.Dataset(
+        {"vx": (("y", "x"), vx, {"units": "m/yr"}), "vy": (("y", "x"), np.zeros_like(vx), {"units": "m/yr"})},
+        coords={"x": ("x", x, {"units": "m"}), "y": ("y", x, {"units": "m"})},
+    ).to_netcdf(raster)
+    vector = tmp_path / "start.gpkg"
+    gp.GeoDataFrame(
+        {"id": [1], "name": ["a"]}, geometry=[LineString([(4000, 2000), (4000, 4000)])], crs="EPSG:3413"
+    ).to_file(vector)
+    outfile = tmp_path / "pathlines.gpkg"
+
+    argv = ["compute_pathlines", "--raster_url", str(raster), "--vector_url", str(vector), "--n_jobs", "1"]
+    argv += ["--densify", "1km", "--end_time", "30", "--hmin", "0.5", "--tol", "1e-6", str(outfile)]
+    monkeypatch.setattr("sys.argv", argv)
+    compute_pathlines.main()
+
+    out = capsys.readouterr().out
+    assert "Could not converge" not in out
+    assert out.count("Warning:") == 1
+    assert "Warning: 3 of 3 pathlines did not meet the tolerance tol=1e-06 everywhere" in out
+    assert "even at the minimum time step hmin=0.5 yr." in out
+    assert "  pathline 0: " in out
+
+    # All three pathlines got past the drop in speed.
+    result = gp.read_file(outfile)
+    assert set(result["pathline_id"]) == {0, 1, 2}
+    assert all(result.groupby("pathline_id").geometry.apply(lambda g: g.x.max()) > 5000.0)
+
+
+def test_step_size_summary():
+    """
+    Summarize the affected pathlines and shorten a long list.
+    """
+    assert compute_pathlines.step_size_summary([None, None], hmin=0.01, tol=1e-3) == ""
+
+    entry = {"n_steps": 1, "first_time": 1.1289327601462458, "max_error": 0.0123}
+    summary = compute_pathlines.step_size_summary([None, entry, None], hmin=0.01, tol=1e-3)
+    assert summary.splitlines()[0] == (
+        "Warning: 1 of 3 pathlines did not meet the tolerance tol=0.001 everywhere, "
+        "even at the minimum time step hmin=0.01 yr."
+    )
+    assert "  pathline 1: 1 step, first at t=1.129 yr, largest error estimate 0.012" in summary
+
+    many = compute_pathlines.step_size_summary([dict(entry, n_steps=4)] * 8, hmin=0.01, tol=1e-3)
+    assert "  pathline 4: 4 steps, " in many
+    assert "pathline 5:" not in many
+    assert "  ... and 3 more" in many
