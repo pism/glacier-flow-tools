@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- The PyPI workflow builds with `pyproject-build`, because `python -m build` imported the repository's `build.py` and failed. When run by hand it now asks for the tag to publish.
+
 ## [0.2.0]
 
 ### Added
