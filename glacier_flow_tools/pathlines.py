@@ -20,6 +20,7 @@
 Module provides functions for calculating pathlines (trajectories).
 """
 
+import warnings
 from typing import Callable, Dict, Tuple, Union
 
 import geopandas as gp
@@ -37,6 +38,43 @@ from glacier_flow_tools.gaussian_random_fields import (
     power_spectrum,
 )
 from glacier_flow_tools.geom import distances
+
+
+class StepSizeWarning(RuntimeWarning):
+    """
+    Warn that steps of a pathline were taken at the minimum step size with an error above the tolerance.
+
+    Parameters
+    ----------
+    message : str
+        The warning message.
+    n_steps : int, optional
+        The number of steps taken at the minimum step size with an error above the tolerance.
+    first_time : float, optional
+        The time of the first of these steps.
+    max_error : float, optional
+        The largest error estimate of these steps.
+    """
+
+    def __init__(self, message: str, n_steps: int = 0, first_time: float = np.nan, max_error: float = np.nan):
+        """
+        Initialize the warning.
+
+        Parameters
+        ----------
+        message : str
+            The warning message.
+        n_steps : int, optional
+            The number of steps taken at the minimum step size with an error above the tolerance.
+        first_time : float, optional
+            The time of the first of these steps.
+        max_error : float, optional
+            The largest error estimate of these steps.
+        """
+        super().__init__(message)
+        self.n_steps = n_steps
+        self.first_time = first_time
+        self.max_error = max_error
 
 
 class nullcontext:
@@ -145,7 +183,9 @@ def compute_pathline(
     end_time : float, optional
         The end time of integration. Default is 1000.0.
     hmin : float, optional
-        The minimum step size for the integration. Default is 0.0001.
+        The minimum step size for the integration. Default is 0.0001. Where the error tolerance cannot be met
+        with this step size, for example at a jump in the velocity field, the step is taken anyway and a
+        `StepSizeWarning` is issued once the pathline is complete.
     hmax : float, optional
         The maximum step size for the integration. Default is 10.
     tol : float, optional
@@ -219,6 +259,10 @@ def compute_pathline(
     t = start_time
     h = hmax
 
+    n_forced = 0
+    forced_first_time = np.nan
+    forced_max_error = 0.0
+
     pts = np.empty((0, len(x)), dtype=float)
     velocities = np.empty((0, len(x)), dtype=float)
     time = np.empty(0, dtype=float)
@@ -258,7 +302,15 @@ def compute_pathline(
                 return np.array([[np.nan, np.nan]]), np.array([[np.nan, np.nan]]), np.array([t]), np.array([np.nan])
 
             r = norm(r1 * k1 + r3 * k3 + r4 * k4 + r5 * k5 + r6 * k6) / h
-            if r <= tol:
+            # A step at the minimum step size is taken even if its error is above the tolerance.
+            # Otherwise the solver would never get past a jump in the velocity field.
+            at_hmin = h <= hmin
+            if (r > tol) and at_hmin:
+                n_forced += 1
+                forced_max_error = max(forced_max_error, r)
+                if n_forced == 1:
+                    forced_first_time = t
+            if (r <= tol) or at_hmin:
 
                 pts = np.append(pts, [x], axis=0)
                 velocities = np.append(velocities, [vel], axis=0)
@@ -271,14 +323,21 @@ def compute_pathline(
                 vel = f(x, t, *f_args)
                 v = np.sqrt(vel[0] ** 2 + vel[1] ** 2)
 
-            s = (tol / r) ** 0.25
-            h = np.minimum(h * s, hmax)
+            # With no error at all the step may grow to the maximum step size.
+            s = (tol / r) ** 0.25 if r > 0 else np.inf
+            h = np.clip(h * s, hmin, hmax)
 
-            if (h < hmin) and (t < end_time):
-                print(
-                    f"Error: Could not converge to the required tolerance {tol:e} with minimum stepsize  {hmin:e} at t={t}"
-                )
-                continue
+    if n_forced > 0:
+        warnings.warn(
+            StepSizeWarning(
+                f"{n_forced} of {len(time)} steps were taken at the minimum step size hmin={hmin:g} with an error above "
+                f"tol={tol:g}, first at t={forced_first_time:g}. The largest error estimate was {forced_max_error:.2g}.",
+                n_steps=n_forced,
+                first_time=forced_first_time,
+                max_error=forced_max_error,
+            ),
+            stacklevel=2,
+        )
 
     return pts, velocities, time, error_estimate
 

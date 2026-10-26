@@ -1,2 +1,6 @@
 __pycache__/
 *.egg-info/
+
+# Large inputs and outputs of the Jakobshavn example
+GRE_G0240_0000.nc
+flowlines.gpkg

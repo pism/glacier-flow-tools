@@ -55,6 +55,7 @@ features/profiles
 :caption: Gallery of examples
 :hidden:
 
+examples/jakobshavn
 auto_examples/index
 ```
 
